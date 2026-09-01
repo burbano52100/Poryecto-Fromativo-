@@ -1,1 +1,0 @@
-burbaano es gay
