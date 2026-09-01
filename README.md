@@ -1,19 +1,19 @@
 # React + TypeScript + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Esta plantilla ofrece una configuración mínima para hacer funcionar React en Vite con HMR (Hot Module Replacement) y algunas reglas de Oxlint.
 
-Currently, two official plugins are available:
+Actualmente hay dos plugins oficiales disponibles:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) usa [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) usa [SWC](https://swc.rs/)
 
 ## React Compiler
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+El React Compiler no está habilitado en esta plantilla por su impacto en el rendimiento de desarrollo y compilación. Para agregarlo, consulta [esta documentación](https://react.dev/learn/react-compiler/installation).
 
-## Expanding the Oxlint configuration
+## Ampliar la configuración de Oxlint
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+Si estás desarrollando una aplicación de producción, recomendamos habilitar reglas de lint conscientes de tipos instalando `oxlint-tsgolint` y editando `.oxlintrc.json`:
 
 ```json
 {
@@ -29,4 +29,12 @@ If you are developing a production application, we recommend enabling type-aware
 }
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Consulta la [documentación de reglas de Oxlint](https://oxc.rs/docs/guide/usage/linter/rules) para ver la lista completa de reglas y categorías.
+
+## Comandos disponibles
+
+```bash
+npm run dev      # servidor de desarrollo
+npm run build    # compilación de producción
+npm run preview  # previsualizar la compilación
+```
