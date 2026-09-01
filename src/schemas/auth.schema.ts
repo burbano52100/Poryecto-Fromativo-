@@ -35,7 +35,7 @@ export const userSchema = z.object({
   ficha: z.string().optional(),
   name: z.string(),
   role: accountTypeSchema,
-  email: z.string().email(),
+  email: z.string().email().nullable(),
   status: z.string().default('ACTIVE'),
 });
 
