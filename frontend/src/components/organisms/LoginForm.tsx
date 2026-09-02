@@ -18,17 +18,21 @@ import { AccountTypeSelector } from '../molecules/AccountTypeSelector';
 import { FormField } from '../molecules/FormField';
 import { Button } from '../atoms/Button';
 import { DemoBanner } from '../molecules/DemoBanner';
+import { RegisterModal } from './RegisterModal';
 
-export const LoginForm = () => {
+interface LoginFormProps {
+  onLoginSuccess?: (accountType: AccountType, document: string) => void;
+}
+
+export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isFacialModalOpen, setIsFacialModalOpen] = useState(false);
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [localFeedback, setLocalFeedback] = useState<string | null>(null);
 
-  // 1. Hook de TanStack Query para Mutación de Login
   const loginMutation = useLoginMutation();
   const facialMutation = useFacialLoginMutation();
 
-  // 2. React Hook Form integrado con Zod Schema (zodResolver)
   const {
     register,
     handleSubmit,
@@ -61,10 +65,12 @@ export const LoginForm = () => {
   };
 
   const onSubmit = (data: LoginInput) => {
-    // Petición al backend a través del hook de TanStack Query
     loginMutation.mutate(data, {
       onSuccess: (res) => {
         setLocalFeedback(`¡Bienvenido ${res.user.name}! (${res.message})`);
+        if (onLoginSuccess) {
+          onLoginSuccess(res.user.role, res.user.document);
+        }
       },
     });
   };
@@ -88,7 +94,6 @@ export const LoginForm = () => {
 
   return (
     <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-6 sm:p-8 max-w-md w-full border border-white/40 text-gray-900 transition-all duration-300">
-      {/* Encabezado del Formulario */}
       <div className="text-center mb-6">
         <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
           Iniciar Sesión
@@ -98,7 +103,6 @@ export const LoginForm = () => {
         </p>
       </div>
 
-      {/* Manejo Explícito de Estados de TanStack Query: isError & data */}
       {loginMutation.isError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs sm:text-sm flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
@@ -117,13 +121,11 @@ export const LoginForm = () => {
         </div>
       )}
 
-      {/* Selector de Tipo de Cuenta (Molécula) */}
       <AccountTypeSelector
         selectedType={currentAccountType}
         onSelect={handleAccountTypeChange}
       />
 
-      {/* Acciones Secundarias */}
       <div className="space-y-3 mb-5">
         <Button variant="outline" fullWidth onClick={handleGuestLogin} icon={<Users className="w-4 h-4 text-gray-600" />}>
           Invitado
@@ -143,7 +145,6 @@ export const LoginForm = () => {
         </p>
       </div>
 
-      {/* Separador */}
       <div className="relative my-5 flex items-center justify-center">
         <div className="border-t border-gray-200 w-full"></div>
         <span className="bg-white px-3 text-xs text-gray-400 font-medium whitespace-nowrap absolute">
@@ -151,9 +152,7 @@ export const LoginForm = () => {
         </span>
       </div>
 
-      {/* Formulario Principal validado con Zod */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {/* Campo ID de Ficha */}
         <FormField
           label="ID de Ficha"
           placeholder="Ej: 2847251"
@@ -163,7 +162,6 @@ export const LoginForm = () => {
           {...register('ficha')}
         />
 
-        {/* Campo Cédula */}
         <FormField
           label="Cédula / Tarjeta de Identidad"
           placeholder="Ej: 1005678901"
@@ -173,7 +171,6 @@ export const LoginForm = () => {
           {...register('document')}
         />
 
-        {/* Campo Contraseña */}
         <div>
           <FormField
             label="Contraseña"
@@ -208,7 +205,6 @@ export const LoginForm = () => {
           </div>
         </div>
 
-        {/* Botón Iniciar Sesión con Estado isLoading de TanStack Query */}
         <Button
           type="submit"
           variant="primary"
@@ -219,23 +215,22 @@ export const LoginForm = () => {
         </Button>
       </form>
 
-      {/* Registro */}
+      {/* OPCIÓN A: Modal de Registro Real al hacer clic en Crear cuenta */}
       <div className="text-center mt-5 text-xs sm:text-sm text-gray-600">
         ¿No tienes cuenta?{' '}
-        <a
-          href="#signup"
-          onClick={(e) => {
-            e.preventDefault();
-            alert('Redirigiendo al portal de registro SENA SofiaPlus...');
-          }}
-          className="font-bold text-green-600 hover:text-green-700 hover:underline"
+        <button
+          type="button"
+          onClick={() => setIsRegisterOpen(true)}
+          className="font-bold text-green-600 hover:text-green-700 hover:underline cursor-pointer"
         >
           Crear cuenta
-        </a>
+        </button>
       </div>
 
-      {/* Banner de Demo (Molécula) */}
       <DemoBanner onFillDemo={handleFillDemo} />
+
+      {/* Modal de Registro */}
+      <RegisterModal isOpen={isRegisterOpen} onClose={() => setIsRegisterOpen(false)} />
 
       {/* Modal simulado de Reconocimiento Facial */}
       {isFacialModalOpen && (

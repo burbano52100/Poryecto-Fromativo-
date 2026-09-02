@@ -350,17 +350,59 @@ create trigger trg_recetas_updated_at before update on recetas
   for each row execute function set_updated_at();
 
 -- ---------------------------------------------------------------------
--- 7. NOTAS DE SEGURIDAD (Supabase Row Level Security)
+-- 8. VISITAS INSTITUCIONALES (Almuerzos para visitas de instituciones)
 -- ---------------------------------------------------------------------
--- Si usas Supabase, activa RLS en TODAS las tablas y crea políticas por
--- rol, por ejemplo:
---
---   alter table usuarios enable row level security;
---   create policy "usuario ve su propio perfil"
---     on usuarios for select
---     using (auth.uid() = id or exists (
---       select 1 from usuarios u where u.id = auth.uid() and u.rol = 'encargado'
---     ));
---
--- Repite el patrón para ventas, deudas, materiales, etc.: el 'encargado'
--- ve todo, el 'aprendiz' solo sus propias ventas/saldo/sugerencias.
+
+create type tipo_institucion as enum ('colegio', 'universidad', 'empresa', 'otro');
+create type estado_visita as enum ('programada', 'realizada', 'cancelada');
+create type metodo_pago_visita as enum ('efectivo', 'transferencia', 'credito_deuda');
+create type estado_pago_visita as enum ('pendiente', 'pagado');
+
+create table instituciones (
+  id           uuid primary key default gen_random_uuid(),
+  nombre       text not null unique,
+  tipo         tipo_institucion not null default 'colegio',
+  ciudad       text not null default 'Pitalito',
+  activo       boolean not null default true,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+create table visitas_institucionales (
+  id                      uuid primary key default gen_random_uuid(),
+  institucion_id          uuid not null references instituciones(id),
+  instructor_id           uuid references usuarios(id),           -- Opcional (Instructor SENA)
+  nombre_instructor_ext   text,                                   -- Opcional (Instructor Externo)
+  cantidad_personas       integer not null check (cantidad_personas > 0),
+  fecha_visita            date not null,
+  precio_unitario         numeric(12,2) not null,
+  total_a_cobrar          numeric(12,2) generated always as (cantidad_personas * precio_unitario) stored,
+  estado                  estado_visita not null default 'programada',
+  metodo_pago             metodo_pago_visita not null default 'efectivo',
+  estado_pago             estado_pago_visita not null default 'pendiente',
+  deuda_id                uuid references deudas(id),
+  observaciones           text,
+  creado_por              uuid references usuarios(id),
+  created_at              timestamptz not null default now(),
+  updated_at              timestamptz not null default now()
+);
+
+-- Constraint XOR: Exige que exactamente uno de los dos instructores esté presente
+alter table visitas_institucionales
+  add constraint chk_instructor_presente
+  check (
+    (instructor_id is not null and nombre_instructor_ext is null)
+    or
+    (instructor_id is null and nombre_instructor_ext is not null)
+  );
+
+create index idx_visitas_institucion on visitas_institucionales(institucion_id);
+create index idx_visitas_instructor on visitas_institucionales(instructor_id);
+create index idx_visitas_fecha on visitas_institucionales(fecha_visita);
+create index idx_visitas_estado on visitas_institucionales(estado);
+
+create trigger trg_instituciones_updated_at before update on instituciones
+  for each row execute function set_updated_at();
+create trigger trg_visitas_updated_at before update on visitas_institucionales
+  for each row execute function set_updated_at();
+
