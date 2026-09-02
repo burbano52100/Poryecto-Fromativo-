@@ -20,6 +20,9 @@ app.use(
 
 app.use(express.json());
 
+// Sesiones en memoria: token -> usuario (se pierden al reiniciar el servidor)
+const sessions = new Map<string, (typeof mockUsers)[number]>();
+
 // Base de datos en memoria para la demostración
 const mockUsers = [
   {
@@ -66,8 +69,11 @@ app.post('/api/auth/login', (req, res) => {
     status: 'ACTIVE',
   };
 
+  const token = `token_gastrosena_${Date.now()}`;
+  sessions.set(token, user);
+
   return res.json({
-    token: `token_gastrosena_${Date.now()}`,
+    token,
     user,
     message: 'Inicio de sesión exitoso',
   });
@@ -75,21 +81,29 @@ app.post('/api/auth/login', (req, res) => {
 
 app.post('/api/auth/facial-login', (req, res) => {
   const { document = '1005678901' } = req.body;
-  const user = mockUsers[0];
+  const user = { ...mockUsers[0], document };
+
+  const token = `token_facial_${Date.now()}`;
+  sessions.set(token, user);
 
   return res.json({
-    token: `token_facial_${Date.now()}`,
-    user: {
-      ...user,
-      document,
-    },
+    token,
+    user,
     message: 'Autenticación biométrica exitosa',
   });
 });
 
 app.get('/api/auth/me', (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : undefined;
+  const user = token ? sessions.get(token) : undefined;
+
+  if (!user) {
+    return res.status(401).json({ user: null, activeSession: false, message: 'Sesión no encontrada' });
+  }
+
   return res.json({
-    user: mockUsers[0],
+    user,
     activeSession: true,
   });
 });

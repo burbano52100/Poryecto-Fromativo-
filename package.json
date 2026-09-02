@@ -6,13 +6,13 @@
   "scripts": {
     "dev": "vite",
     "server": "tsx server/index.ts",
+    "dev:all": "concurrently -n web,api -c cyan,green \"npm:dev\" \"npm:server\"",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
-    "@supabase/supabase-js": "^2.112.4",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.102.8",
     "axios": "^1.20.0",
@@ -33,8 +33,8 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
+    "concurrently": "^9.2.1",
     "oxlint": "^1.79.0",
-    "supabase": "^2.116.0",
     "tsx": "^4.23.13",
     "typescript": "~6.0.2",
     "vite": "^8.2.2"

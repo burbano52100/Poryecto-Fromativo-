@@ -14,16 +14,15 @@ export const AUTH_QUERY_KEY = ['currentUser'];
 
 /**
  * Hook personalizado para consultar el usuario actual a partir del token
- * guardado en localStorage (consulta directa a Supabase).
+ * guardado en localStorage (GET /api/auth/me en el backend local).
  */
 export const useCurrentUserQuery = () => {
   return useQuery({
     queryKey: AUTH_QUERY_KEY,
     queryFn: async (): Promise<User | null> => {
-      const token = localStorage.getItem('gastrosena_token');
-      if (!token) return null;
+      if (!localStorage.getItem('gastrosena_token')) return null;
 
-      const user = await fetchCurrentUser(token);
+      const user = await fetchCurrentUser();
       if (!user) {
         localStorage.removeItem('gastrosena_token');
         return null;
@@ -31,7 +30,7 @@ export const useCurrentUserQuery = () => {
 
       const parsed = userSchema.safeParse(user);
       if (!parsed.success) {
-        console.error('Data de Supabase mal formada:', parsed.error);
+        console.error('Data del backend mal formada:', parsed.error);
         localStorage.removeItem('gastrosena_token');
         return null;
       }
@@ -42,7 +41,7 @@ export const useCurrentUserQuery = () => {
 };
 
 /**
- * Hook personalizado para Mutation de Login (consulta directa a `usuarios` en Supabase)
+ * Hook personalizado para Mutation de Login (POST /api/auth/login en el backend local)
  */
 export const useLoginMutation = () => {
   const queryClient = useQueryClient();
@@ -67,8 +66,8 @@ export const useLoginMutation = () => {
 };
 
 /**
- * Hook personalizado para Reconocimiento Facial (simulado: valida contra
- * la tabla `reconocimiento_facial` en Supabase, sin embeddings reales).
+ * Hook personalizado para Reconocimiento Facial (simulado: el backend local
+ * responde con el primer usuario mock, sin embeddings reales).
  */
 export const useFacialLoginMutation = () => {
   const queryClient = useQueryClient();
