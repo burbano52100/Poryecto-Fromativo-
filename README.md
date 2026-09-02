@@ -1,40 +1,47 @@
-# React + TypeScript + Vite
+# GastroSENA
 
-Esta plantilla ofrece una configuración mínima para hacer funcionar React en Vite con HMR (Hot Module Replacement) y algunas reglas de Oxlint.
+Proyecto dividido en tres carpetas para moverse más fácil entre partes:
 
-Actualmente hay dos plugins oficiales disponibles:
+- **`frontend/`** — app React + Vite + TypeScript (login, UI).
+- **`backend/`** — API Express (datos mock en memoria por ahora, sin base de datos real conectada).
+- **`database/`** — diseño y esquema de la base de datos (ver `database/README.md`), pendiente de conectar al backend.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) usa [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) usa [SWC](https://swc.rs/)
+## Requisitos
 
-## React Compiler
+- Node.js 20+
+- npm 10+ (el proyecto usa [npm workspaces](https://docs.npmjs.com/cli/v10/using-npm/workspaces): un solo `node_modules` en la raíz para las tres carpetas del código)
 
-El React Compiler no está habilitado en esta plantilla por su impacto en el rendimiento de desarrollo y compilación. Para agregarlo, consulta [esta documentación](https://react.dev/learn/react-compiler/installation).
+## Instalación
 
-## Ampliar la configuración de Oxlint
-
-Si estás desarrollando una aplicación de producción, recomendamos habilitar reglas de lint conscientes de tipos instalando `oxlint-tsgolint` y editando `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-Consulta la [documentación de reglas de Oxlint](https://oxc.rs/docs/guide/usage/linter/rules) para ver la lista completa de reglas y categorías.
-
-## Comandos disponibles
+Desde la raíz del proyecto:
 
 ```bash
-npm run dev      # servidor de desarrollo
-npm run build    # compilación de producción
-npm run preview  # previsualizar la compilación
+npm install
 ```
+
+## Desarrollo
+
+```bash
+npm run dev:all   # levanta frontend (http://localhost:5173) y backend (http://localhost:3000) juntos
+```
+
+O por separado, en dos terminales:
+
+```bash
+npm run dev       # solo frontend
+npm run server    # solo backend
+```
+
+## Otros comandos
+
+```bash
+npm run build   # build de producción del frontend
+npm run lint    # lint del frontend (oxlint)
+```
+
+## Variables de entorno
+
+- `frontend/.env` — `VITE_API_URL` (por defecto `http://localhost:3000/api`).
+- `backend/.env` — `PORT` y `FRONTEND_URL` (para CORS).
+
+Ninguna contiene datos sensibles; ambas están versionadas como ejemplo de configuración local.
