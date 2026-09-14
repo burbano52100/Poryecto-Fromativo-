@@ -32,6 +32,11 @@ jobs:
 
       - name: Build
         working-directory: frontend
+        env:
+          # Set this in Settings > Secrets and variables > Actions > Variables
+          # once the backend is deployed (e.g. https://gastrosena-backend.onrender.com/api).
+          # Falls back to http://localhost:3000/api when unset.
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
         run: npm run build
 
       - name: Upload artifact
