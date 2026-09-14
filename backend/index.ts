@@ -12,7 +12,7 @@ app.use(
   cors({
     origin: FRONTEND_ORIGIN,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-user-role'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-user-role', 'ngrok-skip-browser-warning'],
     credentials: true,
   })
 );

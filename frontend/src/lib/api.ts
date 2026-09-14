@@ -20,6 +20,8 @@ apiClient.interceptors.request.use((config) => {
     }
     // Asignación de header de rol para validaciones del middleware (por defecto 'encargado' en el cliente autenticado)
     config.headers['x-user-role'] = localStorage.getItem('gastrosena_role') || 'encargado';
+    // Evita la página de aviso interstitial de ngrok cuando el backend se expone con un túnel gratuito
+    config.headers['ngrok-skip-browser-warning'] = 'true';
   }
   return config;
 });
