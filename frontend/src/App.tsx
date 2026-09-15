@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import LoginPage from './pages/LoginPage';
-import VisitasInstitucionalesPage from './pages/VisitasInstitucionalesPage';
 import { AprendizDashboardPage } from './pages/AprendizDashboardPage';
 import { InstructorDashboardPage } from './pages/InstructorDashboardPage';
+import { EncargadoDashboardPage } from './pages/EncargadoDashboardPage';
+import { InvitadoDashboardPage } from './pages/InvitadoDashboardPage';
 import { useCurrentUserQuery, AUTH_QUERY_KEY } from './hooks/useAuth';
 
 export function App() {
@@ -29,6 +30,7 @@ export function App() {
     if (role === 'aprendiz') targetPath = '/aprendiz/inicio';
     else if (role === 'instructor') targetPath = '/instructor/inicio';
     else if (role === 'encargado') targetPath = '/encargado/inicio';
+    else if (role === 'invitado') targetPath = '/invitado/inicio';
 
     setCurrentPath(targetPath);
     window.history.pushState({}, '', targetPath);
@@ -81,10 +83,22 @@ export function App() {
             window.history.pushState({}, '', '/encargado/inicio');
           }}
           className={`px-2.5 py-0.5 rounded-full cursor-pointer transition ${
-            currentPath.includes('/encargado') ? 'bg-red-600 text-white font-bold' : 'hover:bg-white/20 text-gray-300'
+            currentPath.includes('/encargado') ? 'bg-amber-600 text-white font-bold' : 'hover:bg-white/20 text-gray-300'
           }`}
         >
           /encargado/inicio
+        </button>
+
+        <button
+          onClick={() => {
+            setCurrentPath('/invitado/inicio');
+            window.history.pushState({}, '', '/invitado/inicio');
+          }}
+          className={`px-2.5 py-0.5 rounded-full cursor-pointer transition ${
+            currentPath.includes('/invitado') ? 'bg-teal-600 text-white font-bold' : 'hover:bg-white/20 text-gray-300'
+          }`}
+        >
+          /invitado/inicio
         </button>
       </div>
 
@@ -99,7 +113,15 @@ export function App() {
           onLogout={handleLogout}
         />
       ) : currentPath.includes('/encargado') ? (
-        <VisitasInstitucionalesPage />
+        <EncargadoDashboardPage
+          user={currentUser || { id: 'usr_encargado', document: '123456789', name: 'Carlos Encargado', role: 'encargado', email: 'carlos.encargado@sena.edu.co', status: 'ACTIVE' }}
+          onLogout={handleLogout}
+        />
+      ) : currentPath.includes('/invitado') ? (
+        <InvitadoDashboardPage
+          user={currentUser || { id: 'INV-2026-01', document: 'INV001', name: 'Invitado Particular', role: 'invitado', email: 'visitante@sena.edu.co', status: 'ACTIVE' }}
+          onLogout={handleLogout}
+        />
       ) : (
         <LoginPage onLoginSuccess={handleLoginSuccess} />
       )}

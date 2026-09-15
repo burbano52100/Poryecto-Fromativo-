@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-// 1. Tipos de Cuenta válidos (Exclusivamente Aprendiz, Instructor y Encargado)
-export const accountTypeSchema = z.enum(['aprendiz', 'instructor', 'encargado']);
+// 1. Tipos de Cuenta válidos (Aprendiz, Instructor, Encargado e Invitado)
+export const accountTypeSchema = z.enum(['aprendiz', 'instructor', 'encargado', 'invitado']);
 
 // 2. Schema de Validación para el Formulario de Login
 export const loginSchema = z

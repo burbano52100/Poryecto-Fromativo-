@@ -406,3 +406,13 @@ create trigger trg_instituciones_updated_at before update on instituciones
 create trigger trg_visitas_updated_at before update on visitas_institucionales
   for each row execute function set_updated_at();
 
+-- ---------------------------------------------------------------------
+-- 9. EXTENSIÓN FICHAS → GRUPOS (campos adicionales para GruposSection UI)
+-- Una "ficha" en SENA es el mismo concepto que un "grupo".
+-- Se extienden los campos en vez de crear tabla separada.
+-- ---------------------------------------------------------------------
+
+alter table fichas add column if not exists vocero              text;
+alter table fichas add column if not exists jornada             text check (jornada in ('mañana','tarde','noche'));
+alter table fichas add column if not exists cantidad_estudiantes integer not null default 0;
+
