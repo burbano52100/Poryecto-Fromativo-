@@ -1,23 +1,19 @@
-# Base de datos
+# Base de datos GastroSENA
 
-Esta carpeta reúne todo lo relacionado al modelo de datos de GastroSENA.
-Ahora mismo el `backend/` **no está conectado a ninguna base de datos real**:
-usa un arreglo en memoria (`mockUsers` en `backend/index.ts`) solo para la demo.
-Los archivos de aquí son el diseño de referencia para cuando se conecte una
-base de datos de verdad.
+Esta carpeta reúne la documentación y el diseño relacional del modelo de datos de GastroSENA.
 
-## Contenido
+## Motor de Base de Datos
 
-- `gastrosena_diseno_bd.md` — documento de diseño (entidades, relaciones, decisiones).
-- `gastrosena_schema.sql` — esquema completo en PostgreSQL (tablas, enums, índices, triggers).
-- `create_tables.py`, `database.py`, `models.py` — prototipo alternativo con SQLAlchemy
-  apuntando a MySQL. **Inconsistente con `gastrosena_schema.sql` (Postgres)** — quedó
-  de una exploración previa; antes de usarlo hay que decidir un solo motor de base de datos.
+El único motor oficial del proyecto es **PostgreSQL 14+** (compatible con Docker, Render PostgreSQL, Supabase y Neon).
 
-## Cómo conectar una base de datos real
+> **Nota de arquitectura:**
+> Las migraciones canónicas y ejecutables residen en **`backend/src/db/migrations/`** (archivos numerados `001_initial_schema.sql`, etc.), y se ejecutan automáticamente a través del runner `backend/src/db/migrate.ts` (`npm run migrate`).
+>
+> Los prototipos previos en MySQL/SQLAlchemy (`database.py`, `models.py`, `create_tables.py`) fueron eliminados para mantener consistencia estricta en un solo motor relacional.
 
-1. Elegir motor (PostgreSQL es el que tiene el esquema más completo en `gastrosena_schema.sql`).
-2. Levantar la base (local o en un servidor) y correr `gastrosena_schema.sql`.
-3. En `backend/`, reemplazar el arreglo `mockUsers` de `index.ts` por consultas reales
-   (por ejemplo con `pg` o un ORM), usando variables de entorno en `backend/.env`
-   para la cadena de conexión.
+## Archivos de esta carpeta
+
+- `gastrosena_diseno_bd.md` — Documento de arquitectura, modelo relacional y decisiones de dominio (entidades, atributos, decisiones clave).
+- `gastrosena_schema.sql` — Copia de referencia del esquema inicial en PostgreSQL.
+
+Para consultar el diccionario de datos completo y cómo agregar nuevas migraciones, ver [`docs/BASE_DE_DATOS.md`](../docs/BASE_DE_DATOS.md).
