@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { query, pool } from './index.js';
+import { recalcularReceta, registrarMerma, withTransaction } from '../services/inventario.service.js';
 
 export async function runSeed(): Promise<void> {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -171,7 +172,7 @@ export async function runSeed(): Promise<void> {
   const matPolloRes = await query(
     `INSERT INTO materiales (codigo_barras, nombre, categoria_id, unidad_medida, costo_unitario, fecha_vencimiento, stock_actual, stock_minimo)
      VALUES ('770555444333', 'Pechuga de Pollo Fresca', $1, 'Kg', 14000, '2026-11-20', 28, 15)
-     ON CONFLICT (codigo_barras) DO UPDATE SET stock_actual = 28 RETURNING id;`,
+     ON CONFLICT (codigo_barras) DO UPDATE SET codigo_barras = EXCLUDED.codigo_barras RETURNING id;`,
     [catCarnes.rows[0].id]
   );
   const matPolloId = matPolloRes.rows[0].id;
@@ -179,7 +180,7 @@ export async function runSeed(): Promise<void> {
   const matArrozRes = await query(
     `INSERT INTO materiales (codigo_barras, nombre, categoria_id, unidad_medida, costo_unitario, fecha_vencimiento, stock_actual, stock_minimo)
      VALUES ('770123456789', 'Arroz Blanco Roa 1kg', $1, 'Kg', 3800, '2026-12-15', 45, 20)
-     ON CONFLICT (codigo_barras) DO UPDATE SET stock_actual = 45 RETURNING id;`,
+     ON CONFLICT (codigo_barras) DO UPDATE SET codigo_barras = EXCLUDED.codigo_barras RETURNING id;`,
     [catGranos.rows[0].id]
   );
   const matArrozId = matArrozRes.rows[0].id;
@@ -187,15 +188,23 @@ export async function runSeed(): Promise<void> {
   await query(
     `INSERT INTO materiales (codigo_barras, nombre, categoria_id, unidad_medida, costo_unitario, fecha_vencimiento, stock_actual, stock_minimo)
      VALUES ('770987654321', 'Aceite Vegetal Gourmet 1L', $1, 'Litros', 9500, '2026-10-30', 12, 10)
-     ON CONFLICT (codigo_barras) DO UPDATE SET stock_actual = 12;`,
+     ON CONFLICT (codigo_barras) DO UPDATE SET codigo_barras = EXCLUDED.codigo_barras;`,
     [catAceites.rows[0].id]
   );
 
   await query(
     `INSERT INTO materiales (codigo_barras, nombre, categoria_id, unidad_medida, costo_unitario, fecha_vencimiento, stock_actual, stock_minimo)
      VALUES ('770222333444', 'Papa Pastusa', $1, 'Kg', 2500, '2026-11-10', 60, 30)
-     ON CONFLICT (codigo_barras) DO UPDATE SET stock_actual = 60;`,
+     ON CONFLICT (codigo_barras) DO UPDATE SET codigo_barras = EXCLUDED.codigo_barras;`,
     [catVerduras.rows[0].id]
+  );
+
+  // Saldo inicial en el kardex para los materiales que aún no tienen movimientos
+  await query(
+    `INSERT INTO movimientos_kardex (material_id, tipo, concepto, cantidad_entrada, saldo_resultante, referencia_tipo)
+     SELECT m.id, 'entrada', 'Saldo inicial', m.stock_actual, m.stock_actual, 'seed'
+     FROM materiales m
+     WHERE NOT EXISTS (SELECT 1 FROM movimientos_kardex k WHERE k.material_id = m.id);`
   );
 
   // 8. RECETAS DEMO
@@ -218,14 +227,19 @@ export async function runSeed(): Promise<void> {
      ON CONFLICT (receta_id, material_id) DO NOTHING;`,
     [recetaId, matArrozId]
   );
+  // El costo de cada ingrediente y de la receta se calcula desde el costo unitario de los materiales
+  await recalcularReceta(pool, recetaId);
 
   // 9. MERMAS Y KARDEX DEMO
   const checkMermas = await query('SELECT id FROM mermas LIMIT 1;');
   if (checkMermas.rows.length === 0) {
-    await query(
-      `INSERT INTO mermas (material_id, cantidad_perdida, unidad, razon, registrado_por)
-       VALUES ($1, 2.5, 'Kg', 'Deterioro por maduración extrema', $2);`,
-      [matArrozId, encargadoId]
+    await withTransaction((client) =>
+      registrarMerma(client, {
+        materialId: matArrozId,
+        cantidad: 2.5,
+        razon: 'Deterioro por maduración extrema',
+        usuarioId: encargadoId,
+      })
     );
   }
 

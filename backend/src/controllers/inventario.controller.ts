@@ -1,23 +1,98 @@
 import { Response, NextFunction } from 'express';
 import { z } from 'zod';
+import pg from 'pg';
 import { query } from '../db/index.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { AppError } from '../middleware/error.middleware.js';
+import {
+  DECIMALES_INGREDIENTE,
+  DECIMALES_STOCK,
+  ESTADO_MATERIAL_SQL,
+  recalcularReceta,
+  recalcularRecetasDeMaterial,
+  registrarMerma,
+  registrarMovimiento,
+  withTransaction,
+} from '../services/inventario.service.js';
 
+// ---------------------------------------------------------------------
+// Validaciones comunes
+// ---------------------------------------------------------------------
+
+const tieneMaxDecimales = (decimales: number) => (valor: number) => {
+  const escalado = valor * 10 ** decimales;
+  return Math.abs(escalado - Math.round(escalado)) < 1e-9;
+};
+
+const cantidadSchema = (decimales: number) =>
+  z.coerce
+    .number({ message: 'La cantidad debe ser un número.' })
+    .positive('La cantidad debe ser mayor a 0.')
+    .refine(tieneMaxDecimales(decimales), `La cantidad admite máximo ${decimales} decimales.`);
+
+const montoSchema = z.coerce
+  .number({ message: 'El valor debe ser un número.' })
+  .min(0, 'El valor no puede ser negativo.')
+  .refine(tieneMaxDecimales(2), 'El valor admite máximo 2 decimales.');
+
+const uuidSchema = z.string().uuid('El identificador no es válido.');
+
+/** Acepta YYYY-MM-DD o DD/MM/YYYY y devuelve YYYY-MM-DD, o null si viene vacío. */
+const fechaSchema = z
+  .string()
+  .trim()
+  .transform((valor, ctx) => {
+    if (valor === '') return null;
+    let iso = valor;
+    const dmy = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(valor);
+    if (dmy) iso = `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
+    const fecha = new Date(`${iso}T00:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso) || Number.isNaN(fecha.getTime()) || fecha.toISOString().slice(0, 10) !== iso) {
+      ctx.addIssue({ code: 'custom', message: 'La fecha debe tener formato AAAA-MM-DD o DD/MM/AAAA.' });
+      return z.NEVER;
+    }
+    return iso;
+  });
+
+const parseId = (id: unknown): string => {
+  const parsed = uuidSchema.safeParse(id);
+  if (!parsed.success) throw new AppError('El identificador no es válido.', 400);
+  return parsed.data;
+};
+
+const obtenerCategoriaId = async (db: pg.PoolClient, categoria: string | undefined): Promise<string | null> => {
+  if (!categoria || !categoria.trim()) return null;
+  const catRes = await db.query(
+    'INSERT INTO categorias_material (nombre) VALUES ($1) ON CONFLICT (nombre) DO UPDATE SET nombre = EXCLUDED.nombre RETURNING id;',
+    [categoria.trim()]
+  );
+  return catRes.rows[0].id;
+};
+
+const MATERIAL_SELECT = `
+  SELECT m.id, m.codigo_barras AS code, m.nombre AS name,
+         c.nombre AS category, m.unidad_medida AS unit,
+         TO_CHAR(m.fecha_vencimiento, 'DD/MM/YYYY') AS expiry,
+         TO_CHAR(m.fecha_vencimiento, 'YYYY-MM-DD') AS expiry_iso,
+         m.stock_actual::float8 AS stock,
+         m.stock_minimo::float8 AS stock_minimo,
+         m.costo_unitario::float8 AS costo,
+         ${ESTADO_MATERIAL_SQL} AS estado
+  FROM materiales m
+  LEFT JOIN categorias_material c ON m.categoria_id = c.id`;
+
+const obtenerMaterial = async (db: pg.PoolClient, id: string) => {
+  const res = await db.query(`${MATERIAL_SELECT} WHERE m.id = $1;`, [id]);
+  return res.rows[0];
+};
+
+// ---------------------------------------------------------------------
 // 1. CONTROL DE STOCK
+// ---------------------------------------------------------------------
+
 export const getMateriales = async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const result = await query(
-      `SELECT m.id, m.codigo_barras as code, m.nombre as name,
-              c.nombre as category, m.unidad_medida as unit,
-              TO_CHAR(m.fecha_vencimiento, 'DD/MM/YYYY') as expiry,
-              m.stock_actual::int as stock,
-              m.stock_minimo::int as stock_minimo,
-              m.costo_unitario::numeric as costo
-       FROM materiales m
-       LEFT JOIN categorias_material c ON m.categoria_id = c.id
-       WHERE m.activo = true
-       ORDER BY m.nombre ASC;`
-    );
+    const result = await query(`${MATERIAL_SELECT} WHERE m.activo = true ORDER BY m.nombre ASC;`);
     return res.json(result.rows);
   } catch (error) {
     next(error);
@@ -25,12 +100,17 @@ export const getMateriales = async (_req: AuthenticatedRequest, res: Response, n
 };
 
 const materialSchema = z.object({
-  name: z.string().min(2, 'El nombre del material es obligatorio'),
-  code: z.string().optional(),
+  name: z.string().trim().min(2, 'El nombre del material es obligatorio (mínimo 2 caracteres).'),
+  code: z.string().trim().optional(),
   category: z.string().default('Granos'),
-  unit: z.string().default('Kg'),
-  expiry: z.string().optional(),
-  stock: z.coerce.number().min(0, 'El stock debe ser positivo'),
+  unit: z.string().trim().min(1, 'La unidad de medida es obligatoria.').default('Kg'),
+  expiry: fechaSchema.optional(),
+  stock: z.coerce
+    .number({ message: 'El stock debe ser un número.' })
+    .min(0, 'El stock inicial no puede ser negativo.')
+    .refine(tieneMaxDecimales(DECIMALES_STOCK), `El stock admite máximo ${DECIMALES_STOCK} decimales.`),
+  stock_minimo: montoSchema.default(10),
+  costo_unitario: montoSchema.default(0),
 });
 
 export const addMaterial = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -38,114 +118,445 @@ export const addMaterial = async (req: AuthenticatedRequest, res: Response, next
     const data = materialSchema.parse(req.body);
     const code = data.code || String(Math.floor(100000000000 + Math.random() * 900000000000));
 
-    let catId: string | null = null;
-    if (data.category) {
-      const catRes = await query(
-        'INSERT INTO categorias_material (nombre) VALUES ($1) ON CONFLICT (nombre) DO UPDATE SET nombre = EXCLUDED.nombre RETURNING id;',
-        [data.category.trim()]
+    const material = await withTransaction(async (client) => {
+      const catId = await obtenerCategoriaId(client, data.category);
+      const insertRes = await client.query(
+        `INSERT INTO materiales (codigo_barras, nombre, categoria_id, unidad_medida, fecha_vencimiento, stock_actual, stock_minimo, costo_unitario)
+         VALUES ($1, $2, $3, $4, $5, 0, $6, $7)
+         RETURNING id;`,
+        [code, data.name, catId, data.unit, data.expiry ?? null, data.stock_minimo, data.costo_unitario]
       );
-      catId = catRes.rows[0].id;
-    }
+      const id = insertRes.rows[0].id;
 
-    let parsedExpiry: string | null = null;
-    if (data.expiry) {
-      if (data.expiry.includes('/')) {
-        const parts = data.expiry.split('/');
-        if (parts.length === 3) {
-          parsedExpiry = `${parts[2]}-${parts[1]}-${parts[0]}`;
-        }
-      } else {
-        parsedExpiry = data.expiry;
+      await registrarMovimiento(client, {
+        materialId: id,
+        tipo: 'entrada',
+        cantidad: data.stock,
+        concepto: 'Ingreso inicial de material',
+        usuarioId: req.user?.id || null,
+      });
+
+      return obtenerMaterial(client, id);
+    });
+
+    return res.status(201).json(material);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const materialUpdateSchema = z
+  .object({
+    name: z.string().trim().min(2, 'El nombre del material debe tener al menos 2 caracteres.').optional(),
+    code: z.string().trim().min(1, 'El código de barras no puede quedar vacío.').optional(),
+    category: z.string().trim().optional(),
+    unit: z.string().trim().min(1, 'La unidad de medida no puede quedar vacía.').optional(),
+    expiry: fechaSchema.nullable().optional(),
+    stock_minimo: montoSchema.optional(),
+    costo_unitario: montoSchema.optional(),
+  })
+  .strict();
+
+export const updateMaterial = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = parseId(req.params.id);
+    if (req.body && typeof req.body === 'object' && 'stock' in req.body) {
+      throw new AppError('El stock solo se modifica con entradas, salidas o mermas.', 400);
+    }
+    const parsed = materialUpdateSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      const desconocido = parsed.error.issues.find((i) => i.code === 'unrecognized_keys');
+      if (desconocido) throw new AppError('La solicitud incluye campos que no se pueden editar.', 400);
+      throw parsed.error;
+    }
+    const data = parsed.data;
+
+    const material = await withTransaction(async (client) => {
+      const actualRes = await client.query(
+        'SELECT id, costo_unitario::float8 AS costo, unidad_medida FROM materiales WHERE id = $1 AND activo = true FOR UPDATE;',
+        [id]
+      );
+      const actual = actualRes.rows[0];
+      if (!actual) throw new AppError('Material no encontrado.', 404);
+
+      const sets: string[] = [];
+      const params: unknown[] = [];
+      const set = (columna: string, valor: unknown) => {
+        params.push(valor);
+        sets.push(`${columna} = $${params.length}`);
+      };
+
+      if (data.name !== undefined) set('nombre', data.name);
+      if (data.code !== undefined) set('codigo_barras', data.code);
+      if (data.category !== undefined) set('categoria_id', await obtenerCategoriaId(client, data.category));
+      if (data.unit !== undefined) set('unidad_medida', data.unit);
+      if (data.expiry !== undefined) set('fecha_vencimiento', data.expiry);
+      if (data.stock_minimo !== undefined) set('stock_minimo', data.stock_minimo);
+      if (data.costo_unitario !== undefined) set('costo_unitario', data.costo_unitario);
+
+      if (sets.length > 0) {
+        params.push(id);
+        await client.query(`UPDATE materiales SET ${sets.join(', ')} WHERE id = $${params.length};`, params);
       }
-    }
 
-    const insertRes = await query(
-      `INSERT INTO materiales (codigo_barras, nombre, categoria_id, unidad_medida, fecha_vencimiento, stock_actual, stock_minimo)
-       VALUES ($1, $2, $3, $4, $5, $6, 10)
-       RETURNING id, codigo_barras as code, nombre as name, unidad_medida as unit, stock_actual::int as stock;`,
-      [code, data.name.trim(), catId, data.unit, parsedExpiry, data.stock]
+      const cambioCosto = data.costo_unitario !== undefined && data.costo_unitario !== actual.costo;
+      const cambioUnidad = data.unit !== undefined && data.unit !== actual.unidad_medida;
+      if (cambioCosto || cambioUnidad) {
+        await recalcularRecetasDeMaterial(client, id);
+      }
+
+      return obtenerMaterial(client, id);
+    });
+
+    return res.json(material);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteMaterial = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = parseId(req.params.id);
+
+    const resultado = await withTransaction(async (client) => {
+      const matRes = await client.query(
+        'SELECT id, nombre FROM materiales WHERE id = $1 AND activo = true FOR UPDATE;',
+        [id]
+      );
+      const material = matRes.rows[0];
+      if (!material) throw new AppError('Material no encontrado.', 404);
+
+      const recetasRes = await client.query(
+        `SELECT r.nombre FROM receta_ingredientes ri
+         JOIN recetas r ON r.id = ri.receta_id
+         WHERE ri.material_id = $1 AND r.activa = true
+         ORDER BY r.nombre;`,
+        [id]
+      );
+      if (recetasRes.rows.length > 0) {
+        const nombres = recetasRes.rows.map((r) => r.nombre).join(', ');
+        throw new AppError(`No se puede eliminar ${material.nombre}: lo usan estas recetas activas: ${nombres}.`, 409);
+      }
+
+      // Borrado lógico: un DELETE real borraría en cascada su historial del kardex
+      await client.query('UPDATE materiales SET activo = false WHERE id = $1;', [id]);
+      return material;
+    });
+
+    return res.json({ message: `Material ${resultado.nombre} eliminado.`, id: resultado.id });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const entradaSchema = z.object({
+  cantidad: cantidadSchema(DECIMALES_STOCK),
+  concepto: z.string().trim().optional(),
+  costo_unitario: montoSchema.optional(),
+});
+
+export const registrarEntrada = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = parseId(req.params.id);
+    const data = entradaSchema.parse(req.body);
+
+    const resultado = await withTransaction(async (client) => {
+      const mov = await registrarMovimiento(client, {
+        materialId: id,
+        tipo: 'entrada',
+        cantidad: data.cantidad,
+        concepto: data.concepto || 'Entrada de stock',
+        usuarioId: req.user?.id || null,
+      });
+
+      if (data.costo_unitario !== undefined) {
+        const costoRes = await client.query(
+          `UPDATE materiales SET costo_unitario = $1
+           WHERE id = $2 AND costo_unitario IS DISTINCT FROM $1::numeric
+           RETURNING id;`,
+          [data.costo_unitario, id]
+        );
+        if (costoRes.rows.length > 0) {
+          await recalcularRecetasDeMaterial(client, id);
+        }
+      }
+
+      return { movimiento_id: mov.movimientoId, material: await obtenerMaterial(client, id) };
+    });
+
+    return res.status(201).json(resultado);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const salidaSchema = z.object({
+  cantidad: cantidadSchema(DECIMALES_STOCK),
+  concepto: z.string().trim().min(3, 'El concepto de la salida es obligatorio (mínimo 3 caracteres).'),
+});
+
+export const registrarSalida = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = parseId(req.params.id);
+    const data = salidaSchema.parse(req.body);
+
+    const resultado = await withTransaction(async (client) => {
+      const mov = await registrarMovimiento(client, {
+        materialId: id,
+        tipo: 'salida',
+        cantidad: data.cantidad,
+        concepto: data.concepto,
+        usuarioId: req.user?.id || null,
+      });
+      return { movimiento_id: mov.movimientoId, material: await obtenerMaterial(client, id) };
+    });
+
+    return res.status(201).json(resultado);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ---------------------------------------------------------------------
+// 2. RECETAS
+// ---------------------------------------------------------------------
+
+export const getRecetas = async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const recetasRes = await query(
+      `SELECT r.id, r.codigo AS code, r.nombre AS name,
+              r.costo_produccion::float8 AS cost,
+              r.precio_venta::float8 AS price,
+              (r.precio_venta - r.costo_produccion)::float8 AS margen,
+              CASE WHEN r.precio_venta > 0
+                   THEN ROUND((r.precio_venta - r.costo_produccion) / r.precio_venta * 100, 1)::float8
+                   ELSE NULL END AS margen_pct,
+              COALESCE(
+                json_agg(
+                  json_build_object(
+                    'material_id', m.id,
+                    'item', m.nombre,
+                    'cantidad', ri.cantidad::float8,
+                    'unidad', ri.unidad,
+                    'quantity', CONCAT(ri.cantidad::float8, ' ', ri.unidad),
+                    'cost', ri.costo::float8
+                  ) ORDER BY m.nombre
+                ) FILTER (WHERE ri.id IS NOT NULL),
+                '[]'
+              ) AS ingredients
+       FROM recetas r
+       LEFT JOIN receta_ingredientes ri ON ri.receta_id = r.id
+       LEFT JOIN materiales m ON m.id = ri.material_id
+       WHERE r.activa = true
+       GROUP BY r.id
+       ORDER BY r.nombre ASC;`
     );
 
-    await query(
-      `INSERT INTO movimientos_kardex (material_id, usuario_id, tipo, concepto, cantidad_entrada, saldo_resultante)
-       VALUES ($1, $2, 'entrada', 'Ingreso inicial de material', $3, $3);`,
-      [insertRes.rows[0].id, req.user?.id || null, data.stock]
+    return res.json(recetasRes.rows);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const recetaSchema = z.object({
+  name: z.string().trim().min(2, 'El nombre de la receta es obligatorio (mínimo 2 caracteres).'),
+  code: z.string().trim().min(1).optional(),
+  price: montoSchema,
+  ingredients: z
+    .array(
+      z.object({
+        material_id: uuidSchema,
+        cantidad: cantidadSchema(DECIMALES_INGREDIENTE),
+      })
+    )
+    .min(1, 'La receta debe tener al menos un ingrediente.')
+    .refine(
+      (items) => new Set(items.map((i) => i.material_id)).size === items.length,
+      'Un material no puede repetirse en la misma receta.'
+    ),
+});
+
+const guardarIngredientes = async (
+  client: pg.PoolClient,
+  recetaId: string,
+  ingredientes: z.infer<typeof recetaSchema>['ingredients']
+) => {
+  const ids = ingredientes.map((i) => i.material_id);
+  const matRes = await client.query(
+    'SELECT id FROM materiales WHERE id = ANY($1::uuid[]) AND activo = true;',
+    [ids]
+  );
+  if (matRes.rows.length !== ids.length) {
+    throw new AppError('Uno o más ingredientes hacen referencia a materiales que no existen o están eliminados.', 404);
+  }
+
+  await client.query('DELETE FROM receta_ingredientes WHERE receta_id = $1;', [recetaId]);
+  for (const ing of ingredientes) {
+    // El costo y la unidad se calculan desde el material en recalcularReceta
+    await client.query(
+      `INSERT INTO receta_ingredientes (receta_id, material_id, cantidad, unidad, costo)
+       VALUES ($1, $2, $3, '', 0);`,
+      [recetaId, ing.material_id, ing.cantidad]
+    );
+  }
+  await recalcularReceta(client, recetaId);
+};
+
+const obtenerReceta = async (client: pg.PoolClient, id: string) => {
+  const res = await client.query(
+    `SELECT id, codigo AS code, nombre AS name, costo_produccion::float8 AS cost, precio_venta::float8 AS price,
+            (precio_venta - costo_produccion)::float8 AS margen
+     FROM recetas WHERE id = $1;`,
+    [id]
+  );
+  return res.rows[0];
+};
+
+export const createReceta = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const data = recetaSchema.parse(req.body);
+
+    const receta = await withTransaction(async (client) => {
+      let code = data.code;
+      if (!code) {
+        const seqRes = await client.query(
+          `SELECT COALESCE(MAX(SUBSTRING(codigo FROM '^REC-(\\d+)$')::int), 0) + 1 AS siguiente FROM recetas;`
+        );
+        code = `REC-${String(seqRes.rows[0].siguiente).padStart(3, '0')}`;
+      }
+
+      const insertRes = await client.query(
+        `INSERT INTO recetas (codigo, nombre, precio_venta, costo_produccion, activa)
+         VALUES ($1, $2, $3, 0, true) RETURNING id;`,
+        [code, data.name, data.price]
+      );
+      const id = insertRes.rows[0].id;
+      await guardarIngredientes(client, id, data.ingredients);
+      return obtenerReceta(client, id);
+    });
+
+    return res.status(201).json(receta);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateReceta = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = parseId(req.params.id);
+    const data = recetaSchema.parse(req.body);
+
+    const receta = await withTransaction(async (client) => {
+      const existe = await client.query('SELECT id FROM recetas WHERE id = $1 AND activa = true FOR UPDATE;', [id]);
+      if (existe.rows.length === 0) throw new AppError('Receta no encontrada.', 404);
+
+      await client.query(
+        `UPDATE recetas SET nombre = $1, precio_venta = $2, codigo = COALESCE($3, codigo) WHERE id = $4;`,
+        [data.name, data.price, data.code ?? null, id]
+      );
+      await guardarIngredientes(client, id, data.ingredients);
+      return obtenerReceta(client, id);
+    });
+
+    return res.json(receta);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ---------------------------------------------------------------------
+// 3. KARDEX
+// ---------------------------------------------------------------------
+
+const KARDEX_LIMIT_DEFAULT = 50;
+const KARDEX_LIMIT_MAX = 200;
+
+const kardexQuerySchema = z.object({
+  desde: fechaSchema.optional(),
+  hasta: fechaSchema.optional(),
+  material_id: uuidSchema.optional(),
+  tipo: z
+    .enum(['entrada', 'salida', 'ajuste', 'merma'], { message: 'El tipo debe ser entrada, salida, ajuste o merma.' })
+    .optional(),
+  limit: z.coerce.number().int('El límite debe ser un entero.').min(1, 'El límite mínimo es 1.').default(KARDEX_LIMIT_DEFAULT),
+  offset: z.coerce.number().int('El desplazamiento debe ser un entero.').min(0, 'El desplazamiento no puede ser negativo.').default(0),
+});
+
+export const getKardex = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const filtros = kardexQuerySchema.parse(req.query);
+    const limit = Math.min(filtros.limit, KARDEX_LIMIT_MAX);
+
+    const condiciones: string[] = [];
+    const params: unknown[] = [];
+    const agregar = (sql: string, valor: unknown) => {
+      params.push(valor);
+      condiciones.push(sql.replace('?', `$${params.length}`));
+    };
+
+    // Los días se interpretan en America/Bogota; "hasta" incluye todo ese día
+    if (filtros.desde) agregar(`k.fecha_hora >= (?::date)::timestamp AT TIME ZONE 'America/Bogota'`, filtros.desde);
+    if (filtros.hasta) agregar(`k.fecha_hora < (?::date + 1)::timestamp AT TIME ZONE 'America/Bogota'`, filtros.hasta);
+    if (filtros.material_id) agregar('k.material_id = ?', filtros.material_id);
+    if (filtros.tipo) agregar('k.tipo = ?', filtros.tipo);
+
+    const where = condiciones.length > 0 ? `WHERE ${condiciones.join(' AND ')}` : '';
+
+    const totalRes = await query(`SELECT COUNT(*)::int AS total FROM movimientos_kardex k ${where};`, params);
+
+    const kardexRes = await query(
+      `SELECT k.id,
+              TO_CHAR(k.fecha_hora AT TIME ZONE 'America/Bogota', 'DD/MM/YYYY HH12:MI AM') AS date,
+              k.fecha_hora AS fecha_iso,
+              k.material_id,
+              m.nombre AS material,
+              m.unidad_medida AS unidad,
+              COALESCE(u.nombre, 'Sistema Comedor') AS responsible,
+              k.tipo,
+              k.concepto,
+              k.cantidad_entrada::float8 AS cantidad_entrada,
+              k.cantidad_salida::float8 AS cantidad_salida,
+              k.saldo_resultante::float8 AS saldo,
+              CASE WHEN k.cantidad_entrada IS NOT NULL
+                   THEN CONCAT('+', k.cantidad_entrada::float8, ' ', m.unidad_medida) ELSE '-' END AS entry,
+              CASE WHEN k.cantidad_salida IS NOT NULL
+                   THEN CONCAT('-', k.cantidad_salida::float8, ' ', m.unidad_medida) ELSE '-' END AS exit
+       FROM movimientos_kardex k
+       JOIN materiales m ON k.material_id = m.id
+       LEFT JOIN usuarios u ON k.usuario_id = u.id
+       ${where}
+       ORDER BY k.fecha_hora DESC, k.created_at DESC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2};`,
+      [...params, limit, filtros.offset]
     );
 
-    return res.status(201).json({
-      ...insertRes.rows[0],
-      category: data.category,
-      expiry: data.expiry || '30/12/2026',
+    return res.json({
+      items: kardexRes.rows,
+      total: totalRes.rows[0].total,
+      limit,
+      offset: filtros.offset,
     });
   } catch (error) {
     next(error);
   }
 };
 
-// 2. RECETAS
-export const getRecetas = async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    const recetasRes = await query(
-      `SELECT r.id, r.codigo as code, r.nombre as name,
-              r.costo_produccion::int as cost, r.precio_venta::int as price
-       FROM recetas r
-       WHERE r.activa = true
-       ORDER BY r.nombre ASC;`
-    );
-
-    const recetas = recetasRes.rows;
-
-    for (const r of recetas) {
-      const ingRes = await query(
-        `SELECT m.nombre as item,
-                CONCAT(ri.cantidad, ' ', ri.unidad) as quantity,
-                ri.costo::int as cost
-         FROM receta_ingredientes ri
-         JOIN materiales m ON ri.material_id = m.id
-         WHERE ri.receta_id = $1;`,
-        [r.id]
-      );
-      r.ingredients = ingRes.rows;
-    }
-
-    return res.json(recetas);
-  } catch (error) {
-    next(error);
-  }
-};
-
-// 3. KARDEX
-export const getKardex = async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    const kardexRes = await query(
-      `SELECT k.id,
-              TO_CHAR(k.fecha_hora, 'DD/MM/YYYY HH12:MI AM') as date,
-              m.nombre as material,
-              COALESCE(u.nombre, 'Sistema Comedor') as responsible,
-              k.concepto,
-              CASE WHEN k.cantidad_entrada IS NOT NULL THEN CONCAT('+', k.cantidad_entrada, ' ', m.unidad_medida) ELSE '-' END as entry,
-              CASE WHEN k.cantidad_salida IS NOT NULL THEN CONCAT('-', k.cantidad_salida, ' ', m.unidad_medida) ELSE '-' END as exit
-       FROM movimientos_kardex k
-       JOIN materiales m ON k.material_id = m.id
-       LEFT JOIN usuarios u ON k.usuario_id = u.id
-       ORDER BY k.fecha_hora DESC
-       LIMIT 50;`
-    );
-    return res.json(kardexRes.rows);
-  } catch (error) {
-    next(error);
-  }
-};
-
+// ---------------------------------------------------------------------
 // 4. MERMAS
+// ---------------------------------------------------------------------
+
 export const getMermas = async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const mermasRes = await query(
       `SELECT mer.id,
-              TO_CHAR(mer.fecha_hora, 'DD/MM/YYYY HH12:MI AM') as date,
-              m.nombre as material,
-              CONCAT(mer.cantidad_perdida, ' ', mer.unidad) as quantity,
-              mer.razon as reason
+              TO_CHAR(mer.fecha_hora AT TIME ZONE 'America/Bogota', 'DD/MM/YYYY HH12:MI AM') AS date,
+              m.id AS material_id,
+              m.nombre AS material,
+              mer.cantidad_perdida::float8 AS cantidad,
+              mer.unidad,
+              CONCAT(mer.cantidad_perdida::float8, ' ', mer.unidad) AS quantity,
+              mer.razon AS reason,
+              mer.movimiento_kardex_id
        FROM mermas mer
        JOIN materiales m ON mer.material_id = m.id
        ORDER BY mer.fecha_hora DESC
@@ -157,63 +568,54 @@ export const getMermas = async (_req: AuthenticatedRequest, res: Response, next:
   }
 };
 
-const mermaSchema = z.object({
-  material: z.string().min(1, 'El material es obligatorio'),
-  quantity: z.coerce.number().positive('La cantidad debe ser mayor a 0'),
-  reason: z.string().min(3, 'La razón es obligatoria'),
-});
+const mermaSchema = z
+  .object({
+    material_id: uuidSchema.optional(),
+    material: z.string().trim().min(1).optional(),
+    quantity: cantidadSchema(DECIMALES_STOCK),
+    reason: z.string().trim().min(3, 'La razón de la merma es obligatoria (mínimo 3 caracteres).'),
+  })
+  .refine((d) => d.material_id || d.material, {
+    message: 'Debes indicar el material (material_id o nombre).',
+    path: ['material_id'],
+  });
 
 export const addMerma = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const data = mermaSchema.parse(req.body);
 
-    const matRes = await query(
-      'SELECT id, nombre, unidad_medida, stock_actual FROM materiales WHERE nombre ILIKE $1 OR id::text = $1 LIMIT 1;',
-      [data.material.trim()]
-    );
+    const resultado = await withTransaction(async (client) => {
+      let materialId = data.material_id;
+      if (!materialId) {
+        // Solo coincidencia exacta por nombre, nunca parcial
+        const matRes = await client.query(
+          'SELECT id FROM materiales WHERE nombre = $1 AND activo = true LIMIT 1;',
+          [data.material]
+        );
+        if (matRes.rows.length === 0) {
+          throw new AppError(`Material '${data.material}' no encontrado.`, 404);
+        }
+        materialId = matRes.rows[0].id as string;
+      }
 
-    if (matRes.rows.length === 0) {
-      return res.status(404).json({ message: `Material '${data.material}' no encontrado.` });
-    }
-
-    const material = matRes.rows[0];
-    const newStock = Math.max(0, Number(material.stock_actual) - data.quantity);
-
-    const kardexRes = await query(
-      `INSERT INTO movimientos_kardex (material_id, usuario_id, tipo, concepto, cantidad_salida, saldo_resultante)
-       VALUES ($1, $2, 'merma', $3, $4, $5)
-       RETURNING id;`,
-      [
-        material.id,
-        req.user?.id || null,
-        `Merma: ${data.reason.trim()}`,
-        data.quantity,
-        newStock,
-      ]
-    );
-
-    await query('UPDATE materiales SET stock_actual = $1 WHERE id = $2;', [newStock, material.id]);
-
-    const mermaRes = await query(
-      `INSERT INTO mermas (material_id, cantidad_perdida, unidad, razon, registrado_por, movimiento_kardex_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, TO_CHAR(fecha_hora, 'DD/MM/YYYY HH12:MI AM') as date;`,
-      [
-        material.id,
-        data.quantity,
-        material.unidad_medida,
-        data.reason.trim(),
-        req.user?.id || null,
-        kardexRes.rows[0].id,
-      ]
-    );
+      return registrarMerma(client, {
+        materialId,
+        cantidad: data.quantity,
+        razon: data.reason,
+        usuarioId: req.user?.id || null,
+      });
+    });
 
     return res.status(201).json({
-      id: mermaRes.rows[0].id,
-      date: mermaRes.rows[0].date,
-      material: material.nombre,
-      quantity: `${data.quantity} ${material.unidad_medida}`,
+      id: resultado.id,
+      date: resultado.date,
+      material_id: resultado.movimiento.materialId,
+      material: resultado.movimiento.nombre,
+      cantidad: data.quantity,
+      quantity: `${data.quantity} ${resultado.movimiento.unidad}`,
       reason: data.reason,
+      movimiento_kardex_id: resultado.movimiento.movimientoId,
+      stock_resultante: resultado.movimiento.saldo,
     });
   } catch (error) {
     next(error);
