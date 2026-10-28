@@ -34,7 +34,6 @@ export const createApp = (): Express => {
   const configuredOrigin = process.env.FRONTEND_URL;
   const allowedOrigins = [
     'http://localhost:5173',
-    'http://localhost:3000',
     'https://burbano52100.github.io',
   ];
   if (configuredOrigin && !allowedOrigins.includes(configuredOrigin)) {
@@ -44,12 +43,16 @@ export const createApp = (): Express => {
   app.use(
     cors({
       origin: (origin, callback) => {
-        // Permitir peticiones sin origen (como curl o mobile apps) y orígenes autorizados
-        if (!origin || allowedOrigins.includes(origin) || allowedOrigins.some((o) => origin.startsWith(o))) {
-          callback(null, true);
-        } else {
-          callback(null, true); // En dev/staging no bloquear para evitar fricción en previews
+        // Allow requests without Origin (e.g., curl, mobile apps)
+        if (!origin) {
+          return callback(null, true);
         }
+        // Exact match against whitelist
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        // Reject others
+        return callback(new Error('Origin not allowed by CORS'), false);
       },
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],

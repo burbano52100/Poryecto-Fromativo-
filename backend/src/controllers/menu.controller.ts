@@ -14,23 +14,29 @@ const menuSchema = z.object({
   estado: z.enum(['borrador', 'activo', 'agotado', 'completado']).default('activo'),
 });
 
-export const getActiveMenu = async (_req: Request, res: Response, next: NextFunction) => {
+export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
+    // 1. Buscar menú activo priorizando el menú programado para hoy en zona horaria Bogotá
     const result = await query(
-      `SELECT id, fecha, nombre, descripcion, precio_aprendiz, precio_invitado,
+      `SELECT id, fecha, nombre, descripcion,
+              precio_aprendiz::float8 as precio_aprendiz,
+              precio_invitado::float8 as precio_invitado,
               cantidad_disponible, cantidad_vendida, imagen_url, estado
        FROM menus_dia
        WHERE estado = 'activo'
-       ORDER BY fecha DESC, created_at DESC
+       ORDER BY (fecha = (NOW() AT TIME ZONE 'America/Bogota')::date) DESC, fecha DESC, created_at DESC
        LIMIT 1;`
     );
 
-    if (result.rows.length === 0) {
+    let menu = result.rows[0];
+
+    if (!menu) {
       // Fallback si no hay ningún menú activo cargado aún
-      const today = new Date().toISOString().split('T')[0];
-      return res.json({
+      const todayBogotaRes = await query("SELECT (NOW() AT TIME ZONE 'America/Bogota')::date as today;");
+      const todayStr = todayBogotaRes.rows[0]?.today || new Date().toISOString().split('T')[0];
+      menu = {
         id: 'default_menu',
-        fecha: today,
+        fecha: todayStr,
         nombre: 'Menú del Día',
         descripcion: 'Almuerzo completo: Sopa, bandeja con proteína, arroz, ensalada, jugo natural y postre.',
         precio_aprendiz: 5000,
@@ -39,10 +45,39 @@ export const getActiveMenu = async (_req: Request, res: Response, next: NextFunc
         cantidad_vendida: 0,
         imagen_url: '/cafeteria-bg.jpg',
         estado: 'activo',
-      });
+      };
     }
 
-    return res.json(result.rows[0]);
+    // 2. Determinar precio aplicable según el rol y si es beneficiario en la base de datos
+    let precioAplicable = Number(menu.precio_aprendiz);
+    let esBeneficiario = false;
+
+    if (req.user?.id) {
+      const userRes = await query(
+        'SELECT rol, es_beneficiario FROM usuarios WHERE id = $1;',
+        [req.user.id]
+      );
+      const user = userRes.rows[0];
+
+      if (user) {
+        if (user.rol === 'aprendiz') {
+          esBeneficiario = Boolean(user.es_beneficiario);
+          precioAplicable = esBeneficiario ? 0 : Number(menu.precio_aprendiz);
+        } else if (user.rol === 'instructor') {
+          precioAplicable = Number(menu.precio_aprendiz);
+        } else if (user.rol === 'invitado') {
+          precioAplicable = Number(menu.precio_invitado);
+        }
+      }
+    }
+
+    return res.json({
+      ...menu,
+      precio_aprendiz: Number(menu.precio_aprendiz),
+      precio_invitado: Number(menu.precio_invitado),
+      precio_aplicable: precioAplicable,
+      es_beneficiario: esBeneficiario,
+    });
   } catch (error) {
     next(error);
   }

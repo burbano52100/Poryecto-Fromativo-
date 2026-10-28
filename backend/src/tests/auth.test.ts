@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import assert from 'node:assert';
 import jwt from 'jsonwebtoken';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.middleware.js';

@@ -114,11 +114,14 @@ export async function runSeed(): Promise<void> {
   const menuRes = await query(
     `INSERT INTO menus_dia (fecha, nombre, descripcion, precio_aprendiz, precio_invitado, cantidad_disponible, cantidad_vendida, imagen_url, estado, creado_por)
      VALUES ($1, $2, $3, 5000, 8000, 200, 45, '/cafeteria-bg.jpg', 'activo', $4)
-     ON CONFLICT (fecha, nombre) DO UPDATE SET estado = 'activo'
+     ON CONFLICT (fecha, nombre) DO UPDATE SET estado = 'activo', precio_aprendiz = 5000, precio_invitado = 8000
      RETURNING id;`,
     [today, 'Menú Ejecutivo SENA', 'Almuerzo completo: Sopa, bandeja con proteína, arroz, ensalada, jugo natural y postre', encargadoId]
   );
   const menuId = menuRes.rows[0].id;
+
+  // Asegurar precio correcto de $5.000 si existía precio previo desactualizado
+  await query("UPDATE menus_dia SET precio_aprendiz = 5000 WHERE precio_aprendiz = 3500;");
 
   // 5. INSTITUCIONES DEMO
   const inst1Res = await query(
@@ -265,15 +268,28 @@ export async function runSeed(): Promise<void> {
   const checkVentas = await query('SELECT id FROM ventas LIMIT 1;');
   if (checkVentas.rows.length === 0) {
     for (let i = 0; i < 5; i++) {
+      let currentMenuId = menuId;
+      if (i > 0) {
+        const pastMenuRes = await query(
+          `INSERT INTO menus_dia (fecha, nombre, descripcion, precio_aprendiz, precio_invitado, cantidad_disponible, cantidad_vendida, imagen_url, estado, creado_por)
+           VALUES (CURRENT_DATE - ($1 || ' days')::INTERVAL, 'Menú del Día - ' || $1, 'Almuerzo completo tradicional SENA', 5000, 8000, 200, 40, '/cafeteria-bg.jpg', 'completado', $2)
+           ON CONFLICT (fecha, nombre) DO UPDATE SET precio_aprendiz = 5000 RETURNING id;`,
+          [i, encargadoId]
+        );
+        currentMenuId = pastMenuRes.rows[0].id;
+      }
+
       await query(
-        `INSERT INTO ventas (usuario_id, menu_id, fecha_hora, precio_cobrado, metodo_pago, metodo_verificacion, registrado_por, estado)
-         VALUES ($1, $2, NOW() - ($3 || ' days')::INTERVAL, 5000, 'saldo', 'manual', $4, 'completada');`,
-        [aprendizId, menuId, i, encargadoId]
+        `INSERT INTO ventas (usuario_id, menu_id, fecha_hora, precio_cobrado, metodo_pago, estado_pago, metodo_verificacion, registrado_por, estado)
+         VALUES ($1, $2, NOW() - ($3 || ' days')::INTERVAL, 5000, 'saldo', 'pagado', 'manual', $4, 'completada')
+         ON CONFLICT DO NOTHING;`,
+        [aprendizId, currentMenuId, i, encargadoId]
       );
       await query(
-        `INSERT INTO ventas (usuario_id, menu_id, fecha_hora, precio_cobrado, metodo_pago, metodo_verificacion, registrado_por, estado)
-         VALUES ($1, $2, NOW() - ($3 || ' days')::INTERVAL, 5000, 'credito', 'manual', $4, 'completada');`,
-        [instructor1Id, menuId, i, encargadoId]
+        `INSERT INTO ventas (usuario_id, menu_id, fecha_hora, precio_cobrado, metodo_pago, estado_pago, metodo_verificacion, registrado_por, estado)
+         VALUES ($1, $2, NOW() - ($3 || ' days')::INTERVAL, 5000, 'credito', 'pendiente', 'manual', $4, 'completada')
+         ON CONFLICT DO NOTHING;`,
+        [instructor1Id, currentMenuId, i, encargadoId]
       );
     }
   }
@@ -291,7 +307,7 @@ if (isMain) {
       console.error('[Seed] Error al sembrar datos demo:', err);
       try {
         await pool.end();
-      } catch (_) {}
+      } catch {}
       process.exit(1);
     });
 }

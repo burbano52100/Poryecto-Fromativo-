@@ -70,7 +70,7 @@ if (isMainModule) {
       console.error('[Migrate] Error crítico en migraciones:', err);
       try {
         await pool.end();
-      } catch (_) {}
+      } catch {}
       process.exit(1);
     });
 }

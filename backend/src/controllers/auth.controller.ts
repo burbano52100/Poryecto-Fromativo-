@@ -4,7 +4,6 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { query } from '../db/index.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
-import { AppError } from '../middleware/error.middleware.js';
 
 const loginSchema = z.object({
   accountType: z.enum(['aprendiz', 'instructor', 'encargado', 'invitado']),
@@ -20,7 +19,7 @@ const registerSchema = z
     accountType: z.enum(['aprendiz', 'instructor', 'encargado', 'invitado']),
     ficha: z.string().optional(),
     email: z.string().email('Ingresa un correo electrónico válido'),
-    password: z.string().min(4, 'La contraseña debe tener al menos 4 caracteres'),
+    password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
   })
   .refine(
     (data) => {
@@ -51,34 +50,19 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
 
     const user = userRes.rows[0];
 
-    if (!user) {
-      return res.status(401).json({ message: 'Credenciales inválidas: documento o contraseña incorrectos.' });
-    }
+    // Generic failure for any invalid credentials or state
+    const genericError = () => res.status(401).json({ message: 'Credenciales inválidas' });
 
-    if (!user.activo) {
-      return res.status(403).json({ message: 'Tu cuenta de usuario se encuentra inactiva. Contacta al encargado.' });
-    }
-
-    if (user.rol !== accountType) {
-      return res.status(401).json({
-        message: `El tipo de cuenta seleccionado (${accountType}) no coincide con el perfil registrado para este documento.`,
-      });
-    }
-
+    if (!user) return genericError();
+    if (!user.activo) return genericError();
+    if (user.rol !== accountType) return genericError();
     if (accountType === 'aprendiz' && ficha && user.codigo_ficha && user.codigo_ficha !== ficha) {
-      return res.status(401).json({
-        message: `El número de ficha (${ficha}) no coincide con la ficha registrada para este aprendiz (${user.codigo_ficha}).`,
-      });
+      return genericError();
     }
-
-    if (!user.password_hash) {
-      return res.status(401).json({ message: 'Usuario sin contraseña configurada.' });
-    }
+    if (!user.password_hash) return genericError();
 
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
-    if (!passwordMatch) {
-      return res.status(401).json({ message: 'Credenciales inválidas: documento o contraseña incorrectos.' });
-    }
+    if (!passwordMatch) return genericError();
 
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
@@ -212,9 +196,11 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
 
 export const facialLogin = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    if (process.env.NODE_ENV === 'production') {
+    const facialDemoEnabled = process.env.ENABLE_FACIAL_DEMO === 'true';
+    const isProd = process.env.NODE_ENV === 'production';
+    if (!facialDemoEnabled || isProd) {
       return res.status(403).json({
-        message: 'El reconocimiento biométrico facial simulado está desactivado en producción por seguridad.',
+        message: 'El reconocimiento biométrico facial simulado está desactivado.',
       });
     }
 
@@ -231,6 +217,10 @@ export const facialLogin = async (req: Request, res: Response, next: NextFunctio
     const user = userRes.rows[0];
     if (!user) {
       return res.status(404).json({ message: `No se encontró usuario con el documento ${document} para biometría demo.` });
+    }
+
+    if (!user.activo) {
+      return res.status(403).json({ message: 'Cuenta de usuario inactiva.' });
     }
 
     const jwtSecret = process.env.JWT_SECRET!;
@@ -264,6 +254,7 @@ export const facialLogin = async (req: Request, res: Response, next: NextFunctio
     next(error);
   }
 };
+
 
 export const getMe = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {

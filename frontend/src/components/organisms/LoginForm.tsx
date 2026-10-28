@@ -29,6 +29,7 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
   const [isFacialModalOpen, setIsFacialModalOpen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [localFeedback, setLocalFeedback] = useState<string | null>(null);
+  const [accountType, setAccountType] = useState<AccountType>('aprendiz');
 
   const loginMutation = useLoginMutation();
   const facialMutation = useFacialLoginMutation();
@@ -37,7 +38,7 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
     register,
     handleSubmit,
     setValue,
-    watch,
+    getValues,
     formState: { errors },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -49,13 +50,13 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
     },
   });
 
-  const currentAccountType = watch('accountType');
-
   const handleAccountTypeChange = (type: AccountType) => {
+    setAccountType(type);
     setValue('accountType', type, { shouldValidate: true });
   };
 
   const handleFillDemo = () => {
+    setAccountType('aprendiz');
     setValue('accountType', 'aprendiz', { shouldValidate: true });
     setValue('ficha', '2847251', { shouldValidate: true });
     setValue('document', '1005678901', { shouldValidate: true });
@@ -76,17 +77,24 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
   };
 
   const handleGuestLogin = () => {
-    setLocalFeedback('Iniciando sesión en modo Invitado del Comedor...');
-    setTimeout(() => setLocalFeedback(null), 3000);
+    handleAccountTypeChange('invitado');
+    setValue('document', 'INV001', { shouldValidate: true });
+    setValue('password', 'demo123', { shouldValidate: true });
+    setLocalFeedback('Perfil de invitado seleccionado.');
+    setTimeout(() => setLocalFeedback(null), 2500);
   };
 
   const handleSimulateFacialSuccess = () => {
+    const doc = getValues('document') || '1005678901';
     facialMutation.mutate(
-      { document: watch('document') || '1005678901' },
+      { document: doc },
       {
         onSuccess: (res) => {
           setIsFacialModalOpen(false);
           setLocalFeedback(`¡Autenticación Facial Exitosa! Bienvenido ${res.user.name}.`);
+          if (onLoginSuccess) {
+            onLoginSuccess(res.user.role, res.user.document);
+          }
         },
       }
     );
@@ -98,8 +106,8 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
         <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
           Iniciar Sesión
         </h2>
-        <p className="text-sm text-gray-500 mt-1 font-medium">
-          Ingresa con tus credenciales
+        <p className="text-gray-500 text-sm mt-1 font-medium">
+          Sistema de Control de Almuerzos - GastroSENA
         </p>
       </div>
 
@@ -122,27 +130,30 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
       )}
 
       <AccountTypeSelector
-        selectedType={currentAccountType}
+        selectedType={accountType}
         onSelect={handleAccountTypeChange}
       />
 
       <div className="space-y-3 mb-5">
         <Button variant="outline" fullWidth onClick={handleGuestLogin} icon={<Users className="w-4 h-4 text-gray-600" />}>
-          Invitado
+          Modo Invitado
         </Button>
 
-        <Button
-          variant="emerald"
-          fullWidth
-          onClick={() => setIsFacialModalOpen(true)}
-          icon={<Camera className="w-4 h-4 text-emerald-600 animate-pulse" />}
-        >
-          Ingresar con Reconocimiento Facial
-        </Button>
-
-        <p className="text-xs text-gray-500 text-center -mt-1 font-medium">
-          Solo para aprendices SENA en Yamboro
-        </p>
+        {import.meta.env.DEV && (
+          <>
+            <Button
+              variant="emerald"
+              fullWidth
+              onClick={() => setIsFacialModalOpen(true)}
+              icon={<Camera className="w-4 h-4 text-emerald-600 animate-pulse" />}
+            >
+              Ingresar con Reconocimiento Facial (Dev)
+            </Button>
+            <p className="text-xs text-gray-500 text-center -mt-1 font-medium">
+              Simulación biométrica (solo en desarrollo)
+            </p>
+          </>
+        )}
       </div>
 
       <div className="relative my-5 flex items-center justify-center">
@@ -153,14 +164,16 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          label="ID de Ficha"
-          placeholder="Ej: 2847251"
-          required={currentAccountType === 'aprendiz'}
-          icon={<BookOpen className="w-4 h-4" />}
-          error={errors.ficha?.message}
-          {...register('ficha')}
-        />
+        {accountType === 'aprendiz' && (
+          <FormField
+            label="ID de Ficha"
+            placeholder="Ej: 2847251"
+            required={true}
+            icon={<BookOpen className="w-4 h-4" />}
+            error={errors.ficha?.message}
+            {...register('ficha')}
+          />
+        )}
 
         <FormField
           label="Cédula / Tarjeta de Identidad"
@@ -215,7 +228,6 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
         </Button>
       </form>
 
-      {/* OPCIÓN A: Modal de Registro Real al hacer clic en Crear cuenta */}
       <div className="text-center mt-5 text-xs sm:text-sm text-gray-600">
         ¿No tienes cuenta?{' '}
         <button
@@ -254,8 +266,8 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
               <Button
                 variant="primary"
                 fullWidth
-                isLoading={facialMutation.isPending}
                 onClick={handleSimulateFacialSuccess}
+                isLoading={facialMutation.isPending}
               >
                 Simular Éxito
               </Button>

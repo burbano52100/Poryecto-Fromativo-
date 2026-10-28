@@ -9,10 +9,12 @@
     "build": "npm run prebuild && tsc -b",
     "migrate": "node dist/db/migrate.js",
     "migrate:dev": "tsx scripts/bundle-migrations.ts && tsx src/db/migrate.ts",
+    "db:init": "tsx scripts/bundle-migrations.ts && tsx src/db/migrate.ts",
     "seed": "node dist/db/seed.js",
     "seed:dev": "tsx src/db/seed.ts",
+    "db:seed": "tsx src/db/seed.ts",
     "start": "node dist/index.js",
-    "test": "tsx --test src/tests/**/*.test.ts"
+    "test": "vitest run"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -32,7 +34,11 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.13.3",
     "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
+    "@vitest/coverage-v8": "^5.0.5",
+    "supertest": "^7.3.1",
     "tsx": "^4.23.13",
-    "typescript": "~6.0.2"
+    "typescript": "~6.0.2",
+    "vitest": "^5.0.5"
   }
 }

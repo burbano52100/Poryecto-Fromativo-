@@ -53,3 +53,29 @@ export const authenticateToken = (
     });
   }
 };
+
+export const optionalAuthenticateToken = (
+  req: AuthenticatedRequest,
+  _res: Response,
+  next: NextFunction
+) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.startsWith('Bearer ')
+    ? authHeader.slice(7)
+    : null;
+
+  if (!token) {
+    return next();
+  }
+
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, jwtSecret) as AuthenticatedUser;
+    req.user = decoded;
+  } catch {}
+  next();
+};

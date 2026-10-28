@@ -1,4 +1,6 @@
-import { CheckCircle2, Clock, Receipt, Calendar } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { CheckCircle2, Clock, Receipt, Calendar, Loader2, AlertTriangle } from 'lucide-react';
+import { apiClient } from '../../lib/api';
 import { Badge } from '../atoms/Badge';
 
 export interface ConsumoItem {
@@ -13,26 +15,16 @@ export interface ConsumosSectionProps {
   items?: ConsumoItem[];
 }
 
-export const ConsumosSection = ({ items }: ConsumosSectionProps) => {
-  const defaultItems: ConsumoItem[] = [
-    { id: '1', date: '16 Feb 2026', title: 'Menú del Día', price: '$5.000', paymentStatus: 'PAGADO' },
-    { id: '2', date: '15 Feb 2026', title: 'Menú del Día', price: '$5.000', paymentStatus: 'PAGADO' },
-    { id: '3', date: '14 Feb 2026', title: 'Menú del Día', price: '$5.000', paymentStatus: 'PENDIENTE' },
-    { id: '4', date: '13 Feb 2026', title: 'Menú del Día', price: '$5.000', paymentStatus: 'PENDIENTE' },
-    { id: '5', date: '12 Feb 2026', title: 'Menú del Día', price: '$5.000', paymentStatus: 'PENDIENTE' },
-  ];
+export const ConsumosSection = ({ items: propItems }: ConsumosSectionProps) => {
+  const { data: queryItems, isLoading, isError, error } = useQuery<ConsumoItem[]>({
+    queryKey: ['consumos'],
+    queryFn: async () => (await apiClient.get<ConsumoItem[]>('/consumos')).data,
+    enabled: !propItems,
+  });
 
-  const consumos = items || defaultItems;
+  const consumos = propItems || queryItems || [];
 
   const totalConsumosCount = consumos.length;
-  
-  const totalPaidAmount = consumos
-    .filter((item) => item.paymentStatus === 'PAGADO')
-    .reduce((acc, item) => acc + parseInt(item.price.replace(/\D/g, '') || '0', 10), 0);
-
-  const totalPendingAmount = consumos
-    .filter((item) => item.paymentStatus === 'PENDIENTE')
-    .reduce((acc, item) => acc + parseInt(item.price.replace(/\D/g, '') || '0', 10), 0);
 
   return (
     <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200/80 space-y-6">
@@ -40,10 +32,10 @@ export const ConsumosSection = ({ items }: ConsumosSectionProps) => {
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
             <Receipt className="w-6 h-6 text-green-600" />
-            Consumos
+            Historial de Consumos
           </h2>
           <p className="text-sm text-gray-500 mt-0.5 font-medium">
-            Historial de almuerzos y estado de pago
+            Registro oficial de almuerzos y estado de pago en el comedor
           </p>
         </div>
 
@@ -51,6 +43,26 @@ export const ConsumosSection = ({ items }: ConsumosSectionProps) => {
           {totalConsumosCount} consumos
         </Badge>
       </div>
+
+      {isLoading && (
+        <div className="py-12 flex justify-center items-center text-gray-400 gap-2">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span className="text-sm">Cargando historial de consumos...</span>
+        </div>
+      )}
+
+      {isError && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
+          <span>Error al consultar consumos: {error instanceof Error ? error.message : 'Error desconocido'}</span>
+        </div>
+      )}
+
+      {!isLoading && consumos.length === 0 && (
+        <div className="py-12 text-center text-gray-400 text-sm">
+          Aún no tienes almuerzos registrados este mes.
+        </div>
+      )}
 
       {/* Consumos List */}
       <div className="space-y-3">
@@ -99,52 +111,16 @@ export const ConsumosSection = ({ items }: ConsumosSectionProps) => {
                 <span
                   className={`text-xs font-bold px-3 py-1.5 rounded-full border ${
                     isPaid
-                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                      : 'bg-amber-100 text-amber-800 border-amber-300'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
                   }`}
                 >
-                  {isPaid ? 'Pagado' : 'Pendiente'}
+                  {item.paymentStatus}
                 </span>
               </div>
             </div>
           );
         })}
-      </div>
-
-      {/* Resumen del Mes Bottom Card */}
-      <div className="bg-blue-50/60 border border-blue-100 rounded-2xl p-6">
-        <h3 className="text-base font-extrabold text-blue-950 mb-4">
-          Resumen del Mes
-        </h3>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
-          <div>
-            <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">
-              Total Consumos
-            </p>
-            <p className="text-2xl font-black text-blue-900 mt-1">
-              {totalConsumosCount}
-            </p>
-          </div>
-
-          <div>
-            <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">
-              Total Pagado
-            </p>
-            <p className="text-2xl font-black text-emerald-600 mt-1">
-              ${totalPaidAmount.toLocaleString('es-CO')}
-            </p>
-          </div>
-
-          <div>
-            <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider">
-              Pendiente
-            </p>
-            <p className="text-2xl font-black text-amber-600 mt-1">
-              ${totalPendingAmount.toLocaleString('es-CO')}
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );

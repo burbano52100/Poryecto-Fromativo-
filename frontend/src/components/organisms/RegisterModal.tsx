@@ -15,12 +15,12 @@ interface RegisterModalProps {
 
 export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [currentAccountType, setCurrentAccountType] = useState<AccountType>('aprendiz');
   const registerMutation = useRegisterMutation();
 
   const {
     register,
     handleSubmit,
-    watch,
     setValue,
     reset,
     formState: { errors },
@@ -36,16 +36,20 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
     },
   });
 
-  const currentAccountType = watch('accountType') as AccountType;
-
   if (!isOpen) return null;
 
   const handleAccountTypeChange = (type: AccountType) => {
+    if (type === 'encargado' || type === 'instructor') {
+      alert('El registro público solo está disponible para Aprendices e Invitados.');
+      return;
+    }
+    setCurrentAccountType(type);
     setValue('accountType', type, { shouldValidate: true });
   };
 
   const handleClose = () => {
     reset();
+    setCurrentAccountType('aprendiz');
     setSuccessMessage(null);
     onClose();
   };
@@ -55,6 +59,7 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
       onSuccess: (res) => {
         setSuccessMessage(`¡Cuenta creada correctamente! Bienvenido ${res.user.name}.`);
         reset();
+        setCurrentAccountType('aprendiz');
         setTimeout(() => {
           setSuccessMessage(null);
           onClose();
@@ -107,20 +112,25 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
             </div>
           )}
 
-          <AccountTypeSelector selectedType={currentAccountType} onSelect={handleAccountTypeChange} />
+          <div className="text-sm font-semibold text-gray-700 mb-1">
+            Selecciona tu tipo de perfil:
+          </div>
+          <AccountTypeSelector
+            selectedType={currentAccountType}
+            onSelect={handleAccountTypeChange}
+          />
 
-          <form onSubmit={onSubmit} className="space-y-4">
+          <form onSubmit={onSubmit} className="space-y-3.5 pt-2">
             <FormField
               label="Nombre Completo"
               placeholder="Ej: Carlos Andrés Ruiz"
               required
-              icon={<UserPlus className="w-4 h-4" />}
               error={errors.name?.message}
               {...register('name')}
             />
 
             <FormField
-              label="Cédula / Tarjeta de Identidad"
+              label="Cédula / Documento de Identidad"
               placeholder="Ej: 1005678901"
               required
               icon={<IdCard className="w-4 h-4" />}
@@ -130,7 +140,7 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
 
             {currentAccountType === 'aprendiz' && (
               <FormField
-                label="ID de Ficha"
+                label="Número de Ficha SENA"
                 placeholder="Ej: 2847251"
                 required
                 icon={<BookOpen className="w-4 h-4" />}
@@ -140,9 +150,9 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
             )}
 
             <FormField
-              label="Correo Electrónico"
+              label="Correo Electrónico Institucional"
               type="email"
-              placeholder="tucorreo@sena.edu.co"
+              placeholder="usuario@misena.edu.co"
               required
               icon={<Mail className="w-4 h-4" />}
               error={errors.email?.message}
@@ -152,16 +162,31 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
             <FormField
               label="Contraseña"
               type="password"
-              placeholder="••••••••"
+              placeholder="Mínimo 4 caracteres"
               required
               icon={<Lock className="w-4 h-4" />}
               error={errors.password?.message}
               {...register('password')}
             />
 
-            <Button type="submit" variant="primary" fullWidth isLoading={registerMutation.isPending}>
-              Crear Cuenta
-            </Button>
+            <div className="pt-2 flex gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                fullWidth
+                onClick={handleClose}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                fullWidth
+                isLoading={registerMutation.isPending}
+              >
+                Registrarme
+              </Button>
+            </div>
           </form>
         </div>
       </div>

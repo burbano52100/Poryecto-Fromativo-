@@ -1,5 +1,24 @@
 import { useState } from 'react';
-import { TrendingUp, ShoppingCart, DollarSign, Calendar, ChevronDown } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { TrendingUp, ShoppingCart, DollarSign, ChevronDown, Loader2, AlertTriangle } from 'lucide-react';
+import { apiClient } from '../../lib/api';
+
+interface VentasReportResponse {
+  period: string;
+  totalVentas: number;
+  totalIngresos: number;
+  breakdown: { day: string; count: number; total: string; percent: string }[];
+  transacciones: {
+    id: string;
+    fecha: string;
+    cliente: string;
+    cedula: string;
+    rol: string;
+    menu: string;
+    precio: number;
+    metodo_pago: string;
+  }[];
+}
 
 export const VentasSection = () => {
   const [period, setPeriod] = useState<string>('Semana');
@@ -7,13 +26,15 @@ export const VentasSection = () => {
 
   const periods = ['Día', 'Semana', 'Mes', 'Trimestre', 'Semestre', 'Año'];
 
-  const weeklyData = [
-    { day: 'Lun', count: 98, total: '$490.000', percent: '78%' },
-    { day: 'Mar', count: 112, total: '$560.000', percent: '89%' },
-    { day: 'Mié', count: 125, total: '$625.000', percent: '100%' },
-    { day: 'Jue', count: 105, total: '$525.000', percent: '84%' },
-    { day: 'Vie', count: 118, total: '$590.000', percent: '94%' },
-  ];
+  const { data, isLoading, isError, error } = useQuery<VentasReportResponse>({
+    queryKey: ['ventas', period],
+    queryFn: async () => (await apiClient.get<VentasReportResponse>(`/ventas?period=${encodeURIComponent(period)}`)).data,
+  });
+
+  const totalVentas = data?.totalVentas ?? 0;
+  const totalIngresos = data?.totalIngresos ?? 0;
+  const breakdown = data?.breakdown || [];
+  const transacciones = data?.transacciones || [];
 
   return (
     <div className="space-y-6">
@@ -25,7 +46,7 @@ export const VentasSection = () => {
             Historial de Ventas
           </h2>
           <p className="text-sm text-gray-500 font-medium">
-            Analiza las ventas por período
+            Analiza las ventas en tiempo real desde la base de datos
           </p>
         </div>
 
@@ -62,15 +83,24 @@ export const VentasSection = () => {
         </div>
       </div>
 
-      {/* Top 2 Cards: Ventas esta Semana & Ingresos esta Semana */}
+      {isError && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
+          <span>Error al consultar el reporte de ventas: {error instanceof Error ? error.message : 'Error desconocido'}</span>
+        </div>
+      )}
+
+      {/* Top 2 Cards: Ventas & Ingresos */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="bg-emerald-600 rounded-3xl p-6 sm:p-8 text-white shadow-lg flex items-center justify-between">
           <div>
             <p className="text-sm font-bold text-emerald-100 uppercase tracking-wider">
               Ventas esta {period}
             </p>
-            <p className="text-4xl sm:text-5xl font-black mt-3 tracking-tight">125</p>
-            <p className="text-xs text-emerald-100 mt-1 font-medium">almuerzos vendidos</p>
+            <p className="text-4xl sm:text-5xl font-black mt-3 tracking-tight">
+              {isLoading ? <Loader2 className="w-8 h-8 animate-spin" /> : totalVentas}
+            </p>
+            <p className="text-xs text-emerald-100 mt-1 font-medium">almuerzos registrados en la base de datos</p>
           </div>
           <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center text-white shrink-0 border border-white/20">
             <ShoppingCart className="w-8 h-8" />
@@ -82,8 +112,14 @@ export const VentasSection = () => {
             <p className="text-sm font-bold text-blue-100 uppercase tracking-wider">
               Ingresos esta {period}
             </p>
-            <p className="text-4xl sm:text-5xl font-black mt-3 tracking-tight">$625k</p>
-            <p className="text-xs text-blue-100 mt-1 font-medium">COP (Precio único: $5.000)</p>
+            <p className="text-4xl sm:text-5xl font-black mt-3 tracking-tight">
+              {isLoading ? (
+                <Loader2 className="w-8 h-8 animate-spin" />
+              ) : (
+                `$${totalIngresos.toLocaleString('es-CO')}`
+              )}
+            </p>
+            <p className="text-xs text-blue-100 mt-1 font-medium">COP cobrados y facturados</p>
           </div>
           <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center text-white shrink-0 border border-white/20">
             <DollarSign className="w-8 h-8" />
@@ -91,65 +127,88 @@ export const VentasSection = () => {
         </div>
       </div>
 
-      {/* Registro de Ventas Horizontal Bar Chart */}
+      {/* Gráfico y desglose */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200/80">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h3 className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight">
-              Registro de Ventas
+              Registro y Distribución de Ventas
             </h3>
-            <p className="text-xs sm:text-sm text-gray-500 font-medium">
-              Resumen semanal de almuerzos vendidos
-            </p>
+            <p className="text-xs text-gray-500 font-medium">Volumen por días en el período seleccionado</p>
           </div>
-          <Calendar className="w-5 h-5 text-gray-400" />
         </div>
 
-        <div className="space-y-4">
-          {weeklyData.map((item) => (
-            <div key={item.day} className="flex items-center gap-4 text-sm font-semibold">
-              <span className="w-10 text-gray-500">{item.day}</span>
-              <div className="flex-1 bg-gray-100 rounded-full h-8 overflow-hidden relative">
-                <div
-                  className="bg-emerald-500 h-full rounded-full flex items-center justify-end pr-3 text-white text-xs font-bold transition-all duration-500"
-                  style={{ width: item.percent }}
-                >
-                  {item.count}
+        {isLoading ? (
+          <div className="py-12 flex justify-center items-center text-gray-400 gap-2">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span className="text-sm">Cargando métricas de ventas...</span>
+          </div>
+        ) : breakdown.length === 0 ? (
+          <div className="py-12 text-center text-gray-400 text-sm">
+            No hay registros de ventas para el período seleccionado.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {breakdown.map((item, idx) => (
+              <div key={idx} className="space-y-1.5">
+                <div className="flex justify-between text-xs font-bold text-gray-700">
+                  <span>{item.day}</span>
+                  <span className="text-emerald-700">{item.count} almuerzos ({item.total})</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                  <div
+                    className="bg-emerald-500 h-3 rounded-full transition-all duration-500"
+                    style={{ width: item.percent }}
+                  />
                 </div>
               </div>
-              <span className="w-24 text-right text-gray-900 font-extrabold">{item.total}</span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Resumen Financiero Card */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200/80 space-y-4">
-        <h3 className="text-lg font-extrabold text-gray-900 pb-2 border-b border-gray-100">
-          Resumen Financiero
+      {/* Tabla de Transacciones Recientes */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200/80">
+        <h3 className="text-lg font-extrabold text-gray-900 tracking-tight mb-4">
+          Transacciones Recientes
         </h3>
 
-        <div className="divide-y divide-gray-100 text-sm">
-          <div className="py-3 flex justify-between items-center">
-            <span className="text-gray-500 font-medium">Precio Único Almuerzo</span>
-            <span className="font-extrabold text-emerald-600 text-base">$5.000</span>
+        {transacciones.length === 0 ? (
+          <p className="text-sm text-gray-500 py-4">No hay ventas registradas recientemente.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  <th className="py-3 px-4">Fecha & Hora</th>
+                  <th className="py-3 px-4">Cliente</th>
+                  <th className="py-3 px-4">Rol</th>
+                  <th className="py-3 px-4">Menú</th>
+                  <th className="py-3 px-4">Pago</th>
+                  <th className="py-3 px-4 text-right">Valor</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 font-medium">
+                {transacciones.map((t) => (
+                  <tr key={t.id} className="hover:bg-gray-50/70 transition">
+                    <td className="py-3 px-4 text-xs text-gray-500">
+                      {new Date(t.fecha).toLocaleString('es-CO')}
+                    </td>
+                    <td className="py-3 px-4 font-bold text-gray-900">{t.cliente}</td>
+                    <td className="py-3 px-4 text-gray-600 capitalize">{t.rol}</td>
+                    <td className="py-3 px-4 text-gray-600">{t.menu}</td>
+                    <td className="py-3 px-4 text-xs font-semibold capitalize text-gray-500">
+                      {t.metodo_pago}
+                    </td>
+                    <td className="py-3 px-4 text-right font-extrabold text-emerald-700">
+                      ${t.precio.toLocaleString('es-CO')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-
-          <div className="py-3 flex justify-between items-center">
-            <span className="text-gray-500 font-medium">Ingresos de Hoy</span>
-            <span className="font-bold text-gray-900 text-base">$625.000</span>
-          </div>
-
-          <div className="py-3 flex justify-between items-center">
-            <span className="text-gray-500 font-medium">Ingresos Semana</span>
-            <span className="font-bold text-gray-900 text-base">$1.172.500</span>
-          </div>
-
-          <div className="py-3 flex justify-between items-center">
-            <span className="text-gray-500 font-medium">Total Almuerzos Vendidos</span>
-            <span className="font-extrabold text-emerald-700 text-base">558 almuerzos</span>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

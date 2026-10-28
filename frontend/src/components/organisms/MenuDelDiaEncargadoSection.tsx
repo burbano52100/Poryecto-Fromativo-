@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Utensils, Edit3, Power, CheckCircle2, Save } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Utensils, Power, CheckCircle2, Save, AlertTriangle, Loader2 } from 'lucide-react';
+import { apiClient } from '../../lib/api';
 import { FormField } from '../molecules/FormField';
 import { Button } from '../atoms/Button';
 import { Badge } from '../atoms/Badge';
@@ -18,19 +20,39 @@ const menuSchema = z.object({
 
 type MenuFormData = z.infer<typeof menuSchema>;
 
+interface ActiveMenu {
+  id: string;
+  fecha: string;
+  nombre: string;
+  descripcion: string;
+  precio_aprendiz: number;
+  precio_invitado: number;
+  cantidad_disponible: number;
+  cantidad_vendida: number;
+  estado: 'borrador' | 'activo' | 'agotado' | 'completado';
+}
+
 export const MenuDelDiaEncargadoSection = () => {
-  const [isMenuAvailable, setIsMenuAvailable] = useState(true);
+  const queryClient = useQueryClient();
   const [publishSuccess, setPublishSuccess] = useState(false);
-  const [draftSuccess, setDraftSuccess] = useState(false);
+  const [statusFeedback, setStatusFeedback] = useState<string | null>(null);
+
+  const { data: activeMenu, isLoading, isError, error } = useQuery<ActiveMenu>({
+    queryKey: ['activeMenu'],
+    queryFn: async () => (await apiClient.get<ActiveMenu>('/menus/activo')).data,
+  });
+
+  const isMenuAvailable = activeMenu ? activeMenu.estado === 'activo' : true;
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<MenuFormData>({
     resolver: zodResolver(menuSchema),
     defaultValues: {
-      dishName: 'Menú del Día',
+      dishName: 'Menú Ejecutivo SENA',
       date: new Date().toISOString().split('T')[0],
       description: 'Almuerzo completo: Sopa, bandeja con proteína, arroz, ensalada, jugo natural y postre',
       priceStudents: '5000',
@@ -39,15 +61,56 @@ export const MenuDelDiaEncargadoSection = () => {
     },
   });
 
+  useEffect(() => {
+    if (activeMenu && activeMenu.id !== 'default_menu') {
+      setValue('dishName', activeMenu.nombre);
+      setValue('date', activeMenu.fecha);
+      setValue('description', activeMenu.descripcion || '');
+      setValue('priceStudents', String(activeMenu.precio_aprendiz));
+      setValue('priceGuests', String(activeMenu.precio_invitado));
+      setValue('availableQuantity', String(activeMenu.cantidad_disponible));
+    }
+  }, [activeMenu, setValue]);
+
+  const publishMutation = useMutation({
+    mutationFn: async (data: MenuFormData) => {
+      const payload = {
+        dishName: data.dishName,
+        date: data.date,
+        description: data.description,
+        priceStudents: Number(data.priceStudents),
+        priceGuests: Number(data.priceGuests),
+        availableQuantity: Number(data.availableQuantity),
+        estado: 'activo',
+      };
+      return (await apiClient.post('/menus', payload)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activeMenu'] });
+      setPublishSuccess(true);
+      setTimeout(() => setPublishSuccess(false), 3500);
+    },
+  });
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: async (newStatus: 'activo' | 'agotado') => {
+      if (!activeMenu || activeMenu.id === 'default_menu') return;
+      return (await apiClient.patch(`/menus/${activeMenu.id}/estado`, { estado: newStatus })).data;
+    },
+    onSuccess: (_, newStatus) => {
+      queryClient.invalidateQueries({ queryKey: ['activeMenu'] });
+      setStatusFeedback(`Estado del menú actualizado a: ${newStatus}`);
+      setTimeout(() => setStatusFeedback(null), 3000);
+    },
+  });
+
   const onPublish = (data: MenuFormData) => {
-    console.log('Publicando menú:', data);
-    setPublishSuccess(true);
-    setTimeout(() => setPublishSuccess(false), 3500);
+    publishMutation.mutate(data);
   };
 
-  const onSaveDraft = () => {
-    setDraftSuccess(true);
-    setTimeout(() => setDraftSuccess(false), 3500);
+  const handleToggleAvailable = () => {
+    const nextStatus = isMenuAvailable ? 'agotado' : 'activo';
+    toggleStatusMutation.mutate(nextStatus);
   };
 
   return (
@@ -60,7 +123,11 @@ export const MenuDelDiaEncargadoSection = () => {
               <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">
                 Menú Actual en Servicio
               </h2>
-              {isMenuAvailable ? (
+              {isLoading ? (
+                <span className="text-xs text-gray-400 flex items-center gap-1">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando...
+                </span>
+              ) : isMenuAvailable ? (
                 <Badge variant="green">Disponible</Badge>
               ) : (
                 <span className="bg-red-100 text-red-700 text-xs font-bold px-3 py-1 rounded-full">
@@ -69,21 +136,15 @@ export const MenuDelDiaEncargadoSection = () => {
               )}
             </div>
             <p className="text-xs text-gray-500 mt-1 font-medium">
-              Almuerzo completo del día de hoy
+              {activeMenu?.nombre || 'Almuerzo completo del día de hoy'}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <Button
-              variant="primary"
-              className="bg-red-600 hover:bg-red-700 text-white font-bold"
-              icon={<Edit3 className="w-4 h-4" />}
-            >
-              Editar Menú
-            </Button>
-            <Button
               variant="outline"
-              onClick={() => setIsMenuAvailable(!isMenuAvailable)}
+              onClick={handleToggleAvailable}
+              isLoading={toggleStatusMutation.isPending}
               icon={<Power className="w-4 h-4 text-red-600" />}
               className="text-red-700 border-red-200 hover:bg-red-50 font-bold"
             >
@@ -92,18 +153,38 @@ export const MenuDelDiaEncargadoSection = () => {
           </div>
         </div>
 
+        {statusFeedback && (
+          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-semibold flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>{statusFeedback}</span>
+          </div>
+        )}
+
+        {isError && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-semibold flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <span>No se pudo conectar con el servicio de menú ({error instanceof Error ? error.message : 'Error'}).</span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm pt-2">
           <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200/70">
             <p className="text-xs text-gray-400 font-semibold uppercase">Precio Estudiantes</p>
-            <p className="text-xl font-extrabold text-emerald-600 mt-0.5">$5.000</p>
+            <p className="text-xl font-extrabold text-emerald-600 mt-0.5">
+              ${(activeMenu?.precio_aprendiz || 5000).toLocaleString('es-CO')}
+            </p>
           </div>
           <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200/70">
             <p className="text-xs text-gray-400 font-semibold uppercase">Precio Invitados</p>
-            <p className="text-xl font-extrabold text-blue-600 mt-0.5">$8.000</p>
+            <p className="text-xl font-extrabold text-blue-600 mt-0.5">
+              ${(activeMenu?.precio_invitado || 8000).toLocaleString('es-CO')}
+            </p>
           </div>
           <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200/70">
             <p className="text-xs text-gray-400 font-semibold uppercase">Vendidos Hoy</p>
-            <p className="text-xl font-extrabold text-gray-800 mt-0.5">125 / 200</p>
+            <p className="text-xl font-extrabold text-gray-800 mt-0.5">
+              {activeMenu?.cantidad_vendida || 0} / {activeMenu?.cantidad_disponible || 200}
+            </p>
           </div>
         </div>
       </div>
@@ -113,104 +194,89 @@ export const MenuDelDiaEncargadoSection = () => {
         <div className="mb-6 pb-4 border-b border-gray-100">
           <h3 className="text-xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
             <Utensils className="w-6 h-6 text-green-600" />
-            Configurar Nuevo Menú
+            Configurar / Actualizar Menú
           </h3>
           <p className="text-sm text-gray-500 mt-1 font-medium">
-            Define el menú que estará disponible para mañana o próximas fechas
+            Define el plato y las tarifas vigentes en el comedor estudiantil
           </p>
         </div>
 
         {publishSuccess && (
           <div className="mb-6 bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center gap-3 text-emerald-800 text-sm font-semibold">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-            <span>¡Menú guardado y publicado correctamente para los aprendices e instructores!</span>
-          </div>
-        )}
-
-        {draftSuccess && (
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center gap-3 text-blue-800 text-sm font-semibold">
-            <Save className="w-5 h-5 text-blue-600 shrink-0" />
-            <span>¡Borrador de menú guardado exitosamente!</span>
+            <span>¡El menú fue guardado y publicado en la base de datos con éxito!</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit(onPublish)} className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
-              label="Nombre del Plato"
+              label="Nombre del Plato Principal"
+              placeholder="Ej: Menú Ejecutivo SENA"
+              required
               error={errors.dishName?.message}
               {...register('dishName')}
             />
 
             <FormField
-              label="Fecha"
+              label="Fecha del Menú"
               type="date"
+              required
               error={errors.date?.message}
               {...register('date')}
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="block text-sm font-semibold text-gray-700">
-              Descripción del Menú
+          <div>
+            <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">
+              Descripción Completa de Componentes
             </label>
             <textarea
               rows={3}
-              className={`w-full rounded-2xl p-3.5 text-sm bg-gray-50 border transition focus:outline-none focus:bg-white ${
-                errors.description
-                  ? 'border-red-500 focus:ring-2 focus:ring-red-200'
-                  : 'border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'
-              }`}
+              placeholder="Ej: Almuerzo completo: Sopa de verduras, bandeja con carne asada, arroz, ensalada fresca..."
+              className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3.5 text-sm focus:outline-none focus:border-emerald-500 focus:bg-white transition"
               {...register('description')}
             />
             {errors.description && (
-              <p className="text-xs font-semibold text-red-600">{errors.description.message}</p>
+              <p className="text-red-500 text-xs mt-1 font-medium">{errors.description.message}</p>
             )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <FormField
-                label="Precio Estudiantes"
-                type="number"
-                error={errors.priceStudents?.message}
-                {...register('priceStudents')}
-              />
-              <p className="text-[11px] text-gray-400 mt-1 font-medium">Precio fijo subsidiado</p>
-            </div>
+            <FormField
+              label="Precio Aprendiz (COP)"
+              placeholder="5000"
+              required
+              error={errors.priceStudents?.message}
+              {...register('priceStudents')}
+            />
 
             <FormField
-              label="Precio Invitados"
-              type="number"
+              label="Precio Invitado (COP)"
+              placeholder="8000"
+              required
               error={errors.priceGuests?.message}
               {...register('priceGuests')}
             />
 
             <FormField
-              label="Cantidad Disponible"
-              type="number"
+              label="Cantidad de Porciones Disponibles"
+              placeholder="200"
+              required
               error={errors.availableQuantity?.message}
               {...register('availableQuantity')}
             />
           </div>
 
-          <div className="pt-4 flex flex-wrap items-center gap-4">
+          <div className="pt-3 flex justify-end">
             <Button
               type="submit"
               variant="primary"
-              className="bg-green-600 hover:bg-green-700 shadow-green-600/30 font-bold px-6 py-3"
-              icon={<CheckCircle2 className="w-4 h-4" />}
+              isLoading={publishMutation.isPending}
+              icon={<Save className="w-4 h-4" />}
+              className="bg-green-600 hover:bg-green-700 shadow-green-600/30 font-bold px-6 py-2.5"
             >
               Guardar y Publicar Menú
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onSaveDraft}
-              className="font-bold px-6 py-3"
-            >
-              Guardar como Borrador
             </Button>
           </div>
         </form>
