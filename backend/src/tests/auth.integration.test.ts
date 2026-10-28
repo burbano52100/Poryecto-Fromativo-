@@ -2,14 +2,16 @@ import { describe, it, beforeAll, afterAll } from 'vitest';
 import assert from 'node:assert';
 import { createApp } from '../../src/app.js';
 import http from 'http';
+import { cleanDatabase } from './helpers/db.js';
 
 const PORT = 4000;
 let server: http.Server;
 
-beforeAll(() => {
+beforeAll(async () => {
   if (process.env.DATABASE_URL_TEST === process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL_TEST must differ from DATABASE_URL for safety');
   }
+  await cleanDatabase();
   const app = createApp();
   server = app.listen(PORT);
 });

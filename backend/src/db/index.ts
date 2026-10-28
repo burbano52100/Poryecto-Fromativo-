@@ -5,8 +5,21 @@ dotenv.config();
 
 const { Pool } = pg;
 
-const connectionString =
-  process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/gastrosena';
+const resolveConnectionString = (): string => {
+  if (process.env.NODE_ENV === 'test') {
+    const testUrl = process.env.DATABASE_URL_TEST;
+    if (!testUrl) {
+      throw new Error('[DB] NODE_ENV=test pero DATABASE_URL_TEST no está definida.');
+    }
+    if (testUrl === process.env.DATABASE_URL) {
+      throw new Error('[DB] DATABASE_URL_TEST es igual a DATABASE_URL. Los tests se niegan a correr contra la BD de desarrollo/producción.');
+    }
+    return testUrl;
+  }
+  return process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/gastrosena';
+};
+
+const connectionString = resolveConnectionString();
 
 const isProduction = process.env.NODE_ENV === 'production';
 const requiresSSL =

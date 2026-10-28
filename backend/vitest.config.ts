@@ -8,6 +8,7 @@ export default defineConfig({
     hookTimeout: 30000,
     // Los tests corren en serie para evitar conflictos de BD
     fileParallelism: false,
+    globalSetup: ['./src/tests/globalSetup.ts'],
     setupFiles: ['./src/tests/setup.ts'],
   },
 });
