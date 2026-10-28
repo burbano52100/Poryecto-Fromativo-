@@ -14,7 +14,8 @@
     "seed:dev": "tsx src/db/seed.ts",
     "db:seed": "tsx src/db/seed.ts",
     "start": "node dist/index.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "oxlint src"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -36,6 +37,7 @@
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
     "@vitest/coverage-v8": "^5.0.5",
+    "oxlint": "^1.90.0",
     "supertest": "^7.3.1",
     "tsx": "^4.23.13",
     "typescript": "~6.0.2",
