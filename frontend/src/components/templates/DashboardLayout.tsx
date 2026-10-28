@@ -45,6 +45,7 @@ export const DashboardLayout = ({
     perfil: 'Mi Perfil',
     ventas: 'Historial de Ventas',
     menu: 'Gestión del Menú del Día',
+    beneficiarios: 'Módulo de Beneficiarios (Subsidio $0)',
     deudas: 'Cartera de Deudas',
     inventario: 'Gestión de Inventarios (GastroSENA)',
     grupos: 'Grupos & Fichas SENA',

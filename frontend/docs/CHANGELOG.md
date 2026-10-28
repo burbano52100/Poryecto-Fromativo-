@@ -1,0 +1,83 @@
+# Bitácora de Cambios (CHANGELOG) - Frontend GastroSENA
+
+Registro cronológico detallado de arquitectura, características, refactorizaciones y correcciones en la aplicación frontend de GastroSENA.
+
+---
+
+## [2026-10-28] - Revisión de Seguridad, Limpieza de Credenciales y Módulo de Beneficiarios (Paso 5)
+
+### Rama: `julianDEV-front`
+
+#### 1. Seguridad Estricta en Producción (Cero Credenciales en Código)
+- **Motivo:** Evitar que credenciales de prueba, contraseñas, cédulas o botones administrativos queden expuestos en el paquete final de producción (`dist/`).
+- **Cambios realizados:**
+  - `LoginForm.tsx`: Se eliminaron todos los valores por defecto prellenados (`ficha: ''`, `document: ''`, `password: ''`). Se removió la asignación automática de documentos de prueba en el selector de cuenta.
+  - `HelpModal.tsx`: Se eliminó el bloque con cédula y contraseña `'demo123'`, reemplazándolo por instrucciones institucionales.
+  - `DemoBanner.tsx`: Condicionado para devolver `null` fuera de `import.meta.env.DEV`.
+  - `DevQuickLogin.tsx`: Se aisló el componente de acceso rápido de prueba para que solo se evalúe cuando `import.meta.env.DEV` es verdadero. En `npm run build`, Rollup aplica *dead-code elimination* y no incluye ni los botones ni las cadenas de texto en el JS de producción.
+  - `dist/`: Verificado con búsqueda de cadenas (`Select-String`) confirmando 0 ocurrencias de botones o credenciales demo.
+- **Archivos tocados:**
+  - `frontend/src/components/organisms/LoginForm.tsx`
+  - `frontend/src/components/organisms/DevQuickLogin.tsx`
+  - `frontend/src/components/organisms/HelpModal.tsx`
+  - `frontend/src/components/molecules/DemoBanner.tsx`
+
+#### 2. Guardia de Navegación y Login con Redireccionamiento Automático (Casos 5a, 5b, 5c, 5d)
+- **Motivo:** Garantizar que los usuarios autenticados sean dirigidos a su dashboard correspondiente, que usuarios no autorizados no accedan a paneles de otros roles y que tokens vencidos fuercen el cierre de sesión inmediato.
+- **Comportamiento:**
+  - **Caso 5.a:** Con sesión activa, acceder a `/` o `/login` redirige automáticamente a `/${rol}/inicio`.
+  - **Caso 5.b:** Un aprendiz u otro rol que intente acceder a `/encargado/inicio` es interceptado y redirigido a su panel autorizado (`/${rol}/inicio`).
+  - **Caso 5.c:** Sin sesión activa (`!isAuthenticated`), el intento de abrir cualquier ruta protegida redirige a `/login`.
+  - **Caso 5.d:** Ante una respuesta HTTP 401 (token expirado o inválido), el interceptor de Axios en `api.ts` limpia el `localStorage` y emite el evento global `gastrosena:logout`, reseteando React Query y volviendo a `/login`.
+  - Barra de depuración de rutas (`Rutas (DEV)`) restringida exclusivamente a `import.meta.env.DEV`.
+- **Archivos tocados:**
+  - `frontend/src/App.tsx`
+  - `frontend/src/lib/api.ts`
+  - `frontend/test_redirections.cjs`
+
+#### 3. Optimización Visual, Logo y Fondo de Cafetería
+- **Motivo:** Incorporar la identidad visual del proyecto sin degradar el rendimiento web y soportar pantallas móviles pequeñas (360px).
+- **Cambios realizados:**
+  - Se optimizó la fotografía `public/cafeteria-bg.jpg` mediante codificación JPEG con calidad web al 75%, reduciendo su peso de **492.8 KB a 161.5 KB** (disminución del 67%, muy por debajo del umbral de 300 KB).
+  - En `AuthLayout.tsx` se incorporó el color de respaldo `bg-emerald-950` para evitar destellos blancos durante la carga de la imagen de fondo, y se ajustó el contenedor a escala fluida para pantallas desde 360px.
+  - En `Header.tsx` se enmarcó el logo oficial circular `public/logo.png` con `aspect-square`, `object-contain` y borde verde estilizado, impidiendo deformaciones en cualquier resolución.
+- **Archivos tocados:**
+  - `frontend/public/cafeteria-bg.jpg`
+  - `frontend/public/logo.png`
+  - `frontend/src/components/templates/AuthLayout.tsx`
+  - `frontend/src/components/organisms/Header.tsx`
+
+#### 4. Implementación del Paso 5 – Módulo de Beneficiarios
+- **Motivo:** Cumplir el requerimiento del Paso 5 para que el Encargado administre los subsidios al 100% y los aprendices beneficarios reserven a $0 con un solo clic.
+- **Cambios realizados:**
+  - **Encargado:** Nuevo ítem en `Sidebar.tsx` ("Beneficiarios", acento ámbar institucional, ícono `Award`). Componente `BeneficiariosSection.tsx` con dos vistas: "Todos los estudiantes registrados" (con buscador en tiempo real, filtro por ficha y botón para asignar subsidio) y "Beneficiarios actuales" (con botón para quitar subsidio y modal de confirmación explicando que el precio vuelve a $5.000 para reservas futuras).
+  - **Aprendiz:** Los beneficiarios conservan su perfil de Aprendiz (`role = 'aprendiz'`). Visualizan el badge "Beneficiario" en el banner de bienvenida y en `MenuCard.tsx`, precio en $0 COP (subsidio 100%) y botón directo de reserva a 1 solo clic.
+  - **Lógica de precios:** La tarifa $0 la dictamina el backend al procesar la reserva; el frontend la presenta según la marca `es_beneficiario`.
+  - **Hook `useBeneficiarios.ts`:** Preconfigurado con llamadas a `GET /beneficiarios/estudiantes`, `GET /beneficiarios` y `PATCH /beneficiarios/:usuarioId`, con persistencia en `localStorage` como fallback transparente mientras se habilitan las rutas en el backend.
+- **Archivos tocados:**
+  - `frontend/src/components/organisms/Sidebar.tsx`
+  - `frontend/src/components/organisms/BeneficiariosSection.tsx`
+  - `frontend/src/pages/EncargadoDashboardPage.tsx`
+  - `frontend/src/components/molecules/MenuCard.tsx`
+  - `frontend/src/components/organisms/InicioSection.tsx`
+  - `frontend/src/pages/AprendizDashboardPage.tsx`
+  - `frontend/src/hooks/useBeneficiarios.ts`
+  - `frontend/src/schemas/auth.schema.ts`
+  - `frontend/src/types/database.ts`
+
+---
+
+## [2026-10-15 al 2026-10-27] - Paneles de Roles, React Query v5 y Estilos Base
+
+### Cambios previos consolidados:
+- **Diseño del Sidebar por Rol:**  
+  Adopción de fondo blanco institucional con acentos de color dedicados según el perfil:
+  - **Aprendiz:** Verde esmeralda (`emerald-600`)
+  - **Instructor:** Índigo (`indigo-600`)
+  - **Encargado:** Ámbar (`amber-600`)
+  - **Invitado:** Cerceta (`teal-600`)
+  Soporte para acordeón colapsable en Inventario (5 subsecciones: Stock, Recetas, Kardex, Mermas, Configuración) y menú móvil responsivo.
+- **Adopción de TanStack React Query v5:**  
+  Migración de llamadas asíncronas a hooks reactivos con claves estructuradas: `useAuth`, `useCartera`, `useGrupos`, `useInventario`, `useSugerencias`.
+- **Estructura Atómica:**  
+  Organización de componentes en Atoms, Molecules, Organisms y Templates.

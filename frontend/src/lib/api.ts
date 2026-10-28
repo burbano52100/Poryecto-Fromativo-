@@ -24,7 +24,7 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Interceptor de respuestas: maneja 401 cerrando sesión y redirigiendo a #/login
+// Interceptor de respuestas: maneja 401 cerrando sesión y notificando a la app
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -33,9 +33,11 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('gastrosena_role');
       localStorage.removeItem('gastrosena_user');
 
-      // Redireccionar al login si no estamos ya en él
-      if (!window.location.hash.includes('/login')) {
-        window.location.hash = '#/login';
+      // Notificar a la aplicación para restablecer estado reactivo y redirigir
+      window.dispatchEvent(new Event('gastrosena:logout'));
+
+      if (window.location.pathname !== '/login') {
+        window.history.replaceState({}, '', '/login');
       }
     }
     return Promise.reject(error);

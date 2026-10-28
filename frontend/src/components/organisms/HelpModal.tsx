@@ -1,4 +1,4 @@
-import { X, Phone, Mail, HelpCircle, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Phone, Mail, HelpCircle, CheckCircle, Info } from 'lucide-react';
 import { Button } from '../atoms/Button';
 
 interface HelpModalProps {
@@ -32,20 +32,12 @@ export const HelpModal = ({ isOpen, onClose }: HelpModalProps) => {
 
         {/* Content */}
         <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex gap-3 text-amber-800 text-xs sm:text-sm">
-            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 flex gap-3 text-emerald-900 text-xs sm:text-sm">
+            <Info className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold mb-0.5">Demostración Rápida:</p>
+              <p className="font-semibold mb-0.5">Acceso Institucional SENA:</p>
               <p>
-                Puedes probar el inicio de sesión usando la Cédula{' '}
-                <span className="font-mono font-bold bg-amber-100 px-1 py-0.5 rounded text-amber-900">
-                  1005678901
-                </span>{' '}
-                y contraseña{' '}
-                <span className="font-mono font-bold bg-amber-100 px-1 py-0.5 rounded text-amber-900">
-                  demo123
-                </span>
-                .
+                Ingresa con tu documento de identidad registrado y tu contraseña institucional. Si eres aprendiz, ingresa también tu número de Ficha de formación.
               </p>
             </div>
           </div>
@@ -55,37 +47,46 @@ export const HelpModal = ({ isOpen, onClose }: HelpModalProps) => {
               <CheckCircle className="w-4 h-4 text-green-600" /> ¿Cómo accedo como Aprendiz?
             </h4>
             <p className="text-gray-600 text-xs sm:text-sm leading-relaxed pl-6">
-              Selecciona la pestaña <strong>Aprendiz</strong>, ingresa el número de tu Ficha de formación (ej. 2847251) y tu número de identificación sin puntos ni espacios.
+              Selecciona la pestaña <strong>Aprendiz</strong>, ingresa el número de tu Ficha de formación y tu número de identificación sin puntos ni espacios.
             </p>
           </div>
 
           <div>
             <h4 className="font-bold text-gray-900 text-sm mb-2 flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-green-600" /> Reconocimiento Facial en Yamboro
+              <CheckCircle className="w-4 h-4 text-green-600" /> Reconocimiento Facial en Yamboró
             </h4>
             <p className="text-gray-600 text-xs sm:text-sm leading-relaxed pl-6">
-              Si estás registrado en los tótems biométricos de la sede Yamboro, puedes presionar el botón <strong>"Ingresar con Reconocimiento Facial"</strong> para autenticación instantánea.
+              Si estás registrado en los tótems biométricos de la sede Yamboró, puedes presionar el botón <strong>"Ingresar con Reconocimiento Facial"</strong> para autenticación instantánea.
             </p>
           </div>
 
-          <div className="pt-3 border-t border-gray-200">
-            <h5 className="font-bold text-gray-800 text-xs uppercase tracking-wider mb-2">Contacto Soporte Técnico</h5>
-            <div className="flex flex-col sm:flex-row gap-3 text-xs text-gray-600">
-              <div className="flex items-center gap-2 bg-gray-50 p-2.5 rounded-lg flex-1 border border-gray-200">
+          <div>
+            <h4 className="font-bold text-gray-900 text-sm mb-2 flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-green-600" /> ¿Olvidaste tus credenciales?
+            </h4>
+            <p className="text-gray-600 text-xs sm:text-sm leading-relaxed pl-6">
+              Comunícate con la coordinación académica o acércate a la oficina de bienestar al aprendiz para restablecer tus datos de acceso.
+            </p>
+          </div>
+
+          <div className="border-t border-gray-100 pt-3">
+            <h4 className="font-bold text-gray-900 text-sm mb-2">Canales de Soporte</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600">
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <Phone className="w-4 h-4 text-green-600 shrink-0" />
-                <span>Extensión Yamboro: <strong>5432</strong></span>
+                <span>Ext. 1234 - Cafetería</span>
               </div>
-              <div className="flex items-center gap-2 bg-gray-50 p-2.5 rounded-lg flex-1 border border-gray-200">
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <Mail className="w-4 h-4 text-green-600 shrink-0" />
-                <span>soporte@gastrosena.edu.co</span>
+                <span>gastrosena@sena.edu.co</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-50 px-6 py-3 border-t border-gray-100 flex justify-end">
-          <Button variant="primary" onClick={onClose}>
+        <div className="bg-gray-50 px-6 py-3 border-t border-gray-100 text-right">
+          <Button variant="secondary" onClick={onClose}>
             Entendido
           </Button>
         </div>

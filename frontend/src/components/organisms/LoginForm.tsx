@@ -17,11 +17,11 @@ import { useLoginMutation, useFacialLoginMutation } from '../../hooks/useAuth';
 import { AccountTypeSelector } from '../molecules/AccountTypeSelector';
 import { FormField } from '../molecules/FormField';
 import { Button } from '../atoms/Button';
-import { DemoBanner } from '../molecules/DemoBanner';
 import { RegisterModal } from './RegisterModal';
+import { DevQuickLogin } from './DevQuickLogin';
 
 interface LoginFormProps {
-  onLoginSuccess?: (accountType: AccountType, document: string) => void;
+  onLoginSuccess?: (role: string, document: string) => void;
 }
 
 export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
@@ -55,22 +55,18 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
     setValue('accountType', type, { shouldValidate: true });
   };
 
-  const handleFillDemo = () => {
-    setAccountType('aprendiz');
-    setValue('accountType', 'aprendiz', { shouldValidate: true });
-    setValue('ficha', '2847251', { shouldValidate: true });
-    setValue('document', '1005678901', { shouldValidate: true });
-    setValue('password', 'demo123', { shouldValidate: true });
-    setLocalFeedback('¡Credenciales demo cargadas! Presiona Iniciar Sesión.');
-    setTimeout(() => setLocalFeedback(null), 3000);
-  };
-
   const onSubmit = (data: LoginInput) => {
     loginMutation.mutate(data, {
       onSuccess: (res) => {
-        setLocalFeedback(`¡Bienvenido ${res.user.name}! (${res.message})`);
+        setLocalFeedback(`¡Bienvenido ${res.user.name}!`);
         if (onLoginSuccess) {
           onLoginSuccess(res.user.role, res.user.document);
+        }
+      },
+      onError: (err) => {
+        // En desarrollo local offline, si el backend no está corriendo, permite simulación opcional
+        if (import.meta.env.DEV) {
+          console.warn('API no conectada en entorno local DEV:', err);
         }
       },
     });
@@ -78,14 +74,17 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
 
   const handleGuestLogin = () => {
     handleAccountTypeChange('invitado');
-    setValue('document', 'INV001', { shouldValidate: true });
-    setValue('password', 'demo123', { shouldValidate: true });
-    setLocalFeedback('Perfil de invitado seleccionado.');
-    setTimeout(() => setLocalFeedback(null), 2500);
+    setLocalFeedback('Modo Invitado seleccionado. Ingresa tu documento de identidad.');
+    setTimeout(() => setLocalFeedback(null), 3000);
   };
 
   const handleSimulateFacialSuccess = () => {
-    const doc = getValues('document') || '1005678901';
+    const doc = getValues('document');
+    if (!doc) {
+      alert('Por favor ingresa primero tu número de documento para la biometría.');
+      return;
+    }
+
     facialMutation.mutate(
       { document: doc },
       {
@@ -117,49 +116,51 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
           <span>
             {loginMutation.error instanceof Error
               ? loginMutation.error.message
-              : 'Error al conectar con la API de GastroSENA.'}
+              : 'Error al iniciar sesión. Verifica tus credenciales.'}
           </span>
         </div>
       )}
 
-      {(localFeedback || loginMutation.isSuccess) && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-xs sm:text-sm flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-          <span>{localFeedback || loginMutation.data?.message}</span>
+      {localFeedback && (
+        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs sm:text-sm flex items-center gap-2 animate-fade-in font-bold">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{localFeedback}</span>
         </div>
       )}
 
+      {/* Selector de Tipo de Cuenta */}
       <AccountTypeSelector
         selectedType={accountType}
         onSelect={handleAccountTypeChange}
       />
 
-      <div className="space-y-3 mb-5">
-        <Button variant="outline" fullWidth onClick={handleGuestLogin} icon={<Users className="w-4 h-4 text-gray-600" />}>
-          Modo Invitado
+      {/* Botones de acción complementaria */}
+      <div className="space-y-2 mb-5">
+        <Button
+          variant="outline"
+          fullWidth
+          onClick={handleGuestLogin}
+          icon={<Users className="w-4 h-4 text-gray-600" />}
+        >
+          Modo Invitado / Visitante
         </Button>
 
         {import.meta.env.DEV && (
-          <>
-            <Button
-              variant="emerald"
-              fullWidth
-              onClick={() => setIsFacialModalOpen(true)}
-              icon={<Camera className="w-4 h-4 text-emerald-600 animate-pulse" />}
-            >
-              Ingresar con Reconocimiento Facial (Dev)
-            </Button>
-            <p className="text-xs text-gray-500 text-center -mt-1 font-medium">
-              Simulación biométrica (solo en desarrollo)
-            </p>
-          </>
+          <Button
+            variant="emerald"
+            fullWidth
+            onClick={() => setIsFacialModalOpen(true)}
+            icon={<Camera className="w-4 h-4 text-emerald-600" />}
+          >
+            Ingresar con Reconocimiento Facial (Dev)
+          </Button>
         )}
       </div>
 
-      <div className="relative my-5 flex items-center justify-center">
+      <div className="relative my-4 flex items-center justify-center">
         <div className="border-t border-gray-200 w-full"></div>
         <span className="bg-white px-3 text-xs text-gray-400 font-medium whitespace-nowrap absolute">
-          O ingresa con contraseña
+          O ingresa con credenciales
         </span>
       </div>
 
@@ -176,7 +177,7 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
         )}
 
         <FormField
-          label="Cédula / Tarjeta de Identidad"
+          label="Cédula / Documento de Identidad"
           placeholder="Ej: 1005678901"
           required
           icon={<IdCard className="w-4 h-4" />}
@@ -203,19 +204,6 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
             }
             {...register('password')}
           />
-
-          <div className="text-right mt-1.5">
-            <a
-              href="#forgot"
-              onClick={(e) => {
-                e.preventDefault();
-                alert('Se enviaron las instrucciones a tu correo institucional SENA.');
-              }}
-              className="text-xs text-green-600 hover:text-green-700 font-semibold hover:underline"
-            >
-              ¿Olvidaste tu contraseña?
-            </a>
-          </div>
         </div>
 
         <Button
@@ -223,12 +211,18 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
           variant="primary"
           fullWidth
           isLoading={loginMutation.isPending}
+          className="bg-green-600 hover:bg-green-700 shadow-green-600/30 font-bold"
         >
           Iniciar Sesión
         </Button>
       </form>
 
-      <div className="text-center mt-5 text-xs sm:text-sm text-gray-600">
+      {/* Herramientas de Desarrollo: Solo activas en import.meta.env.DEV */}
+      {import.meta.env.DEV && (
+        <DevQuickLogin onLoginSuccess={onLoginSuccess} />
+      )}
+
+      <div className="text-center mt-4 text-xs text-gray-500">
         ¿No tienes cuenta?{' '}
         <button
           type="button"
@@ -239,21 +233,19 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
         </button>
       </div>
 
-      <DemoBanner onFillDemo={handleFillDemo} />
-
       {/* Modal de Registro */}
       <RegisterModal isOpen={isRegisterOpen} onClose={() => setIsRegisterOpen(false)} />
 
-      {/* Modal simulado de Reconocimiento Facial */}
+      {/* Modal de Reconocimiento Facial (DEV) */}
       {isFacialModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center space-y-4 border border-emerald-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4 border border-emerald-200 shadow-2xl">
             <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600 border-4 border-emerald-300 animate-pulse">
               <Camera className="w-10 h-10" />
             </div>
             <h3 className="font-bold text-lg text-gray-900">Escanear Rostro SENA</h3>
             <p className="text-xs text-gray-600">
-              Colócate frente a la cámara del tótem biométrico en el Comedor Yamboro.
+              Colócate frente a la cámara del tótem biométrico en el Comedor GastroSENA.
             </p>
             <div className="flex gap-2">
               <Button
@@ -268,8 +260,9 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
                 fullWidth
                 onClick={handleSimulateFacialSuccess}
                 isLoading={facialMutation.isPending}
+                className="bg-emerald-600 hover:bg-emerald-700"
               >
-                Simular Éxito
+                Simular Escaneo
               </Button>
             </div>
           </div>

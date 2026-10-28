@@ -1,4 +1,4 @@
-import { Calendar, Utensils, CheckCircle2 } from 'lucide-react';
+import { Calendar, Utensils, CheckCircle2, Award, Zap } from 'lucide-react';
 import { Button } from '../atoms/Button';
 import { Badge } from '../atoms/Badge';
 
@@ -12,6 +12,7 @@ export interface MenuCardProps {
   isAvailable?: boolean;
   onRequestLunch: () => void;
   isLoading?: boolean;
+  isBeneficiario?: boolean;
 }
 
 export const MenuCard = ({
@@ -24,31 +25,45 @@ export const MenuCard = ({
   isAvailable = true,
   onRequestLunch,
   isLoading = false,
+  isBeneficiario = false,
 }: MenuCardProps) => {
+  const displayPrice = isBeneficiario ? '$0' : price;
+
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-gray-200/80 overflow-hidden hover:shadow-md transition duration-200">
       <div className="p-5 sm:p-6 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-            <Utensils className="w-6 h-6 text-green-600" />
-            {title}
-          </h2>
-          <div className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-500 mt-1 font-medium">
-            <Calendar className="w-4 h-4 text-gray-400" />
-            <span>{dateText}</span>
+        <div className="flex items-center gap-3">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+              <Utensils className="w-6 h-6 text-green-600" />
+              {title}
+            </h2>
+            <div className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-500 mt-1 font-medium">
+              <Calendar className="w-4 h-4 text-gray-400" />
+              <span>{dateText}</span>
+            </div>
           </div>
         </div>
 
-        {isAvailable ? (
-          <Badge variant="green">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            Disponible
-          </Badge>
-        ) : (
-          <span className="bg-red-100 text-red-700 text-xs font-bold px-3 py-1 rounded-full">
-            Agotado
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {isBeneficiario && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-xs animate-pulse">
+              <Award className="w-3.5 h-3.5 text-amber-600" />
+              Beneficiario SENA
+            </span>
+          )}
+
+          {isAvailable ? (
+            <Badge variant="green">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Disponible
+            </Badge>
+          ) : (
+            <span className="bg-red-100 text-red-700 text-xs font-bold px-3 py-1 rounded-full">
+              Agotado
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="p-5 sm:p-6 flex flex-col md:flex-row gap-6 items-center">
@@ -58,15 +73,22 @@ export const MenuCard = ({
             alt={title}
             className="w-full h-full object-cover transition hover:scale-105 duration-300"
             onError={(e) => {
-              // Fallback image if local photo fails to load
-              (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80';
+              (e.currentTarget as HTMLImageElement).src =
+                'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80';
             }}
           />
           <div className="absolute top-2 right-2">
             <span className="bg-emerald-600 text-white font-bold text-xs px-2.5 py-1 rounded-full shadow-md">
-              SENA
+              GastroSENA
             </span>
           </div>
+          {isBeneficiario && (
+            <div className="absolute bottom-2 left-2">
+              <span className="bg-amber-500 text-white font-black text-[11px] px-2 py-0.5 rounded-md shadow-md flex items-center gap-1">
+                <Award className="w-3 h-3" /> $0 Almuerzo
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 flex flex-col justify-between w-full h-full">
@@ -78,8 +100,25 @@ export const MenuCard = ({
 
           <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between flex-wrap gap-4">
             <div>
-              <p className="text-xs uppercase font-semibold tracking-wider text-gray-400">Valor Almuerzo</p>
-              <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600 tracking-tight">{price}</p>
+              <p className="text-xs uppercase font-semibold tracking-wider text-gray-400">
+                Valor Almuerzo
+              </p>
+              <div className="flex items-baseline gap-2">
+                <p
+                  className={`text-2xl sm:text-3xl font-black tracking-tight ${
+                    isBeneficiario ? 'text-amber-600' : 'text-emerald-600'
+                  }`}
+                >
+                  {displayPrice}
+                </p>
+                {isBeneficiario ? (
+                  <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                    Subsidio 100%
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400 font-medium">COP</span>
+                )}
+              </div>
               {note && (
                 <p className="text-xs text-gray-400 font-medium mt-0.5">{note}</p>
               )}
@@ -90,9 +129,20 @@ export const MenuCard = ({
               onClick={onRequestLunch}
               disabled={!isAvailable || isLoading}
               isLoading={isLoading}
-              className="px-6 py-3 text-base shadow-emerald-600/30 font-bold"
+              className={`px-6 py-3 text-base font-black flex items-center gap-2 cursor-pointer shadow-md ${
+                isBeneficiario
+                  ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/30'
+                  : 'shadow-emerald-600/30'
+              }`}
             >
-              Solicitar Almuerzo
+              {isBeneficiario ? (
+                <>
+                  <Zap className="w-4 h-4 fill-current" />
+                  <span>Reservar Almuerzo (Gratis)</span>
+                </>
+              ) : (
+                <span>Solicitar Almuerzo</span>
+              )}
             </Button>
           </div>
         </div>

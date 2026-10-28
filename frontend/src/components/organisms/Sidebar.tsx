@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   Home,
+  Award,
   Receipt,
   CreditCard,
   Mail,
@@ -31,6 +32,7 @@ export type SectionType =
   | 'perfil'
   | 'ventas'
   | 'menu'
+  | 'beneficiarios'
   | 'deudas'
   | 'inventario'
   | 'grupos';
@@ -188,6 +190,18 @@ export const Sidebar = ({
                 roleVariant="encargado"
                 onClick={() => {
                   onSelectSection('menu');
+                  if (onCloseMobile) onCloseMobile();
+                }}
+              />
+
+              <SidebarNavItem
+                id="beneficiarios"
+                label="Beneficiarios"
+                icon={<Award className="w-5 h-5" />}
+                isActive={activeSection === 'beneficiarios'}
+                roleVariant="encargado"
+                onClick={() => {
+                  onSelectSection('beneficiarios');
                   if (onCloseMobile) onCloseMobile();
                 }}
               />

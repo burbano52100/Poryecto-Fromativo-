@@ -18,6 +18,7 @@ export interface Usuario {
   password_hash: string | null
   rol: RolUsuario
   ficha_id: string | null
+  es_beneficiario?: boolean
   saldo: number
   precio_almuerzo_fijo: number | null
   codigo_qr: string | null

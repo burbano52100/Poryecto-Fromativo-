@@ -4,6 +4,7 @@ import { DashboardLayout } from '../components/templates/DashboardLayout';
 import type { SectionType, InventarioSubSection } from '../components/organisms/Sidebar';
 import { VentasSection } from '../components/organisms/VentasSection';
 import { MenuDelDiaEncargadoSection } from '../components/organisms/MenuDelDiaEncargadoSection';
+import { BeneficiariosSection } from '../components/organisms/BeneficiariosSection';
 import { CarteraDeudasSection } from '../components/organisms/CarteraDeudasSection';
 import { InventarioSection } from '../components/organisms/InventarioSection';
 import { GruposSection } from '../components/organisms/GruposSection';
@@ -48,18 +49,21 @@ export const EncargadoDashboardPage = ({
       {/* 2. MENÚ DEL DÍA SECTION */}
       {activeSection === 'menu' && <MenuDelDiaEncargadoSection />}
 
-      {/* 3. CARTERA DE DEUDAS SECTION */}
+      {/* 3. BENEFICIARIOS SECTION */}
+      {activeSection === 'beneficiarios' && <BeneficiariosSection />}
+
+      {/* 4. CARTERA DE DEUDAS SECTION */}
       {activeSection === 'deudas' && <CarteraDeudasSection />}
 
-      {/* 4. INVENTARIO SECTION (WITH 5 SUB-SECTIONS ACCORDION) */}
+      {/* 5. INVENTARIO SECTION (WITH 5 SUB-SECTIONS ACCORDION) */}
       {activeSection === 'inventario' && (
         <InventarioSection activeSubSection={activeInventarioSubSection} />
       )}
 
-      {/* 5. GRUPOS SECTION */}
+      {/* 6. GRUPOS SECTION */}
       {activeSection === 'grupos' && <GruposSection />}
 
-      {/* 6. BUZÓN DE SUGERENCIAS SECTION */}
+      {/* 7. BUZÓN DE SUGERENCIAS SECTION */}
       {activeSection === 'sugerencias' && <BuzonSugerenciasEncargadoSection />}
     </DashboardLayout>
   );

@@ -64,6 +64,7 @@ export const userSchema = z.object({
   role: accountTypeSchema,
   email: z.string().email(),
   status: z.string().default('ACTIVE'),
+  es_beneficiario: z.boolean().optional(),
 });
 
 // 5. Schema para Respuesta de Autenticación
