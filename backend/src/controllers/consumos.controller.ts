@@ -2,6 +2,8 @@ import { Response, NextFunction } from 'express';
 import { query, getClient } from '../db/index.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const getUserConsumos = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.id;
@@ -83,9 +85,32 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
 
     // 2. Obtener el menú del día
     let targetMenu: any = null;
-    if (menu_id) {
+    if (menu_id !== undefined && menu_id !== null) {
+      if (typeof menu_id !== 'string' || !UUID_REGEX.test(menu_id)) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ message: 'El identificador del menú no es válido.' });
+      }
+
       const specificMenu = await client.query('SELECT * FROM menus_dia WHERE id = $1 FOR UPDATE;', [menu_id]);
       targetMenu = specificMenu.rows[0];
+
+      if (!targetMenu) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ message: 'El menú indicado no existe.' });
+      }
+
+      const sinCupo = Number(targetMenu.cantidad_disponible) - Number(targetMenu.cantidad_vendida) <= 0;
+      if (targetMenu.estado === 'agotado' || (targetMenu.estado === 'activo' && sinCupo)) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ message: 'El cupo de almuerzos para este menú se encuentra agotado.' });
+      }
+
+      if (targetMenu.estado !== 'activo') {
+        await client.query('ROLLBACK');
+        return res.status(400).json({
+          message: `El menú indicado no está disponible para reservas (estado: ${targetMenu.estado}).`,
+        });
+      }
     } else {
       const activeMenuRes = await client.query(
         `SELECT * FROM menus_dia
