@@ -1,6 +1,7 @@
 // src/hooks/useCartera.ts
-import { useQuery, UseQueryResult } from '@tanstack/react-query';
-import api from '../lib/api';
+import { useQuery } from '@tanstack/react-query';
+import type { UseQueryResult } from '@tanstack/react-query';
+import { apiClient } from '../lib/api';
 
 export interface Deuda {
   id: string;
@@ -11,15 +12,13 @@ export interface Deuda {
 
 /** Fetch user's debt (cartera) */
 export const useCartera = (): UseQueryResult<Deuda[], Error> => {
-  return useQuery<Deuda[], Error>(
-    ['cartera', 'deudas'],
-    async () => {
-      const { data } = await api.get<Deuda[]>('/deudas');
+  return useQuery<Deuda[], Error>({
+    queryKey: ['cartera', 'deudas'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<Deuda[]>('/deudas');
       return data;
     },
-    {
-      staleTime: 30_000,
-      retry: false,
-    }
-  );
+    staleTime: 30_000,
+    retry: false,
+  });
 };

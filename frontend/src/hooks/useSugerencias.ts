@@ -1,6 +1,7 @@
 // src/hooks/useSugerencias.ts
-import { useQuery, UseQueryResult } from '@tanstack/react-query';
-import api from '../lib/api';
+import { useQuery } from '@tanstack/react-query';
+import type { UseQueryResult } from '@tanstack/react-query';
+import { apiClient } from '../lib/api';
 
 export interface Sugerencia {
   id: string;
@@ -13,15 +14,13 @@ export interface Sugerencia {
 
 /** Fetch suggestions (buzón) for a given role */
 export const useSugerencias = (role: string): UseQueryResult<Sugerencia[], Error> => {
-  return useQuery<Sugerencia[], Error>(
-    ['sugerencias', role],
-    async () => {
-      const { data } = await api.get<Sugerencia[]>(`/sugerencias?role=${role}`);
+  return useQuery<Sugerencia[], Error>({
+    queryKey: ['sugerencias', role],
+    queryFn: async () => {
+      const { data } = await apiClient.get<Sugerencia[]>(`/sugerencias?role=${role}`);
       return data;
     },
-    {
-      staleTime: 30_000,
-      retry: false,
-    }
-  );
+    staleTime: 30_000,
+    retry: false,
+  });
 };
