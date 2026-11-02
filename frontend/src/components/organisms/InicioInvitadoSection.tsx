@@ -1,26 +1,13 @@
 import { Heart } from 'lucide-react';
 import type { User } from '../../schemas/auth.schema';
 import { YamboroInfoCard } from '../molecules/YamboroInfoCard';
-import { MenuCard } from '../molecules/MenuCard';
+import { ReservaAlmuerzoCard } from './ReservaAlmuerzoCard';
 
 export interface InicioInvitadoSectionProps {
   user: User;
-  onBuyLunch: () => void;
 }
 
-export const InicioInvitadoSection = ({
-  user,
-  onBuyLunch,
-}: InicioInvitadoSectionProps) => {
-  const currentDateFormatted = new Date().toLocaleDateString('es-CO', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-  const formattedDateString =
-    currentDateFormatted.charAt(0).toUpperCase() + currentDateFormatted.slice(1);
-
+export const InicioInvitadoSection = ({ user }: InicioInvitadoSectionProps) => {
   return (
     <div className="space-y-6">
       {/* Welcome Card for Guest */}
@@ -31,9 +18,7 @@ export const InicioInvitadoSection = ({
             <span>Visitante del Comedor SENA</span>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
-            ¡Bienvenido al SENA, {user.name}!
-          </h2>
+          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">¡Bienvenido al SENA, {user.name}!</h2>
 
           <p className="text-sm sm:text-base text-teal-100 leading-relaxed font-normal">
             Es un gusto contar con tu visita en nuestro comedor escolar. Puedes adquirir el menú especial para visitantes e invitados particulares.
@@ -41,19 +26,30 @@ export const InicioInvitadoSection = ({
         </div>
       </div>
 
-      {/* Yamboró Info Section */}
       <YamboroInfoCard />
 
-      {/* Menú del Día with Guest Price ($8.000) and "Comprar" Button */}
-      <MenuCard
-        dateText={formattedDateString}
-        title="Menú del Día para Invitados"
-        description="Almuerzo completo preparado con insumos frescos de nuestro centro agroecológico: Sopa del día, plato fuerte con proteína, arroz, ensalada, jugo de frutas y postre."
-        price="$8.000"
+      {/* Menú del Día con tarifa de invitado y compra real */}
+      <ReservaAlmuerzoCard
+        user={user}
+        ctaLabel="Comprar Almuerzo"
         note="Tarifa de venta directa para particulares e invitados"
-        imageUrl="/cafeteria-bg.jpg"
-        isAvailable={true}
-        onRequestLunch={onBuyLunch}
+        tituloConfirmacion="Comprar Almuerzo de Invitado"
+        detalleConfirmacion={(precio) => (
+          <>
+            <p className="text-center">
+              ¿Deseas comprar el <span className="font-bold text-gray-900">Menú del Día</span> a tarifa de visitante por{' '}
+              <span className="font-bold text-teal-700">{precio} COP</span>?
+            </p>
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mt-4 space-y-1 text-xs text-gray-600">
+              <p><span className="font-bold">Cliente:</span> {user.name}</p>
+              <p><span className="font-bold">Sede:</span> Tecnoparque Yamboró (Pitalito, Huila)</p>
+              <p><span className="font-bold">Tarifa:</span> Venta Directa Particular</p>
+            </div>
+          </>
+        )}
+        mensajeExito={(reserva) =>
+          `Compra registrada por ${reserva.price} COP. Preséntate en la caja del comedor con tu documento para recibir tu bandeja.`
+        }
       />
     </div>
   );

@@ -19,6 +19,7 @@ import {
   type EstudianteBeneficiario,
 } from '../../hooks/useBeneficiarios';
 import { Button } from '../atoms/Button';
+import { ErrorAlert } from '../molecules/ErrorAlert';
 
 export const BeneficiariosSection = () => {
   // Tab selector: 'todos' | 'actuales'
@@ -29,8 +30,9 @@ export const BeneficiariosSection = () => {
   // Modal para confirmar revocación / quitar beneficio
   const [studentToRevoke, setStudentToRevoke] = useState<EstudianteBeneficiario | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [mutationError, setMutationError] = useState<unknown>(null);
 
-  const { data: estudiantes = [], isLoading } = useEstudiantesQuery();
+  const { data: estudiantes = [], isLoading, isError, error, refetch } = useEstudiantesQuery();
   const toggleMutation = useToggleBeneficiarioMutation();
 
   // Fichas únicas para el select de filtro
@@ -69,7 +71,9 @@ export const BeneficiariosSection = () => {
     toggleMutation.mutate(
       { usuarioId: student.id, es_beneficiario: true },
       {
+        onError: setMutationError,
         onSuccess: (res) => {
+          setMutationError(null);
           setFeedbackMessage(res.message);
           setTimeout(() => setFeedbackMessage(null), 4000);
         },
@@ -84,7 +88,12 @@ export const BeneficiariosSection = () => {
     toggleMutation.mutate(
       { usuarioId: studentToRevoke.id, es_beneficiario: false },
       {
+        onError: (err) => {
+          setMutationError(err);
+          setStudentToRevoke(null);
+        },
         onSuccess: (res) => {
+          setMutationError(null);
           setFeedbackMessage(res.message);
           setStudentToRevoke(null);
           setTimeout(() => setFeedbackMessage(null), 4000);
@@ -131,6 +140,14 @@ export const BeneficiariosSection = () => {
             Cerrar
           </button>
         </div>
+      )}
+
+      {mutationError !== null && (
+        <ErrorAlert
+          error={mutationError}
+          titulo="No se pudo actualizar el beneficio"
+          onCerrar={() => setMutationError(null)}
+        />
       )}
 
       {/* 2. Tarjetas Estadísticas Rápidas */}
@@ -271,6 +288,8 @@ export const BeneficiariosSection = () => {
               Cargando estudiantes de GastroSENA...
             </p>
           </div>
+        ) : isError ? (
+          <ErrorAlert error={error} titulo="No se pudo cargar la lista de aprendices" onReintentar={() => refetch()} />
         ) : listadoFiltrado.length === 0 ? (
           <div className="py-12 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
             <Users className="w-10 h-10 text-gray-300 mx-auto mb-2" />

@@ -20,7 +20,7 @@ export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, ne
   try {
     // 1. Buscar menú activo priorizando el menú programado para hoy en zona horaria Bogotá
     const result = await query(
-      `SELECT id, fecha, nombre, descripcion,
+      `SELECT id, TO_CHAR(fecha, 'YYYY-MM-DD') as fecha, nombre, descripcion,
               precio_aprendiz::float8 as precio_aprendiz,
               precio_invitado::float8 as precio_invitado,
               cantidad_disponible, cantidad_vendida, imagen_url, estado
@@ -34,7 +34,7 @@ export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, ne
 
     if (!menu) {
       // Fallback si no hay ningún menú activo cargado aún
-      const todayBogotaRes = await query("SELECT (NOW() AT TIME ZONE 'America/Bogota')::date as today;");
+      const todayBogotaRes = await query("SELECT TO_CHAR((NOW() AT TIME ZONE 'America/Bogota')::date, 'YYYY-MM-DD') as today;");
       const todayStr = todayBogotaRes.rows[0]?.today || new Date().toISOString().split('T')[0];
       menu = {
         id: 'default_menu',
@@ -116,7 +116,8 @@ export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, ne
 export const getAllMenus = async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const result = await query(
-      `SELECT id, fecha, nombre, descripcion, precio_aprendiz, precio_invitado,
+      `SELECT id, TO_CHAR(fecha, 'YYYY-MM-DD') as fecha, nombre, descripcion,
+              precio_aprendiz::float8 as precio_aprendiz, precio_invitado::float8 as precio_invitado,
               cantidad_disponible, cantidad_vendida, imagen_url, estado, created_at
        FROM menus_dia
        ORDER BY fecha DESC, created_at DESC;`

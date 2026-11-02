@@ -22,6 +22,7 @@ import {
 import type { User as UserType } from '../../schemas/auth.schema';
 import { SidebarNavItem } from '../molecules/SidebarNavItem';
 import { SidebarUserProfile } from '../molecules/SidebarUserProfile';
+import { useResumenConsumos } from '../../hooks/useConsumos';
 
 export type SectionType =
   | 'inicio'
@@ -51,7 +52,6 @@ export interface SidebarProps {
   activeInventarioSubSection?: InventarioSubSection;
   onSelectInventarioSubSection?: (subSection: InventarioSubSection) => void;
   onLogout: () => void;
-  totalLunchesCount?: number;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
 }
@@ -63,13 +63,16 @@ export const Sidebar = ({
   activeInventarioSubSection = 'stock',
   onSelectInventarioSubSection,
   onLogout,
-  totalLunchesCount = 5,
   isOpenMobile = false,
   onCloseMobile,
 }: SidebarProps) => {
   const isEncargado = user.role === 'encargado';
   const isInstructor = user.role === 'instructor';
   const isInvitado = user.role === 'invitado';
+
+  // Conteo de almuerzos para el badge de "Mis Fichas" (aprendiz) y "Consumos" (instructor)
+  const { data: resumen } = useResumenConsumos(user.role === 'aprendiz' || isInstructor);
+  const totalLunchesCount = resumen?.totalAlmuerzos;
 
   const [isInventarioExpanded, setIsInventarioExpanded] = useState(
     activeSection === 'inventario'

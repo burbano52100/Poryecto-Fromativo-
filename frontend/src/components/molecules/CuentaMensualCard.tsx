@@ -1,18 +1,13 @@
 import { CreditCard, ArrowRight } from 'lucide-react';
+import { pesos } from '../../lib/formato';
 
 export interface CuentaMensualCardProps {
-  pendingBalance?: string | number;
+  pendingBalance: number;
   onViewAccount?: () => void;
 }
 
-export const CuentaMensualCard = ({
-  pendingBalance = '$15.000',
-  onViewAccount,
-}: CuentaMensualCardProps) => {
-  const formattedBalance =
-    typeof pendingBalance === 'number'
-      ? `$${pendingBalance.toLocaleString('es-CO')}`
-      : pendingBalance;
+export const CuentaMensualCard = ({ pendingBalance, onViewAccount }: CuentaMensualCardProps) => {
+  const formattedBalance = pesos(pendingBalance);
 
   return (
     <div className="bg-amber-50/70 border border-amber-100 rounded-3xl p-5 sm:p-6 flex items-start justify-between gap-4 shadow-xs">

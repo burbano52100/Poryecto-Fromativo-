@@ -2,30 +2,33 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Mail, Send, Info, CheckCircle2 } from 'lucide-react';
+import { Mail, Send, Info, CheckCircle2, MessageSquareReply, Clock } from 'lucide-react';
 import { FormField } from '../molecules/FormField';
+import { ErrorAlert } from '../molecules/ErrorAlert';
 import { Button } from '../atoms/Button';
+import { Badge } from '../atoms/Badge';
+import { useCrearSugerencia, useSugerencias } from '../../hooks/useSugerencias';
 
 const sugestionSchema = z.object({
   subject: z
     .string()
+    .trim()
     .min(3, 'El asunto debe tener al menos 3 caracteres')
-    .max(100, 'El asunto no debe superar 100 caracteres'),
+    .max(150, 'El asunto no debe superar 150 caracteres'),
   message: z
     .string()
+    .trim()
     .min(10, 'El mensaje debe tener al menos 10 caracteres')
-    .max(1000, 'El mensaje no debe superar 1000 caracteres'),
+    .max(2000, 'El mensaje no debe superar 2000 caracteres'),
 });
 
 type SuggestionFormData = z.infer<typeof sugestionSchema>;
 
-export interface BuzonSugerenciasSectionProps {
-  onSubmitSuggestion?: (data: SuggestionFormData) => Promise<void> | void;
-}
-
-export const BuzonSugerenciasSection = ({ onSubmitSuggestion }: BuzonSugerenciasSectionProps) => {
+/** Buzón de Aprendiz, Instructor e Invitado: envía al Encargado y muestra sus respuestas. */
+export const BuzonSugerenciasSection = () => {
   const [isSuccess, setIsSuccess] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const crearSugerencia = useCrearSugerencia();
+  const { data: misSugerencias = [] } = useSugerencias();
 
   const {
     register,
@@ -36,22 +39,16 @@ export const BuzonSugerenciasSection = ({ onSubmitSuggestion }: BuzonSugerencias
     resolver: zodResolver(sugestionSchema),
   });
 
-  const onSubmit = async (data: SuggestionFormData) => {
-    setIsSubmitting(true);
-    try {
-      if (onSubmitSuggestion) {
-        await onSubmitSuggestion(data);
-      } else {
-        // Simulate minor async network delay
-        await new Promise((resolve) => setTimeout(resolve, 600));
+  const onSubmit = (data: SuggestionFormData) => {
+    crearSugerencia.mutate(
+      { asunto: data.subject, mensaje: data.message },
+      {
+        onSuccess: () => {
+          setIsSuccess(true);
+          reset();
+        },
       }
-      setIsSuccess(true);
-      reset();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSubmitting(false);
-    }
+    );
   };
 
   return (
@@ -84,7 +81,13 @@ export const BuzonSugerenciasSection = ({ onSubmitSuggestion }: BuzonSugerencias
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      {crearSugerencia.isError && (
+        <div className="mb-6">
+          <ErrorAlert error={crearSugerencia.error} titulo="No se pudo enviar la sugerencia" />
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
         <FormField
           label="Asunto"
           error={errors.subject?.message}
@@ -93,10 +96,11 @@ export const BuzonSugerenciasSection = ({ onSubmitSuggestion }: BuzonSugerencias
         />
 
         <div className="space-y-1.5">
-          <label className="block text-sm font-semibold text-gray-700">
+          <label htmlFor="sugerencia-mensaje" className="block text-sm font-semibold text-gray-700">
             Mensaje
           </label>
           <textarea
+            id="sugerencia-mensaje"
             rows={5}
             placeholder="Escribe aquí tu sugerencia, comentario o idea..."
             className={`w-full rounded-2xl p-3.5 text-sm bg-gray-50 border transition duration-200 focus:outline-none focus:bg-white ${
@@ -122,13 +126,47 @@ export const BuzonSugerenciasSection = ({ onSubmitSuggestion }: BuzonSugerencias
           type="submit"
           variant="primary"
           fullWidth
-          isLoading={isSubmitting}
+          isLoading={crearSugerencia.isPending}
           icon={<Send className="w-4 h-4" />}
           className="py-3.5 text-base font-bold bg-green-600 hover:bg-green-700 shadow-green-600/30"
         >
           Enviar Sugerencia
         </Button>
       </form>
+
+      {misSugerencias.length > 0 && (
+        <div className="mt-8 pt-6 border-t border-gray-100 space-y-3">
+          <h3 className="text-base font-extrabold text-gray-900">Mis sugerencias</h3>
+          {misSugerencias.map((sugerencia) => (
+            <article key={sugerencia.id} className="rounded-2xl border border-gray-200 p-4 space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-bold text-gray-900">{sugerencia.subject}</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400 font-medium">{sugerencia.date}</span>
+                  {sugerencia.status === 'ATENDIDA' ? (
+                    <Badge variant="green">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Atendida
+                    </Badge>
+                  ) : (
+                    <Badge variant="amber">
+                      <Clock className="w-3.5 h-3.5" /> Pendiente
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <p className="text-sm text-gray-600">{sugerencia.message}</p>
+              {sugerencia.respuesta && (
+                <p className="text-sm text-emerald-900 bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex gap-2">
+                  <MessageSquareReply className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>
+                    <span className="font-bold">Respuesta del comedor:</span> {sugerencia.respuesta}
+                  </span>
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

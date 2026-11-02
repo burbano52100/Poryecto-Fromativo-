@@ -1,34 +1,24 @@
 import { CreditCard, Info, DollarSign, CalendarCheck } from 'lucide-react';
+import { pesos } from '../../lib/formato';
 
 export interface MiCuentaSectionProps {
-  totalConsumed?: string | number;
-  pendingBalance?: string | number;
-  paymentMethod?: string;
-  paymentFrequency?: string;
-  nextCutoffDate?: string;
+  totalConsumed: number;
+  pendingBalance: number;
+  paymentMethod: string;
+  paymentFrequency: string;
+  nextCutoffDate: string;
 }
 
 export const MiCuentaSection = ({
-  totalConsumed = '$25.000',
-  pendingBalance = '$15.000',
-  paymentMethod = 'Efectivo en oficina del comedor',
-  paymentFrequency = 'Mensual',
-  nextCutoffDate = '28 de Febrero 2026',
+  totalConsumed,
+  pendingBalance,
+  paymentMethod,
+  paymentFrequency,
+  nextCutoffDate,
 }: MiCuentaSectionProps) => {
-  const formattedConsumed =
-    typeof totalConsumed === 'number'
-      ? `$${totalConsumed.toLocaleString('es-CO')}`
-      : totalConsumed;
-
-  const formattedBalance =
-    typeof pendingBalance === 'number'
-      ? `$${pendingBalance.toLocaleString('es-CO')}`
-      : pendingBalance;
-
-  const hasPendingBalance =
-    typeof pendingBalance === 'number'
-      ? pendingBalance > 0
-      : pendingBalance !== '$0' && pendingBalance !== '$0.00';
+  const formattedConsumed = pesos(totalConsumed);
+  const formattedBalance = pesos(pendingBalance);
+  const hasPendingBalance = pendingBalance > 0;
 
   return (
     <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200/80 space-y-6">

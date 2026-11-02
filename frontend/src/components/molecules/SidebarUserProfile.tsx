@@ -81,10 +81,10 @@ export const SidebarUserProfile = ({ user }: SidebarUserProfileProps) => {
       <div className="mt-2.5 w-full pt-2.5 border-t border-gray-200 flex items-center justify-between text-xs text-gray-600">
         <div className="flex items-center gap-1 text-gray-500">
           <span className="font-semibold text-gray-600">
-            {isInvitado ? 'ID:' : isEncargado ? 'ID:' : isInstructor ? 'Doc:' : 'Ficha:'}
+            {user.role === 'aprendiz' ? 'Ficha:' : 'Doc:'}
           </span>
           <span className="font-bold text-gray-900">
-            {isInvitado ? (user.id || 'INV-001') : isEncargado ? (user.id || user.document) : isInstructor ? user.document : (user.ficha || '1')}
+            {user.role === 'aprendiz' ? user.ficha || 'Sin ficha' : user.document}
           </span>
         </div>
 

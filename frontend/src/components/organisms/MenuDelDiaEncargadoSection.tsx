@@ -2,58 +2,54 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Utensils, Power, CheckCircle2, Save, AlertTriangle, Loader2 } from 'lucide-react';
-import { apiClient } from '../../lib/api';
+import { Utensils, Power, CheckCircle2, Save, Loader2 } from 'lucide-react';
 import { FormField } from '../molecules/FormField';
+import { ErrorAlert } from '../molecules/ErrorAlert';
 import { Button } from '../atoms/Button';
 import { Badge } from '../atoms/Badge';
+import { useCambiarEstadoMenu, useMenus, usePublicarMenu } from '../../hooks/useMenu';
+import { hoyBogota, pesos } from '../../lib/formato';
+
+const entero = (campo: string) =>
+  z
+    .string()
+    .trim()
+    .min(1, `Ingresa ${campo}`)
+    .refine((v) => /^\d+$/.test(v), `${campo.charAt(0).toUpperCase()}${campo.slice(1)} debe ser un número entero`);
 
 const menuSchema = z.object({
-  dishName: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
+  dishName: z.string().trim().min(3, 'El nombre debe tener al menos 3 caracteres'),
   date: z.string().min(1, 'Selecciona una fecha válida'),
-  description: z.string().min(10, 'La descripción debe tener al menos 10 caracteres'),
-  priceStudents: z.string().min(1, 'Ingresa el precio para estudiantes'),
-  priceGuests: z.string().min(1, 'Ingresa el precio para invitados'),
-  availableQuantity: z.string().min(1, 'Ingresa la cantidad disponible'),
+  description: z.string().trim().min(10, 'La descripción debe tener al menos 10 caracteres'),
+  priceStudents: entero('el precio para aprendices'),
+  priceGuests: entero('el precio para invitados'),
+  availableQuantity: entero('la cantidad disponible'),
 });
 
 type MenuFormData = z.infer<typeof menuSchema>;
 
-interface ActiveMenu {
-  id: string;
-  fecha: string;
-  nombre: string;
-  descripcion: string;
-  precio_aprendiz: number;
-  precio_invitado: number;
-  cantidad_disponible: number;
-  cantidad_vendida: number;
-  estado: 'borrador' | 'activo' | 'agotado' | 'completado';
-}
-
 export const MenuDelDiaEncargadoSection = () => {
-  const queryClient = useQueryClient();
   const [publishSuccess, setPublishSuccess] = useState(false);
   const [statusFeedback, setStatusFeedback] = useState<string | null>(null);
 
-  const { data: activeMenu, isLoading, isError, error } = useQuery<ActiveMenu>({
-    queryKey: ['activeMenu'],
-    queryFn: async () => (await apiClient.get<ActiveMenu>('/menus/activo')).data,
-  });
+  // El menú más reciente en cualquier estado: así un menú "agotado" se puede reactivar
+  const { data: menus, isLoading, isError, error } = useMenus();
+  const activeMenu = menus?.[0];
+  const isMenuAvailable = activeMenu?.estado === 'activo';
 
-  const isMenuAvailable = activeMenu ? activeMenu.estado === 'activo' : true;
+  const publishMutation = usePublicarMenu();
+  const toggleStatusMutation = useCambiarEstadoMenu();
 
   const {
     register,
     handleSubmit,
-    setValue,
+    reset,
     formState: { errors },
   } = useForm<MenuFormData>({
     resolver: zodResolver(menuSchema),
     defaultValues: {
       dishName: 'Menú Ejecutivo SENA',
-      date: new Date().toISOString().split('T')[0],
+      date: hoyBogota(),
       description: 'Almuerzo completo: Sopa, bandeja con proteína, arroz, ensalada, jugo natural y postre',
       priceStudents: '5000',
       priceGuests: '8000',
@@ -61,56 +57,52 @@ export const MenuDelDiaEncargadoSection = () => {
     },
   });
 
+  // Precarga el formulario con el menú de hoy si ya existe
   useEffect(() => {
-    if (activeMenu && activeMenu.id !== 'default_menu') {
-      setValue('dishName', activeMenu.nombre);
-      setValue('date', activeMenu.fecha);
-      setValue('description', activeMenu.descripcion || '');
-      setValue('priceStudents', String(activeMenu.precio_aprendiz));
-      setValue('priceGuests', String(activeMenu.precio_invitado));
-      setValue('availableQuantity', String(activeMenu.cantidad_disponible));
+    if (activeMenu && activeMenu.fecha === hoyBogota()) {
+      reset({
+        dishName: activeMenu.nombre,
+        date: activeMenu.fecha,
+        description: activeMenu.descripcion || '',
+        priceStudents: String(activeMenu.precio_aprendiz),
+        priceGuests: String(activeMenu.precio_invitado),
+        availableQuantity: String(activeMenu.cantidad_disponible),
+      });
     }
-  }, [activeMenu, setValue]);
-
-  const publishMutation = useMutation({
-    mutationFn: async (data: MenuFormData) => {
-      const payload = {
-        dishName: data.dishName,
-        date: data.date,
-        description: data.description,
-        priceStudents: Number(data.priceStudents),
-        priceGuests: Number(data.priceGuests),
-        availableQuantity: Number(data.availableQuantity),
-        estado: 'activo',
-      };
-      return (await apiClient.post('/menus', payload)).data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activeMenu'] });
-      setPublishSuccess(true);
-      setTimeout(() => setPublishSuccess(false), 3500);
-    },
-  });
-
-  const toggleStatusMutation = useMutation({
-    mutationFn: async (newStatus: 'activo' | 'agotado') => {
-      if (!activeMenu || activeMenu.id === 'default_menu') return;
-      return (await apiClient.patch(`/menus/${activeMenu.id}/estado`, { estado: newStatus })).data;
-    },
-    onSuccess: (_, newStatus) => {
-      queryClient.invalidateQueries({ queryKey: ['activeMenu'] });
-      setStatusFeedback(`Estado del menú actualizado a: ${newStatus}`);
-      setTimeout(() => setStatusFeedback(null), 3000);
-    },
-  });
+  }, [activeMenu, reset]);
 
   const onPublish = (data: MenuFormData) => {
-    publishMutation.mutate(data);
+    publishMutation.mutate(
+      {
+        nombre: data.dishName,
+        fecha: data.date,
+        descripcion: data.description,
+        precio_aprendiz: Number(data.priceStudents),
+        precio_invitado: Number(data.priceGuests),
+        cantidad_disponible: Number(data.availableQuantity),
+        estado: 'activo',
+      },
+      {
+        onSuccess: () => {
+          setPublishSuccess(true);
+          setTimeout(() => setPublishSuccess(false), 3500);
+        },
+      }
+    );
   };
 
   const handleToggleAvailable = () => {
+    if (!activeMenu) return;
     const nextStatus = isMenuAvailable ? 'agotado' : 'activo';
-    toggleStatusMutation.mutate(nextStatus);
+    toggleStatusMutation.mutate(
+      { id: activeMenu.id, estado: nextStatus },
+      {
+        onSuccess: () => {
+          setStatusFeedback(`Estado del menú actualizado a: ${nextStatus}`);
+          setTimeout(() => setStatusFeedback(null), 3000);
+        },
+      }
+    );
   };
 
   return (
@@ -136,7 +128,7 @@ export const MenuDelDiaEncargadoSection = () => {
               )}
             </div>
             <p className="text-xs text-gray-500 mt-1 font-medium">
-              {activeMenu?.nombre || 'Almuerzo completo del día de hoy'}
+              {activeMenu ? `${activeMenu.nombre} · ${activeMenu.fecha}` : 'Aún no hay menús publicados'}
             </p>
           </div>
 
@@ -144,6 +136,7 @@ export const MenuDelDiaEncargadoSection = () => {
             <Button
               variant="outline"
               onClick={handleToggleAvailable}
+              disabled={!activeMenu}
               isLoading={toggleStatusMutation.isPending}
               icon={<Power className="w-4 h-4 text-red-600" />}
               className="text-red-700 border-red-200 hover:bg-red-50 font-bold"
@@ -161,9 +154,13 @@ export const MenuDelDiaEncargadoSection = () => {
         )}
 
         {isError && (
-          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-semibold flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600" />
-            <span>No se pudo conectar con el servicio de menú ({error instanceof Error ? error.message : 'Error'}).</span>
+          <div className="mb-4">
+            <ErrorAlert error={error} titulo="No se pudo conectar con el servicio de menú" />
+          </div>
+        )}
+        {toggleStatusMutation.isError && (
+          <div className="mb-4">
+            <ErrorAlert error={toggleStatusMutation.error} titulo="No se pudo cambiar el estado del menú" />
           </div>
         )}
 
@@ -171,19 +168,19 @@ export const MenuDelDiaEncargadoSection = () => {
           <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200/70">
             <p className="text-xs text-gray-400 font-semibold uppercase">Precio Estudiantes</p>
             <p className="text-xl font-extrabold text-emerald-600 mt-0.5">
-              ${(activeMenu?.precio_aprendiz || 5000).toLocaleString('es-CO')}
+              {activeMenu ? pesos(activeMenu.precio_aprendiz) : '—'}
             </p>
           </div>
           <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200/70">
             <p className="text-xs text-gray-400 font-semibold uppercase">Precio Invitados</p>
             <p className="text-xl font-extrabold text-blue-600 mt-0.5">
-              ${(activeMenu?.precio_invitado || 8000).toLocaleString('es-CO')}
+              {activeMenu ? pesos(activeMenu.precio_invitado) : '—'}
             </p>
           </div>
           <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200/70">
             <p className="text-xs text-gray-400 font-semibold uppercase">Vendidos Hoy</p>
             <p className="text-xl font-extrabold text-gray-800 mt-0.5">
-              {activeMenu?.cantidad_vendida || 0} / {activeMenu?.cantidad_disponible || 200}
+              {activeMenu ? `${activeMenu.cantidad_vendida} / ${activeMenu.cantidad_disponible}` : '—'}
             </p>
           </div>
         </div>
@@ -200,6 +197,12 @@ export const MenuDelDiaEncargadoSection = () => {
             Define el plato y las tarifas vigentes en el comedor estudiantil
           </p>
         </div>
+
+        {publishMutation.isError && (
+          <div className="mb-4">
+            <ErrorAlert error={publishMutation.error} titulo="No se pudo publicar el menú" />
+          </div>
+        )}
 
         {publishSuccess && (
           <div className="mb-6 bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center gap-3 text-emerald-800 text-sm font-semibold">

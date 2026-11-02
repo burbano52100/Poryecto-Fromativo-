@@ -11,10 +11,6 @@ export interface DashboardLayoutProps {
   activeInventarioSubSection?: InventarioSubSection;
   onSelectInventarioSubSection?: (subSection: InventarioSubSection) => void;
   onLogout: () => void;
-  totalLunches?: number;
-  monthlyLunches?: number;
-  totalSpent?: string | number;
-  pendingBalance?: string | number;
   children: ReactNode;
 }
 
@@ -25,10 +21,6 @@ export const DashboardLayout = ({
   activeInventarioSubSection,
   onSelectInventarioSubSection,
   onLogout,
-  totalLunches = 5,
-  monthlyLunches = 5,
-  totalSpent = '$25.000',
-  pendingBalance = '$15.000',
   children,
 }: DashboardLayoutProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -55,6 +47,7 @@ export const DashboardLayout = ({
     weekday: 'short',
     day: 'numeric',
     month: 'short',
+    timeZone: 'America/Bogota',
   });
 
   const panelSubtitle = isInvitado
@@ -83,7 +76,6 @@ export const DashboardLayout = ({
         activeInventarioSubSection={activeInventarioSubSection}
         onSelectInventarioSubSection={onSelectInventarioSubSection}
         onLogout={onLogout}
-        totalLunchesCount={totalLunches}
         isOpenMobile={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
       />
@@ -133,13 +125,7 @@ export const DashboardLayout = ({
         {/* Content Area */}
         <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto">
           {/* Top Metric Cards (StatsHeader) */}
-          <StatsHeader
-            user={user}
-            totalLunches={totalLunches}
-            monthlyLunches={monthlyLunches}
-            totalSpent={totalSpent}
-            pendingBalance={pendingBalance}
-          />
+          <StatsHeader user={user} />
 
           {/* Active Section Content */}
           <div className="animate-fade-in">
