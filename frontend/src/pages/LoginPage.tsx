@@ -1,33 +1,29 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { AuthLayout } from '../components/templates/AuthLayout';
 import { Header } from '../components/organisms/Header';
 import { LoginForm } from '../components/organisms/LoginForm';
 import { HelpModal } from '../components/organisms/HelpModal';
+import { LoadingSpinner } from '../components/atoms/LoadingSpinner';
 import { useCurrentUserQuery } from '../hooks/useAuth';
+import { rutaInicio } from '../lib/session';
 
-interface LoginPageProps {
-  onLoginSuccess?: (role: string) => void;
-}
-
-export const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
+export const LoginPage = () => {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const { isLoading } = useCurrentUserQuery();
+  const { data: user, isPending } = useCurrentUserQuery();
+
+  // Con sesión activa (o recién iniciada), /login lleva al panel del rol
+  if (user) return <Navigate to={rutaInicio(user.role)} replace />;
 
   return (
     <>
-      <AuthLayout
-        header={<Header />}
-        onOpenHelp={() => setIsHelpOpen(true)}
-      >
-        {isLoading ? (
-          <div className="bg-white/90 p-8 rounded-3xl text-center shadow-xl">
-            <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-            <p className="text-sm font-semibold text-gray-700">Verificando sesión GastroSENA...</p>
+      <AuthLayout header={<Header />} onOpenHelp={() => setIsHelpOpen(true)}>
+        {isPending ? (
+          <div className="bg-white/95 rounded-3xl shadow-2xl w-full max-w-md">
+            <LoadingSpinner label="Verificando sesión GastroSENA..." />
           </div>
         ) : (
-          <div className="w-full flex flex-col items-center">
-            <LoginForm onLoginSuccess={(role) => onLoginSuccess && onLoginSuccess(role)} />
-          </div>
+          <LoginForm />
         )}
       </AuthLayout>
 

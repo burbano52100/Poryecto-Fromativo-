@@ -1,93 +1,78 @@
+import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  loginWithPassword,
-  registerUser,
-  facialLogin,
-  fetchCurrentUser,
-} from '../lib/authService';
-import {
-  type LoginInput,
-  type RegisterInput,
-  type FacialLoginInput,
-  type AuthResponse,
-  type User,
-} from '../schemas/auth.schema';
+import { loginWithPassword, registerUser, fetchCurrentUser } from '../lib/authService';
+import { actualizarUsuarioGuardado, getToken, guardarSesion, limpiarSesion } from '../lib/session';
+import type { LoginInput, RegisterInput, AuthResponse, User } from '../schemas/auth.schema';
 
-export const AUTH_QUERY_KEY = ['currentUser'];
+export const AUTH_QUERY_KEY = ['currentUser'] as const;
 
 /**
- * Hook para consultar el usuario actual en sesión (GET /api/auth/me)
+ * Usuario en sesión (GET /api/auth/me). Devuelve null si no hay token o si el backend
+ * ya no reconoce la sesión.
  */
 export const useCurrentUserQuery = () => {
   return useQuery({
     queryKey: AUTH_QUERY_KEY,
     queryFn: async (): Promise<User | null> => {
-      if (!localStorage.getItem('gastrosena_token')) return null;
+      if (!getToken()) return null;
       const user = await fetchCurrentUser();
-      if (!user) {
-        localStorage.removeItem('gastrosena_token');
-        localStorage.removeItem('gastrosena_role');
-        localStorage.removeItem('gastrosena_user');
-      }
+      if (user) actualizarUsuarioGuardado(user);
+      else limpiarSesion();
       return user;
     },
     staleTime: 1000 * 60 * 5,
+    retry: false,
   });
 };
 
-/**
- * Hook Mutation para Registro Real de Usuario (POST /api/auth/register)
- */
-export const useRegisterMutation = () => {
+/** Guarda la sesión y publica el usuario: las rutas redirigen solas al panel de su rol. */
+const useIniciarSesion = () => {
   const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (userData: RegisterInput): Promise<AuthResponse> => {
-      return await registerUser(userData);
+  return useCallback(
+    (data: AuthResponse) => {
+      guardarSesion(data.token, data.user);
+      queryClient.setQueryData(AUTH_QUERY_KEY, data.user);
     },
-    onSuccess: (data) => {
-      localStorage.setItem('gastrosena_token', data.token);
-      localStorage.setItem('gastrosena_role', data.user.role);
-      localStorage.setItem('gastrosena_user', JSON.stringify(data.user));
-      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-    },
-  });
+    [queryClient]
+  );
 };
 
-/**
- * Hook Mutation para Inicio de Sesión Tradicional (POST /api/auth/login)
- */
+/** POST /api/auth/login: solo documento y contraseña; el rol lo devuelve el backend. */
 export const useLoginMutation = () => {
-  const queryClient = useQueryClient();
-
+  const iniciarSesion = useIniciarSesion();
   return useMutation({
-    mutationFn: async (credentials: LoginInput): Promise<AuthResponse> => {
-      return await loginWithPassword(credentials);
-    },
-    onSuccess: (data) => {
-      localStorage.setItem('gastrosena_token', data.token);
-      localStorage.setItem('gastrosena_role', data.user.role);
-      localStorage.setItem('gastrosena_user', JSON.stringify(data.user));
-      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-    },
+    mutationFn: (credentials: LoginInput) => loginWithPassword(credentials),
+    onSuccess: iniciarSesion,
   });
 };
 
-/**
- * Hook Mutation para Reconocimiento Facial (POST /api/auth/facial-login)
- */
-export const useFacialLoginMutation = () => {
-  const queryClient = useQueryClient();
-
+/** POST /api/auth/register: crea la cuenta e inicia sesión con ella. */
+export const useRegisterMutation = () => {
+  const iniciarSesion = useIniciarSesion();
   return useMutation({
-    mutationFn: async (payload: FacialLoginInput): Promise<AuthResponse> => {
-      return await facialLogin(payload);
-    },
-    onSuccess: (data) => {
-      localStorage.setItem('gastrosena_token', data.token);
-      localStorage.setItem('gastrosena_role', data.user.role);
-      localStorage.setItem('gastrosena_user', JSON.stringify(data.user));
-      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-    },
+    mutationFn: (userData: RegisterInput) => registerUser(userData),
+    onSuccess: iniciarSesion,
   });
+};
+
+/** Actualiza el usuario en sesión tras editar el perfil. */
+export const useActualizarUsuarioSesion = () => {
+  const queryClient = useQueryClient();
+  return useCallback(
+    (user: User) => {
+      actualizarUsuarioGuardado(user);
+      queryClient.setQueryData(AUTH_QUERY_KEY, user);
+    },
+    [queryClient]
+  );
+};
+
+/** Cierra la sesión y descarta los datos en caché del usuario anterior. */
+export const useLogout = () => {
+  const queryClient = useQueryClient();
+  return useCallback(() => {
+    limpiarSesion();
+    queryClient.clear();
+    queryClient.setQueryData(AUTH_QUERY_KEY, null);
+  }, [queryClient]);
 };

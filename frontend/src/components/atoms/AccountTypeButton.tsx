@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
-import type { AccountType } from '../../schemas/auth.schema';
+import type { RegistrableAccountType } from '../../schemas/auth.schema';
 
 interface AccountTypeButtonProps {
-  id: AccountType;
+  id: RegistrableAccountType;
   label: string;
   icon: ReactNode;
   isActive: boolean;
-  onClick: (id: AccountType) => void;
+  onClick: (id: RegistrableAccountType) => void;
 }
 
 export const AccountTypeButton = ({
@@ -19,6 +19,7 @@ export const AccountTypeButton = ({
   return (
     <button
       type="button"
+      aria-pressed={isActive}
       onClick={() => onClick(id)}
       className={`flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
         isActive

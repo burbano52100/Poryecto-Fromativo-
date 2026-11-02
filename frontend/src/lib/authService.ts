@@ -1,6 +1,6 @@
 import { isAxiosError } from 'axios';
 import { apiClient } from './api';
-import type { AuthResponse, FacialLoginInput, LoginInput, RegisterInput, User } from '../schemas/auth.schema';
+import type { AuthResponse, LoginInput, RegisterInput, User } from '../schemas/auth.schema';
 
 export function toFriendlyError(error: unknown): Error {
   if (isAxiosError(error)) {
@@ -25,15 +25,6 @@ export async function loginWithPassword(input: LoginInput): Promise<AuthResponse
 export async function registerUser(input: RegisterInput): Promise<AuthResponse> {
   try {
     const { data } = await apiClient.post<AuthResponse>('/auth/register', input);
-    return data;
-  } catch (error) {
-    throw toFriendlyError(error);
-  }
-}
-
-export async function facialLogin(input: FacialLoginInput): Promise<AuthResponse> {
-  try {
-    const { data } = await apiClient.post<AuthResponse>('/auth/facial-login', input);
     return data;
   } catch (error) {
     throw toFriendlyError(error);

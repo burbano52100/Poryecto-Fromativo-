@@ -37,26 +37,26 @@ export const HelpModal = ({ isOpen, onClose }: HelpModalProps) => {
             <div>
               <p className="font-semibold mb-0.5">Acceso Institucional SENA:</p>
               <p>
-                Ingresa con tu documento de identidad registrado y tu contraseña institucional. Si eres aprendiz, ingresa también tu número de Ficha de formación.
+                Ingresa con tu documento de identidad y tu contraseña. El sistema reconoce tu tipo de cuenta y te lleva directo a tu panel.
               </p>
             </div>
           </div>
 
           <div>
             <h4 className="font-bold text-gray-900 text-sm mb-2 flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-green-600" /> ¿Cómo accedo como Aprendiz?
+              <CheckCircle className="w-4 h-4 text-green-600" /> ¿Cómo ingreso?
             </h4>
             <p className="text-gray-600 text-xs sm:text-sm leading-relaxed pl-6">
-              Selecciona la pestaña <strong>Aprendiz</strong>, ingresa el número de tu Ficha de formación y tu número de identificación sin puntos ni espacios.
+              Escribe tu número de documento sin puntos ni espacios y tu contraseña. No necesitas elegir si eres aprendiz, instructor, encargado o invitado.
             </p>
           </div>
 
           <div>
             <h4 className="font-bold text-gray-900 text-sm mb-2 flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-green-600" /> Reconocimiento Facial en Yamboró
+              <CheckCircle className="w-4 h-4 text-green-600" /> ¿Aún no tienes cuenta?
             </h4>
             <p className="text-gray-600 text-xs sm:text-sm leading-relaxed pl-6">
-              Si estás registrado en los tótems biométricos de la sede Yamboró, puedes presionar el botón <strong>"Ingresar con Reconocimiento Facial"</strong> para autenticación instantánea.
+              Presiona <strong>"Registrarse"</strong> debajo del formulario. Los aprendices se registran con su número de Ficha; los visitantes, como Invitado.
             </p>
           </div>
 

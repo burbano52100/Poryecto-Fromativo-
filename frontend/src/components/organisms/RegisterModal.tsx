@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { X, UserPlus, IdCard, BookOpen, Mail, Lock, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { registerSchema, type RegisterFormInput, type AccountType } from '../../schemas/auth.schema';
+import { registerSchema, type RegisterFormInput, type RegistrableAccountType } from '../../schemas/auth.schema';
 import { useRegisterMutation } from '../../hooks/useAuth';
 import { AccountTypeSelector } from '../molecules/AccountTypeSelector';
 import { FormField } from '../molecules/FormField';
@@ -15,7 +15,7 @@ interface RegisterModalProps {
 
 export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [currentAccountType, setCurrentAccountType] = useState<AccountType>('aprendiz');
+  const [currentAccountType, setCurrentAccountType] = useState<RegistrableAccountType>('aprendiz');
   const registerMutation = useRegisterMutation();
 
   const {
@@ -38,11 +38,7 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
 
   if (!isOpen) return null;
 
-  const handleAccountTypeChange = (type: AccountType) => {
-    if (type === 'encargado' || type === 'instructor') {
-      alert('El registro público solo está disponible para Aprendices e Invitados.');
-      return;
-    }
+  const handleAccountTypeChange = (type: RegistrableAccountType) => {
     setCurrentAccountType(type);
     setValue('accountType', type, { shouldValidate: true });
   };

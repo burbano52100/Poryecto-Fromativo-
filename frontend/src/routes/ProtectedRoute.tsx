@@ -1,33 +1,25 @@
-// src/routes/ProtectedRoute.tsx
-import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import type { ReactNode } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useCurrentUserQuery } from '../hooks/useAuth';
+import { rutaInicio } from '../lib/session';
+import { LoadingSpinner } from '../components/atoms/LoadingSpinner';
+import type { AccountType, User } from '../schemas/auth.schema';
 
 interface ProtectedRouteProps {
-  allowedRoles: string[]; // e.g. ['aprendiz']
-  children: React.ReactNode;
+  role: AccountType;
+  children: (user: User) => ReactNode;
 }
 
 /**
- * Checks if a user is authenticated and has one of the allowed roles.
- * If not authenticated, redirects to #/login.
- * If authenticated but role not allowed, redirects to the user's default start page.
+ * Sin sesión → #/login. Con sesión de otro rol → panel de su propio rol.
+ * Solo renderiza el panel cuando el rol de la sesión coincide.
  */
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, children }) => {
-  const { data: currentUser } = useCurrentUserQuery();
-  const location = useLocation();
+export const ProtectedRoute = ({ role, children }: ProtectedRouteProps) => {
+  const { data: user, isPending } = useCurrentUserQuery();
 
-  if (!currentUser) {
-    // Not logged in – go to login preserving intended location
-    return <Navigate to="/login" replace state={{ from: location }} />;
-  }
+  if (isPending) return <LoadingSpinner fullScreen label="Verificando sesión GastroSENA..." />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== role) return <Navigate to={rutaInicio(user.role)} replace />;
 
-  const role = currentUser.role;
-  if (!allowedRoles.includes(role)) {
-    // Role mismatch – send to role's home page
-    const base = `/${role}/inicio`;
-    return <Navigate to={base} replace />;
-  }
-
-  return <>{children}</>;
+  return <>{children(user)}</>;
 };
