@@ -4,6 +4,34 @@ Registro cronológico detallado de arquitectura, características, refactorizaci
 
 ---
 
+## [2026-11-02] - Fase 5: login simplificado, HashRouter y paneles conectados a la API
+
+### Rama: `julianDEV-front` (commits `de87ca4` y `41cae31`)
+
+#### 1. Login y rutas
+- **Motivo:** El rol ya lo decide el backend; los botones de tipo de cuenta, "Modo Invitado", facial y accesos de desarrollo confundían y el `DevQuickLogin` guardaba un token falso que provocaba 401.
+- **Cambios realizados:**
+  - `LoginForm.tsx`: solo documento, contraseña, "Ingresar" y "Registrarse". El backend devuelve el rol y la página redirige sola a `/{rol}/inicio`.
+  - `App.tsx`: `HashRouter` + `lazy()` por panel + `ProtectedRoute` (sin sesión → `#/login`; otro rol → su propio panel). Se eliminó la barra "Rutas (DEV)".
+  - `AuthLayout.tsx` y `Header.tsx`: fondo `cafeteria-bg.jpg` con capa oscura y logo `alt="GastroSENA"`, ambos con `asset()` (`import.meta.env.BASE_URL`) para GitHub Pages.
+  - `RegisterModal.tsx` / `AccountTypeSelector.tsx`: el registro solo ofrece Aprendiz e Invitado.
+  - `lib/api.ts`: el 401 de login/registro no cierra sesión; `useLogout` vacía la caché de React Query.
+  - `tsconfig.app.json`: `"strict": true`.
+- **Eliminados:** `DevQuickLogin.tsx`, `types/auth.ts`, `test_redirections.cjs`.
+
+#### 2. Paneles sin datos mock
+- **Motivo:** La mayoría de secciones usaban estado local simulado; una reserva del aprendiz nunca llegaba al Encargado.
+- **Cambios realizados:**
+  - Hooks por dominio en `src/hooks/` con React Query, claves en `queryKeys.ts` e invalidación cruzada. El Encargado refresca ventas, grupos, cartera y buzón cada 30 s.
+  - `ReservaAlmuerzoCard.tsx`: reserva real para Aprendiz, Instructor e Invitado. El beneficiario reserva con un clic a $0; los demás confirman en un modal. Respeta horario (7:00–21:00), cupo y reserva existente.
+  - `MisFichasSection` / `ConsumosSection`: estado Reservado/Consumido y Pagado/Pendiente/Gratis (`ConsumoRow`, `EstadoPagoBadge`).
+  - `GruposSection`: la tarjeta completa despliega los aprendices que reservaron hoy con Pagado / No pagado.
+  - `VentasSection`, `StatsHeader`, `CarteraDeudasSection`, `BuzonSugerencias*`, `PerfilSection`, `MenuDelDiaEncargadoSection`, `BeneficiariosSection`: conectados a la API, con estados de carga y error (`ErrorAlert`).
+  - `InventarioSection`: dividido en `organisms/inventario/` (Stock, Recetas, Kardex, Mermas, Configuración) con formularios Zod (`schemas/inventario.schema.ts`).
+- **Tests:** `App.test.tsx`, `lib/assets.test.ts`, `ReservaAlmuerzoCard.test.tsx`, `GruposSection.test.tsx` (Vitest + Testing Library, `npm test`).
+
+---
+
 ## [2026-10-28] - Revisión de Seguridad, Limpieza de Credenciales y Módulo de Beneficiarios (Paso 5)
 
 ### Rama: `julianDEV-front`

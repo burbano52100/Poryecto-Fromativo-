@@ -70,3 +70,45 @@ Este documento recopila las decisiones técnicas clave tomadas durante el desarr
 - **Estado**: Aceptada
 - **Contexto**: El prototipo anterior confiaba en el header `x-user-role` enviado desde el cliente, permitiendo a cualquier aprendiz enviar `x-user-role: encargado` y acceder a funciones restringidas.
 - **Decisión**: El middleware `requireRole` lee el rol **exclusivamente** desde el payload del JWT firmado y verificado con `JWT_SECRET`. Se eliminó el header `x-user-role` tanto en el cliente como en el servidor.
+
+---
+
+## ADR 007: Login solo con documento y contraseña
+- **Fecha**: 2026-11-02
+- **Estado**: Aceptada
+- **Contexto**: El login pedía elegir el tipo de cuenta y, para aprendices, la ficha. El backend ya conoce el rol de cada usuario, y pedirlo en el formulario solo agregaba pasos y errores (un aprendiz que marcaba "Instructor" recibía "Credenciales inválidas").
+- **Decisión**: `POST /api/auth/login` recibe `{ document, password }`. El rol sale de `usuarios.rol`, viaja en el JWT y en la respuesta, y el frontend redirige a `#/{rol}/inicio`. Cualquier `accountType` enviado se ignora. El mensaje de error sigue siendo genérico. El registro sí pide tipo de cuenta, pero solo ofrece Aprendiz e Invitado.
+
+## ADR 008: Períodos de ventas "en curso" en hora de Colombia
+- **Fecha**: 2026-11-02
+- **Estado**: Aceptada
+- **Decisión**: En `GET /api/ventas`, Día = hoy, Semana = desde el lunes, Mes = desde el día 1, y trimestre, semestre y año calendario, todos en `America/Bogota`. Se separan almuerzos servidos (incluye gratis), ingresos cobrados (`estado_pago = 'pagado'`) y por cobrar (`'pendiente'`).
+- **Alternativa descartada**: últimos N días (por ejemplo, "Mes" = últimos 30 días), porque no coincide con los cortes que usa el comedor.
+
+## ADR 009: Un pago de deuda marca las ventas más antiguas que alcanza a cubrir
+- **Fecha**: 2026-11-02
+- **Estado**: Aceptada
+- **Contexto**: Pagar la deuda de un instructor no cambiaba el `estado_pago` de sus ventas, así que "por cobrar" en Ventas no cuadraba con la Cartera.
+- **Decisión**: `POST /api/deudas/:id/pagar` corre en una transacción. Tras el abono, siguen pendientes las ventas más recientes cuyo total cubre el saldo restante; las demás pasan a `pagado`. Al saldar la deuda, todas quedan pagadas. Así, el total pendiente de las ventas nunca supera el saldo de la deuda en más de un almuerzo.
+
+## ADR 010: "Reservado" y "Consumido" según la fecha del menú
+- **Fecha**: 2026-11-02
+- **Estado**: Aceptada
+- **Contexto**: La base de datos no registra la entrega física del almuerzo.
+- **Decisión**: Una reserva se muestra como **Reservado** mientras su menú sea de hoy o de un día futuro, y como **Consumido** cuando ese día ya pasó.
+- **Alternativa descartada por ahora**: agregar una marca de entrega (migración nueva y un botón "Entregado" para el Encargado). Queda como mejora si se necesita controlar la entrega.
+
+## ADR 011: Las reservas pendientes de aprendiz se guardan como `efectivo`
+- **Fecha**: 2026-11-02
+- **Estado**: Aceptada
+- **Decisión**: Las reservas nuevas de aprendices no beneficiarios se guardan con `metodo_pago = 'efectivo'` y `estado_pago = 'pendiente'`, porque se pagan en la ventanilla. Antes se guardaban como `saldo`, que no se usa en ningún flujo. La interfaz muestra solo `estado_pago`. No se migraron los datos anteriores.
+
+## ADR 012: Horario de reservas validado en el servidor
+- **Fecha**: 2026-11-02
+- **Estado**: Aceptada
+- **Decisión**: `POST /api/consumos/reservar` solo acepta reservas de 7:00 a. m. a 9:00 p. m. (hora de Colombia) y responde `409` fuera de ese horario. `GET /api/menus/activo` informa `horario`, `reservable` y `motivo_no_reservable` para que el frontend deshabilite el botón con el motivo. Se usa el reloj de Node (`Date`) para poder fijarlo en los tests.
+
+## ADR 013: PostgreSQL local, sin Docker
+- **Fecha**: 2026-11-02
+- **Estado**: Aceptada
+- **Decisión**: Se eliminó `docker-compose.yml`. El desarrollo usa PostgreSQL instalado localmente, y la CI usa un servicio `postgres:16` de GitHub Actions.

@@ -21,7 +21,7 @@ Registro cronológico de tareas, fases, comandos ejecutados y resultados obtenid
    - `backend/src/db/bootstrapAdmin.ts`.
    - `backend/src/db/seed.ts`.
 4. **Infraestructura y Configuración**:
-   - Creado `docker-compose.yml` en la raíz con PostgreSQL 16 Alpine persistente en puerto 5432.
+   - Creado `docker-compose.yml` en la raíz con PostgreSQL 16 Alpine persistente en puerto 5432. *(Eliminado en la Fase 5: el proyecto usa PostgreSQL local, ADR 013).*
    - `backend/.env.example` y `backend/.env` actualizados.
    - Scripts en `backend/package.json` (`prebuild`, `build`, `migrate`, `seed`).
 - **Commit**: `feat(db): migraciones versionadas postgresql, docker-compose, runner idempotente y bootstrap admin` (7a2424d)
@@ -93,11 +93,38 @@ Registro cronológico de tareas, fases, comandos ejecutados y resultados obtenid
 ---
 
 ## FASE 3: Frontend (React 19 + Vite + TypeScript)
-- **Estado**: Pendiente
+- **Estado**: Completada en la Fase 5 (ver abajo)
 - **Objetivo**: HashRouter, rutas protegidas por rol, code splitting lazy(), conexión con React Query en todas las pantallas y corrección de oxlint.
 
 ---
 
 ## FASE 4: Despliegue, CI/CD y Calidad
-- **Estado**: Pendiente
+- **Estado**: Completada en la Fase 5 (ver abajo)
 - **Objetivo**: `render.yaml` configurado, GitHub Actions con `npm ci` y validación de PRs, limpieza de raíz, pruebas y README.
+
+---
+
+## FASE 5: Endpoints faltantes, integración entre roles, rutas, CI y despliegue
+- **Fecha**: 2026-11-02
+- **Rama**: `julianDEV-front`, integrada a `main`.
+
+### Backend (`ba54850`)
+- Login solo con documento y contraseña; el rol sale de la BD (ADR 007). `login`, `me`, `register` y `perfil` devuelven `es_beneficiario`.
+- Rutas de beneficiarios montadas (solo Encargado), `GET /api/dashboard/encargado` y `GET /api/consumos/resumen`.
+- Reservas con horario 7:00–21:00 (ADR 012), el Encargado no reserva, pendientes de aprendiz como `efectivo` (ADR 011).
+- `GET /api/menus/activo` informa `mi_reserva`, `horario`, `reservable` y `motivo_no_reservable`.
+- Consumos con estado `RESERVED`/`CONSUMED` (ADR 010).
+- Reporte de ventas con períodos en curso, totales separados y gráfico completo (ADR 008).
+- Pago de deudas transaccional que marca las ventas cubiertas (ADR 009).
+- Grupos con conteos reales y sin vocero; el control de pago solo acepta ventas de aprendices.
+- Tests de integración por módulo y un flujo completo entre roles (`flujo.integration.test.ts`).
+
+### Frontend (`de87ca4`, `41cae31`)
+- `HashRouter` con lazy loading y `ProtectedRoute`; login sin selector de tipo de cuenta; fondo y logo con `import.meta.env.BASE_URL`; TypeScript `strict`.
+- Todos los paneles conectados a la API con React Query, sin datos mock (detalle en `frontend/docs/CHANGELOG.md`).
+- Vitest + Testing Library.
+
+### Despliegue y calidad
+- `.github/workflows/ci.yml` con servicio `postgres:16`: lint, build y tests de backend y frontend.
+- `render.yaml` con base de datos, `DATABASE_URL` vía `fromDatabase`, `JWT_SECRET` generado y migraciones al arrancar.
+- Se eliminó `docker-compose.yml` (ADR 013).

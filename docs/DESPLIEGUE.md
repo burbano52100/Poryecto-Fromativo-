@@ -6,24 +6,29 @@ Esta guía detalla los pasos para desplegar el backend en **Render** y el fronte
 
 ## 1. Despliegue del Backend en Render
 
-### 1.1 Configuración de Base de Datos PostgreSQL
-1. En Render, crea una instancia de PostgreSQL mediante **New + → PostgreSQL** (o utilizando el archivo `render.yaml` como Blueprint).
-2. **Consideración de límites gratuitos en Render**:
-   - La base de datos gratuita de Render expira a los 30 días.
-   - **Alternativas permanentes y gratuitas**: Puedes usar una base gratuita en [Neon](https://neon.tech) o [Supabase](https://supabase.com) y pegar la URL de conexión en la variable de entorno `DATABASE_URL` del servicio backend en Render.
+### 1.1 Blueprint (`render.yaml`)
+La forma recomendada es **New + → Blueprint** apuntando a este repositorio. El archivo `render.yaml` de la raíz:
+- Crea la base de datos `gastrosena-db` (PostgreSQL, plan free).
+- Conecta `DATABASE_URL` del servicio con `fromDatabase` (`name: gastrosena-db`, `property: connectionString`).
+- Genera `JWT_SECRET` automáticamente (`generateValue: true`).
+- Pide en el panel `ADMIN_DOCUMENT`, `ADMIN_PASSWORD` y `ADMIN_EMAIL` (`sync: false`), que nunca se versionan.
 
-### 1.2 Configuración del Servicio Web en Render
-- **Environment**: Node
+> La base de datos gratuita de Render expira a los 30 días. Como alternativa permanente se puede usar Neon o Supabase: en ese caso se reemplaza `DATABASE_URL` por la URL externa en el panel de Render.
+
+### 1.2 Servicio Web
+- **Runtime**: Node
 - **Root Directory**: `backend`
-- **Build Command**: `npm ci && npm run build`
-- **Start Command**: `node dist/db/migrate.js && node dist/index.js`
-  *(Aplica migraciones pendientes automáticamente antes de levantar el servidor Express).*
+- **Build Command**: `npm ci --include=dev && npm run build`
+  *(`--include=dev` es necesario: con `NODE_ENV=production`, npm omitiría `typescript` y `tsx`, que el build usa).*
+- **Start Command**: `npm run migrate && npm run start`
+  *(El plan gratuito no tiene pre-deploy: las migraciones, que son idempotentes, se aplican en cada arranque y luego se levanta Express).*
+- **Health Check Path**: `/api/health`
 
 ### 1.3 Variables de Entorno en Render
 | Variable | Descripción | Ejemplo / Valor |
 |---|---|---|
 | `DATABASE_URL` | Cadena de conexión a PostgreSQL | `postgres://user:pass@host/gastrosena` |
-| `JWT_SECRET` | Clave secreta para firmar tokens JWT (mínimo 32 caracteres) | `genera_un_string_aleatorio_seguro` |
+| `JWT_SECRET` | Clave para firmar los JWT (Render la genera con el Blueprint) | `generateValue: true` |
 | `FRONTEND_URL` | URL pública de tu frontend en GitHub Pages | `https://burbano52100.github.io` |
 | `PORT` | Puerto HTTP (Render lo asigna en 10000) | `10000` |
 | `NODE_ENV` | Modo de entorno | `production` |
@@ -63,5 +68,13 @@ El frontend se despliega automáticamente en cada `push` a la rama `main` a trav
    { "status": "OK", "database": "connected", "system": "GastroSENA API" }
    ```
 2. Abre la URL de GitHub Pages (ej. `https://burbano52100.github.io/Poryecto-Fromativo-/#/login`).
-3. Inicia sesión con las credenciales de tu primer encargado (`ADMIN_DOCUMENT` y `ADMIN_PASSWORD`).
+3. Inicia sesión solo con documento y contraseña del primer encargado (`ADMIN_DOCUMENT` y `ADMIN_PASSWORD`); la app abre `#/encargado/inicio`.
 4. Navega entre las pestañas y recarga la página. Gracias a `HashRouter`, la ruta se mantendrá sin arrojar 404.
+
+---
+
+## 4. Integración continua
+
+`.github/workflows/ci.yml` corre en cada push a `main` y en cada pull request:
+- **Backend:** `npm ci`, `npm run lint`, `npm run build` y `npm test` contra un servicio `postgres:16` (`DATABASE_URL_TEST` apunta a `gastrosena_test`).
+- **Frontend:** `npm ci`, `npm run lint`, `npm run build` y `npm test`.

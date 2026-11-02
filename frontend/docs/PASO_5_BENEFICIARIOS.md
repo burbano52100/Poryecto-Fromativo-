@@ -16,7 +16,7 @@ Administrar el programa de subsidio escolar que otorga alimentación al **100% d
 
 1. **El precio $0 lo fija exclusivamente el backend:**  
    El frontend **nunca** calcula ni envía un valor monetario en la solicitud de reserva. El servidor inspecciona la condición `usuarios.es_beneficiario` en la base de datos:
-   - Si es beneficiario $\rightarrow$ asigna `precio_cobrado = 0` y `metodo_pago = 'cortesia'` o `'saldo'`.
+   - Si es beneficiario $\rightarrow$ asigna `precio_cobrado = 0`, `metodo_pago = 'cortesia'` y `estado_pago = 'gratis'`.
    - Si no es beneficiario $\rightarrow$ asigna la tarifa regular de `$5.000 COP`.
    El frontend únicamente refleja este estado en la interfaz para proveer retroalimentación visual al usuario.
 2. **Sin roles separados:**  
@@ -120,8 +120,10 @@ El frontend interactúa a través del hook `useBeneficiarios.ts` con la siguient
 
 ---
 
-## 📦 6. Estado de Implementación y Modo Mock
+## 📦 6. Estado de Implementación
 
-- **Cliente HTTP listo:** El hook `useBeneficiarios.ts` utiliza `apiClient` (`axios`) apuntando a los endpoints reales.
-- **Fallback persistente en LocalStorage:** Debido a que las rutas `beneficiarios.routes.ts` aún no están montadas en `app.ts` del backend (ver [PENDIENTES_BACKEND.md](./PENDIENTES_BACKEND.md)), el hook captura el error de red o 404 y recurre al almacenamiento local `gastrosena_estudiantes_data`.
-- **Transición cero código:** Cuando el backend monte las rutas, el frontend consumirá automáticamente la base de datos sin requerir modificaciones en la UI.
+- **Conectado al backend real:** `hooks/useBeneficiarios.ts` usa solo la API. Se eliminó el fallback a `localStorage`.
+- **Rutas montadas:** `backend/src/routes/beneficiarios.routes.ts` (solo rol `encargado`), con validación Zod y tests de integración (`beneficiarios.integration.test.ts`).
+- **Panel del Aprendiz:** el estado de beneficiario se lee de `GET /api/menus/activo` (`es_beneficiario`, `precio_aplicable`), que consulta la base de datos en cada llamada. Si el Encargado asigna o quita el beneficio, el aprendiz lo ve al refrescar el menú, sin volver a iniciar sesión.
+- **Reserva con un clic:** `ReservaAlmuerzoCard` envía `POST /api/consumos/reservar` solo con el `menu_id`; nunca envía un precio.
+- **Contrato:** `email` puede venir `null` desde la API; el hook lo normaliza a `''` para el buscador.

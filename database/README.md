@@ -4,7 +4,7 @@ Esta carpeta reúne la documentación y el diseño relacional del modelo de dato
 
 ## Motor de Base de Datos
 
-El único motor oficial del proyecto es **PostgreSQL 14+** (compatible con Docker, Render PostgreSQL, Supabase y Neon).
+El único motor oficial del proyecto es **PostgreSQL 14+**, instalado localmente para desarrollo (sin Docker) y Render PostgreSQL en producción.
 
 > **Nota de arquitectura:**
 > Las migraciones canónicas y ejecutables residen en **`backend/src/db/migrations/`** (archivos numerados `001_initial_schema.sql`, etc.), y se ejecutan automáticamente a través del runner `backend/src/db/migrate.ts` (`npm run migrate`).
