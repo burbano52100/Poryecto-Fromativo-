@@ -67,10 +67,6 @@ El rol del usuario se extrae internamente del JWT verificado. Los encabezados no
 - **Respuesta 200**: `{ "user": { ...igual que login }, "activeSession": true }`
 - **Errores**: `401`.
 
-### `POST /api/auth/facial-login`
-- **Restricción**: Simulación de desarrollo. Solo responde si `ENABLE_FACIAL_DEMO=true` y `NODE_ENV !== 'production'`; si no, `403`.
-- **Body**: `{ "document": "1005678901" }`
-
 ### `GET /api/auth/users`
 - **Rol requerido**: `encargado`
 - **Respuesta 200**: Array de usuarios sin contraseñas ni hashes.

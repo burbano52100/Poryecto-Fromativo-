@@ -87,3 +87,10 @@ describe('GET /api/auth/me', () => {
     assert.strictEqual(res.body.user.es_beneficiario, true);
   });
 });
+
+describe('POST /api/auth/facial-login', () => {
+  it('ya no existe: el login facial simulado se eliminó', async () => {
+    const res = await request(app).post('/api/auth/facial-login').send({ document: '7000000001' });
+    assert.strictEqual(res.status, 404);
+  });
+});

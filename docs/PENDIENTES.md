@@ -29,7 +29,7 @@ Estado al **2 de noviembre de 2026**, después de la Fase 5. Lo ya hecho está e
 - [ ] Revisión visual en navegador de los 4 paneles (celular y escritorio). La lógica está cubierta por tests y por una prueba de humo contra la API, pero la apariencia no se revisó en un navegador.
 
 ## Mejoras identificadas (fuera del alcance de la Fase 5)
-- [ ] **Reconocimiento facial real** (Teachable Machine) con verificación de vida (mirar arriba, girar, parpadear). Hoy `POST /api/auth/facial-login` es una simulación de desarrollo y la interfaz no lo muestra.
+- [ ] **Reconocimiento facial real** (Teachable Machine) con verificación de vida (mirar arriba, girar, parpadear). La tabla `reconocimiento_facial` ya existe en la base de datos.
 - [ ] **Marca de entrega del almuerzo**: hoy "Consumido" se deduce de la fecha del menú (ADR 010).
 - [ ] **Compra de invitado**: se registra como `pagado` al confirmarla, aunque se paga en la caja. Si se quiere controlar, se necesita una vista de cobro para invitados (no tienen ficha y no aparecen en Grupos).
 - [ ] **Visitas institucionales**: el backend y `VisitasInstitucionalesPage.tsx` existen, pero la página no está enlazada en el menú del Encargado.

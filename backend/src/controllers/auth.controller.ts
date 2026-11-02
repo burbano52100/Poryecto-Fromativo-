@@ -190,69 +190,6 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
   }
 };
 
-export const facialLogin = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const facialDemoEnabled = process.env.ENABLE_FACIAL_DEMO === 'true';
-    const isProd = process.env.NODE_ENV === 'production';
-    if (!facialDemoEnabled || isProd) {
-      return res.status(403).json({
-        message: 'El reconocimiento biométrico facial simulado está desactivado.',
-      });
-    }
-
-    const { document = '1005678901' } = req.body;
-
-    const userRes = await query(
-      `SELECT u.id, u.nombre, u.cedula, u.email, u.rol, u.activo, u.es_beneficiario, f.id as ficha_id, f.codigo_ficha
-       FROM usuarios u
-       LEFT JOIN fichas f ON u.ficha_id = f.id
-       WHERE u.cedula = $1 LIMIT 1;`,
-      [document]
-    );
-
-    const user = userRes.rows[0];
-    if (!user) {
-      return res.status(404).json({ message: `No se encontró usuario con el documento ${document} para biometría demo.` });
-    }
-
-    if (!user.activo) {
-      return res.status(403).json({ message: 'Cuenta de usuario inactiva.' });
-    }
-
-    const jwtSecret = process.env.JWT_SECRET!;
-    const token = jwt.sign(
-      {
-        id: user.id,
-        document: user.cedula,
-        name: user.nombre,
-        role: user.rol,
-        email: user.email,
-        ficha_id: user.ficha_id,
-      },
-      jwtSecret,
-      { expiresIn: '7d' }
-    );
-
-    return res.json({
-      token,
-      user: {
-        id: user.id,
-        document: user.cedula,
-        name: user.nombre,
-        role: user.rol,
-        email: user.email || '',
-        ficha: user.codigo_ficha || undefined,
-        status: user.activo ? 'ACTIVE' : 'INACTIVE',
-        es_beneficiario: Boolean(user.es_beneficiario),
-      },
-      message: 'Autenticación biométrica exitosa (Modo Simulación Dev)',
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-
 export const getMe = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user?.id) {
