@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { query } from '../db/index.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { parseId } from '../utils/validacion.js';
 
 export const getSugerencias = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
@@ -33,6 +34,7 @@ export const getSugerencias = async (req: AuthenticatedRequest, res: Response, n
         day: 'numeric',
         month: 'short',
         year: 'numeric',
+        timeZone: 'America/Bogota',
       });
 
       const roleDisplay = row.role
@@ -45,6 +47,7 @@ export const getSugerencias = async (req: AuthenticatedRequest, res: Response, n
 
       return {
         id: row.id,
+        fecha: new Date(row.fecha).toISOString(),
         subject: row.subject,
         message: row.message,
         author: row.author || 'Anónimo',
@@ -63,8 +66,17 @@ export const getSugerencias = async (req: AuthenticatedRequest, res: Response, n
 };
 
 const createSugerenciaSchema = z.object({
-  asunto: z.string().min(3, 'El asunto debe tener al menos 3 caracteres'),
-  mensaje: z.string().min(10, 'El mensaje debe tener al menos 10 caracteres'),
+  asunto: z.string().trim().min(3, 'El asunto debe tener al menos 3 caracteres').max(150, 'El asunto admite máximo 150 caracteres'),
+  mensaje: z.string().trim().min(10, 'El mensaje debe tener al menos 10 caracteres').max(2000, 'El mensaje admite máximo 2000 caracteres'),
+});
+
+const responderSchema = z.object({
+  respuesta: z
+    .string()
+    .trim()
+    .min(3, 'La respuesta debe tener al menos 3 caracteres')
+    .max(1000, 'La respuesta admite máximo 1000 caracteres')
+    .default('Atendida por la administración del comedor.'),
 });
 
 export const createSugerencia = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -88,7 +100,7 @@ export const createSugerencia = async (req: AuthenticatedRequest, res: Response,
       `INSERT INTO sugerencias (usuario_id, ficha_id, asunto, mensaje, estado)
        VALUES ($1, $2, $3, $4, 'pendiente')
        RETURNING *;`,
-      [userId, fichaId, data.asunto.trim(), data.mensaje.trim()]
+      [userId, fichaId, data.asunto, data.mensaje]
     );
 
     return res.status(201).json({
@@ -105,8 +117,8 @@ export const createSugerencia = async (req: AuthenticatedRequest, res: Response,
 
 export const responderSugerencia = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
-    const { respuesta = 'Atendida por la administración del comedor.' } = req.body;
+    const id = parseId(req.params.id, 'El identificador de la sugerencia no es válido.');
+    const { respuesta } = responderSchema.parse(req.body ?? {});
 
     const updateRes = await query(
       `UPDATE sugerencias
@@ -116,7 +128,7 @@ export const responderSugerencia = async (req: AuthenticatedRequest, res: Respon
            atendida_en = NOW()
        WHERE id = $3
        RETURNING *;`,
-      [respuesta.trim(), req.user?.id || null, id]
+      [respuesta, req.user?.id || null, id]
     );
 
     if (updateRes.rows.length === 0) {

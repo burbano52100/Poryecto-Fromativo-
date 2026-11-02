@@ -5,11 +5,10 @@ import { z } from 'zod';
 import { query } from '../db/index.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 
+// El rol no se pide: sale de usuarios.rol en la base de datos.
 const loginSchema = z.object({
-  accountType: z.enum(['aprendiz', 'instructor', 'encargado', 'invitado']),
-  document: z.string().min(4, 'El documento debe tener al menos 4 dígitos'),
+  document: z.string().trim().min(4, 'El documento debe tener al menos 4 dígitos'),
   password: z.string().min(1, 'La contraseña es obligatoria'),
-  ficha: z.string().optional(),
 });
 
 const registerSchema = z
@@ -36,11 +35,10 @@ const registerSchema = z
 
 export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const parsed = loginSchema.parse(req.body);
-    const { accountType, document, password, ficha } = parsed;
+    const { document, password } = loginSchema.parse(req.body);
 
     const userRes = await query(
-      `SELECT u.id, u.nombre, u.cedula, u.email, u.password_hash, u.rol, u.activo, u.saldo,
+      `SELECT u.id, u.nombre, u.cedula, u.email, u.password_hash, u.rol, u.activo, u.es_beneficiario,
               f.id as ficha_id, f.codigo_ficha
        FROM usuarios u
        LEFT JOIN fichas f ON u.ficha_id = f.id
@@ -50,15 +48,11 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
 
     const user = userRes.rows[0];
 
-    // Generic failure for any invalid credentials or state
+    // Mensaje genérico: no revela si falló el documento o la contraseña
     const genericError = () => res.status(401).json({ message: 'Credenciales inválidas' });
 
     if (!user) return genericError();
     if (!user.activo) return genericError();
-    if (user.rol !== accountType) return genericError();
-    if (accountType === 'aprendiz' && ficha && user.codigo_ficha && user.codigo_ficha !== ficha) {
-      return genericError();
-    }
     if (!user.password_hash) return genericError();
 
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
@@ -90,6 +84,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
         email: user.email || '',
         ficha: user.codigo_ficha || undefined,
         status: user.activo ? 'ACTIVE' : 'INACTIVE',
+        es_beneficiario: Boolean(user.es_beneficiario),
       },
       message: 'Inicio de sesión exitoso',
     });
@@ -137,10 +132,10 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
         assignedCodigoFicha = fichaRes.rows[0].codigo_ficha;
       } else {
         const newFichaRes = await query(
-          `INSERT INTO fichas (codigo_ficha, programa, vocero, jornada, cantidad_estudiantes)
-           VALUES ($1, $2, $3, 'mañana', 1)
+          `INSERT INTO fichas (codigo_ficha, programa, jornada, cantidad_estudiantes)
+           VALUES ($1, $2, 'mañana', 1)
            RETURNING id, codigo_ficha;`,
-          [data.ficha.trim(), 'Programa de Formación General SENA', data.name]
+          [data.ficha.trim(), 'Programa de Formación General SENA']
         );
         assignedFichaId = newFichaRes.rows[0].id;
         assignedCodigoFicha = newFichaRes.rows[0].codigo_ficha;
@@ -186,6 +181,7 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
         email: newUser.email || '',
         ficha: assignedCodigoFicha,
         status: newUser.activo ? 'ACTIVE' : 'INACTIVE',
+        es_beneficiario: false,
       },
       message: '¡Registro exitoso! Cuenta creada en la base de datos.',
     });
@@ -207,7 +203,7 @@ export const facialLogin = async (req: Request, res: Response, next: NextFunctio
     const { document = '1005678901' } = req.body;
 
     const userRes = await query(
-      `SELECT u.id, u.nombre, u.cedula, u.email, u.rol, u.activo, f.id as ficha_id, f.codigo_ficha
+      `SELECT u.id, u.nombre, u.cedula, u.email, u.rol, u.activo, u.es_beneficiario, f.id as ficha_id, f.codigo_ficha
        FROM usuarios u
        LEFT JOIN fichas f ON u.ficha_id = f.id
        WHERE u.cedula = $1 LIMIT 1;`,
@@ -247,6 +243,7 @@ export const facialLogin = async (req: Request, res: Response, next: NextFunctio
         email: user.email || '',
         ficha: user.codigo_ficha || undefined,
         status: user.activo ? 'ACTIVE' : 'INACTIVE',
+        es_beneficiario: Boolean(user.es_beneficiario),
       },
       message: 'Autenticación biométrica exitosa (Modo Simulación Dev)',
     });
@@ -263,7 +260,7 @@ export const getMe = async (req: AuthenticatedRequest, res: Response, next: Next
     }
 
     const userRes = await query(
-      `SELECT u.id, u.nombre, u.cedula, u.email, u.rol, u.saldo, u.activo, f.id as ficha_id, f.codigo_ficha
+      `SELECT u.id, u.nombre, u.cedula, u.email, u.rol, u.activo, u.es_beneficiario, f.id as ficha_id, f.codigo_ficha
        FROM usuarios u
        LEFT JOIN fichas f ON u.ficha_id = f.id
        WHERE u.id = $1 LIMIT 1;`,
@@ -284,6 +281,7 @@ export const getMe = async (req: AuthenticatedRequest, res: Response, next: Next
         email: user.email || '',
         ficha: user.codigo_ficha || undefined,
         status: user.activo ? 'ACTIVE' : 'INACTIVE',
+        es_beneficiario: Boolean(user.es_beneficiario),
       },
       activeSession: true,
     });

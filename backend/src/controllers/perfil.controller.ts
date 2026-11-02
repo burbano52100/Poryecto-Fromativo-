@@ -53,10 +53,16 @@ export const updatePerfil = async (req: AuthenticatedRequest, res: Response, nex
     const newFichaId = assignedFichaId || currentUser.ficha_id;
 
     const updateRes = await query(
-      `UPDATE usuarios
-       SET nombre = $1, email = $2, ficha_id = $3, updated_at = NOW()
-       WHERE id = $4
-       RETURNING id, nombre as name, cedula as document, email, rol as role, activo;`,
+      `WITH actualizado AS (
+         UPDATE usuarios
+         SET nombre = $1, email = $2, ficha_id = $3, updated_at = NOW()
+         WHERE id = $4
+         RETURNING id, nombre, cedula, email, rol, activo, es_beneficiario, ficha_id
+       )
+       SELECT a.id, a.nombre as name, a.cedula as document, a.email, a.rol as role, a.activo,
+              a.es_beneficiario, f.codigo_ficha
+       FROM actualizado a
+       LEFT JOIN fichas f ON f.id = a.ficha_id;`,
       [newName, newEmail, newFichaId, userId]
     );
 
@@ -70,8 +76,9 @@ export const updatePerfil = async (req: AuthenticatedRequest, res: Response, nex
         name: updated.name,
         role: updated.role,
         email: updated.email || '',
-        ficha: assignedCodigoFicha || undefined,
+        ficha: assignedCodigoFicha || updated.codigo_ficha || undefined,
         status: updated.activo ? 'ACTIVE' : 'INACTIVE',
+        es_beneficiario: Boolean(updated.es_beneficiario),
       },
     });
   } catch (error) {

@@ -14,6 +14,8 @@ import sugerenciasRoutes from './routes/sugerencias.routes.js';
 import institucionesRoutes from './routes/instituciones.routes.js';
 import visitasRoutes from './routes/visitas.routes.js';
 import perfilRoutes from './routes/perfil.routes.js';
+import beneficiariosRoutes from './routes/beneficiarios.routes.js';
+import dashboardRoutes from './routes/dashboard.routes.js';
 import healthRoutes from './routes/health.routes.js';
 import { getInstructoresList } from './controllers/instituciones.controller.js';
 import { authenticateToken } from './middleware/auth.middleware.js';
@@ -77,6 +79,8 @@ export const createApp = (): Express => {
   app.use('/api/visitas', visitasRoutes);
   app.get('/api/instructores', authenticateToken, getInstructoresList);
   app.use('/api/perfil', perfilRoutes);
+  app.use('/api/beneficiarios', beneficiariosRoutes);
+  app.use('/api/dashboard', dashboardRoutes);
 
   // 6. Manejo de rutas inexistentes (404)
   app.use((_req, res) => {

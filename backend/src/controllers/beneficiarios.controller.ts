@@ -1,6 +1,8 @@
 import { Response, NextFunction } from 'express';
+import { z } from 'zod';
 import { query } from '../db/index.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { parseId } from '../utils/validacion.js';
 
 /**
  * GET /api/beneficiarios/estudiantes
@@ -63,14 +65,18 @@ export const getBeneficiarios = async (_req: AuthenticatedRequest, res: Response
  * Asigna o revoca el beneficio de almuerzo a $0 para un aprendiz.
  * Acceso: encargado
  */
+const toggleSchema = z.object({
+  es_beneficiario: z.boolean({ message: "El campo 'es_beneficiario' debe ser booleano (true o false)." }),
+});
+
 export const toggleBeneficiario = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const { usuarioId } = req.params;
-    const { es_beneficiario } = req.body;
-
-    if (typeof es_beneficiario !== 'boolean') {
+    const usuarioId = parseId(req.params.usuarioId, 'El identificador del aprendiz no es válido.');
+    const parsed = toggleSchema.safeParse(req.body);
+    if (!parsed.success) {
       return res.status(400).json({ message: "El campo 'es_beneficiario' debe ser booleano (true o false)." });
     }
+    const { es_beneficiario } = parsed.data;
 
     const updateRes = await query(
       `UPDATE usuarios

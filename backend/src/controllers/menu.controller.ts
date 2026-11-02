@@ -2,6 +2,8 @@ import { Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { query } from '../db/index.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { estadoHorario, MENSAJE_FUERA_DE_HORARIO } from '../utils/horario.js';
+import { parseId } from '../utils/validacion.js';
 
 const menuSchema = z.object({
   nombre: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
@@ -71,12 +73,40 @@ export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, ne
       }
     }
 
+    // 3. Reserva del usuario para este menú y si todavía puede reservar
+    const esMenuReal = menu.id !== 'default_menu';
+    let miReserva: { id: string; estado_pago: string; precio: number } | null = null;
+
+    if (req.user?.id && esMenuReal) {
+      const reservaRes = await query(
+        `SELECT id, estado_pago, precio_cobrado::float8 as precio
+         FROM ventas
+         WHERE usuario_id = $1 AND menu_id = $2 AND estado = 'completada'
+         LIMIT 1;`,
+        [req.user.id, menu.id]
+      );
+      miReserva = reservaRes.rows[0] ?? null;
+    }
+
+    const horario = estadoHorario();
+    const hayCupo = Number(menu.cantidad_disponible) - Number(menu.cantidad_vendida) > 0;
+
+    let motivoNoReservable: string | null = null;
+    if (!esMenuReal) motivoNoReservable = 'El comedor aún no ha publicado el menú de hoy.';
+    else if (miReserva) motivoNoReservable = 'Ya tienes tu almuerzo reservado para este menú.';
+    else if (!hayCupo) motivoNoReservable = 'El cupo de almuerzos para este menú se encuentra agotado.';
+    else if (!horario.abierto) motivoNoReservable = MENSAJE_FUERA_DE_HORARIO;
+
     return res.json({
       ...menu,
       precio_aprendiz: Number(menu.precio_aprendiz),
       precio_invitado: Number(menu.precio_invitado),
       precio_aplicable: precioAplicable,
       es_beneficiario: esBeneficiario,
+      mi_reserva: miReserva,
+      horario,
+      reservable: motivoNoReservable === null,
+      motivo_no_reservable: motivoNoReservable,
     });
   } catch (error) {
     next(error);
@@ -151,7 +181,7 @@ export const createMenu = async (req: AuthenticatedRequest, res: Response, next:
 
 export const updateMenuStatus = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = parseId(req.params.id, 'El identificador del menú no es válido.');
     const { estado } = req.body;
 
     if (!['borrador', 'activo', 'agotado', 'completado'].includes(estado)) {
