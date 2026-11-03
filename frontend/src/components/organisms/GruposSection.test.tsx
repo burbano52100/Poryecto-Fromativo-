@@ -58,4 +58,27 @@ describe('Grupos del Encargado', () => {
     await userEvent.click(within(pagoCarlos).getByRole('button', { name: 'Pagado' }));
     expect(patch).toHaveBeenCalledWith('/grupos/ventas/venta-carlos/pago', { pagado: true });
   });
+
+  it('ordena las fichas de la que más reservó hoy a la que menos', async () => {
+    const ficha = (id: string, reservasHoy: number, pendientesHoy: number): Grupo => ({
+      ...GRUPO,
+      id,
+      ficha: id,
+      program: `Programa ${id}`,
+      reservasHoy,
+      pendientesHoy,
+    });
+    // La API las devuelve por número de ficha
+    vi.spyOn(apiClient, 'get').mockResolvedValue(
+      respuesta([ficha('1001', 0, 0), ficha('1002', 7, 0), ficha('1003', 3, 1), ficha('1004', 7, 2)])
+    );
+    renderConProveedores(<GruposSection />);
+
+    const lista = await screen.findByRole('list', { name: 'Fichas ordenadas por reservas de hoy' });
+    const programas = within(lista)
+      .getAllByRole('heading', { level: 3 })
+      .map((h) => h.textContent);
+    // 1004 y 1002 empatan en 7: va primero la que tiene más pendientes de pago
+    expect(programas).toEqual(['Programa 1004', 'Programa 1002', 'Programa 1003', 'Programa 1001']);
+  });
 });

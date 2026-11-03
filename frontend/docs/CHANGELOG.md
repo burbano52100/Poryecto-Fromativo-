@@ -4,6 +4,23 @@ Registro cronológico detallado de arquitectura, características, refactorizaci
 
 ---
 
+## [2026-11-02] - Grupos: una ficha por fila, ordenadas por reservas de hoy
+
+### Rama: `feat/grupos-por-reservas`
+
+- **Motivo:** Las fichas salían en dos columnas angostas y en orden de número de ficha. Al encargado le sirve ver primero las que más almuerzos reservaron.
+- **Cambios realizados:**
+  - `GruposSection.tsx`:
+    - Cada ficha ocupa una fila a lo ancho, con su puesto (1, 2, 3...).
+    - A la izquierda van ficha, jornada, programa, instructor y aprendices.
+    - A la derecha, tres cifras grandes: "Reservas hoy", "Al día" y "Sin pagar" (en rojo si hay pendientes).
+    - En el celular las cifras van debajo y se reparten el ancho.
+  - `ordenarPorReservas`: de más a menos reservas de hoy. Si empatan, primero la que tiene más pendientes de pago, y luego por número de ficha. El orden se actualiza solo con el refresco de cada 30 s.
+  - El buscador es más ancho, para que se lea completo "Buscar por ficha, programa o instructor...".
+- **Tests:** `GruposSection.test.tsx` comprueba el orden con fichas que llegan desordenadas, incluido el empate.
+
+---
+
 ## [2026-11-02] - Fase 5: login simplificado, HashRouter y paneles conectados a la API
 
 ### Rama: `julianDEV-front` (commits `de87ca4` y `41cae31`)
