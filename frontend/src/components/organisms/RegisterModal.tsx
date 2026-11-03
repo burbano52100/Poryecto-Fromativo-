@@ -7,6 +7,7 @@ import { useRegisterMutation } from '../../hooks/useAuth';
 import { AccountTypeSelector } from '../molecules/AccountTypeSelector';
 import { FormField } from '../molecules/FormField';
 import { Button } from '../atoms/Button';
+import { soloNumeros } from '../../lib/numeros';
 
 interface RegisterModalProps {
   isOpen: boolean;
@@ -131,7 +132,7 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
               required
               icon={<IdCard className="w-4 h-4" />}
               error={errors.document?.message}
-              {...register('document')}
+              {...soloNumeros(register('document'), 'entero')}
             />
 
             {currentAccountType === 'aprendiz' && (

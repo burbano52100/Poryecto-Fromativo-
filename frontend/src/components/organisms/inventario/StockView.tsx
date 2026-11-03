@@ -28,6 +28,7 @@ import {
   type SalidaForm,
 } from '../../../schemas/inventario.schema';
 import { pesos } from '../../../lib/formato';
+import { soloNumeros } from '../../../lib/numeros';
 import type { EstadoMaterial, Material } from '../../../types/api';
 
 const COLOR_ESTADO: Record<EstadoMaterial, 'green' | 'amber' | 'red' | 'blue'> = {
@@ -76,9 +77,9 @@ const FormularioMaterial = ({ categorias, onListo }: { categorias: string[]; onL
         </datalist>
         <FormField label="Unidad" required placeholder="Kg, Litros, Unidades" error={errors.unit?.message} {...register('unit')} />
         <FormField label="Vencimiento" type="date" error={errors.expiry?.message} {...register('expiry')} />
-        <FormField label="Stock inicial" required inputMode="decimal" error={errors.stock?.message} {...register('stock')} />
-        <FormField label="Stock mínimo" required inputMode="decimal" error={errors.stock_minimo?.message} {...register('stock_minimo')} />
-        <FormField label="Costo unitario" required inputMode="decimal" error={errors.costo_unitario?.message} {...register('costo_unitario')} />
+        <FormField label="Stock inicial" required error={errors.stock?.message} {...soloNumeros(register('stock'))} />
+        <FormField label="Stock mínimo" required error={errors.stock_minimo?.message} {...soloNumeros(register('stock_minimo'))} />
+        <FormField label="Costo unitario" required error={errors.costo_unitario?.message} {...soloNumeros(register('costo_unitario'))} />
       </div>
       <div className="pt-2 flex justify-end">
         <Button type="submit" variant="primary" isLoading={crear.isPending} className="font-bold">
@@ -108,13 +109,13 @@ const FormularioEntrada = ({ material, onListo }: { material: Material; onListo:
         Stock actual: <span className="font-bold">{material.stock} {material.unit}</span>
       </p>
       {entrada.isError && <ErrorAlert error={entrada.error} titulo="No se pudo registrar la entrada" />}
-      <FormField label={`Cantidad (${material.unit})`} required inputMode="decimal" error={errors.cantidad?.message} {...register('cantidad')} />
+      <FormField label={`Cantidad (${material.unit})`} required error={errors.cantidad?.message} {...soloNumeros(register('cantidad'))} />
       <FormField
         label="Nuevo costo unitario"
-        inputMode="decimal"
+       
         placeholder={`Actual: ${pesos(material.costo)}`}
         error={errors.costo_unitario?.message}
-        {...register('costo_unitario')}
+        {...soloNumeros(register('costo_unitario'))}
       />
       <div className="pt-2 flex justify-end">
         <Button type="submit" variant="primary" isLoading={entrada.isPending} className="font-bold">
@@ -144,7 +145,7 @@ const FormularioSalida = ({ material, onListo }: { material: Material; onListo: 
         Stock actual: <span className="font-bold">{material.stock} {material.unit}</span>
       </p>
       {salida.isError && <ErrorAlert error={salida.error} titulo="No se pudo registrar la salida" />}
-      <FormField label={`Cantidad (${material.unit})`} required inputMode="decimal" error={errors.cantidad?.message} {...register('cantidad')} />
+      <FormField label={`Cantidad (${material.unit})`} required error={errors.cantidad?.message} {...soloNumeros(register('cantidad'))} />
       <FormField label="Concepto" required error={errors.concepto?.message} {...register('concepto')} />
       <div className="pt-2 flex justify-end">
         <Button type="submit" variant="primary" isLoading={salida.isPending} className="font-bold bg-red-600 hover:bg-red-700 shadow-red-600/30">
