@@ -23,6 +23,7 @@ import type { User as UserType } from '../../schemas/auth.schema';
 import { SidebarNavItem } from '../molecules/SidebarNavItem';
 import { SidebarUserProfile } from '../molecules/SidebarUserProfile';
 import { useResumenConsumos } from '../../hooks/useConsumos';
+import { useResumenEncargado } from '../../hooks/useVentas';
 
 export type SectionType =
   | 'inicio'
@@ -73,6 +74,11 @@ export const Sidebar = ({
   // Conteo de almuerzos para el badge de "Mis Fichas" (aprendiz) y "Consumos" (instructor)
   const { data: resumen } = useResumenConsumos(user.role === 'aprendiz' || isInstructor);
   const totalLunchesCount = resumen?.totalAlmuerzos;
+
+  // Pendientes del Encargado: los mismos datos del encabezado; sin badge cuando no hay ninguno
+  const { data: resumenEncargado } = useResumenEncargado(isEncargado);
+  const deudasPendientes = resumenEncargado?.deudasPendientes?.cantidad || undefined;
+  const sugerenciasPendientes = resumenEncargado?.sugerenciasPendientes || undefined;
 
   const [isInventarioExpanded, setIsInventarioExpanded] = useState(
     activeSection === 'inventario'
@@ -215,7 +221,7 @@ export const Sidebar = ({
                 icon={<CreditCard className="w-5 h-5" />}
                 isActive={activeSection === 'deudas'}
                 roleVariant="encargado"
-                badge="3"
+                badge={deudasPendientes}
                 onClick={() => {
                   onSelectSection('deudas');
                   if (onCloseMobile) onCloseMobile();
@@ -281,7 +287,7 @@ export const Sidebar = ({
                 icon={<Mail className="w-5 h-5" />}
                 isActive={activeSection === 'sugerencias'}
                 roleVariant="encargado"
-                badge="2"
+                badge={sugerenciasPendientes}
                 onClick={() => {
                   onSelectSection('sugerencias');
                   if (onCloseMobile) onCloseMobile();

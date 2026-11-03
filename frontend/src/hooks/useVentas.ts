@@ -12,10 +12,11 @@ export const useReporteVentas = (periodo: PeriodoVentas) =>
     ...EN_VIVO,
   });
 
-/** GET /api/dashboard/encargado: indicadores de hoy del encabezado del Encargado. */
-export const useResumenEncargado = () =>
+/** GET /api/dashboard/encargado: indicadores de hoy del encabezado y del Sidebar del Encargado. */
+export const useResumenEncargado = (enabled = true) =>
   useQuery({
     queryKey: queryKeys.resumenEncargado,
     queryFn: async () => (await apiClient.get<ResumenEncargado>('/dashboard/encargado')).data,
+    enabled,
     ...EN_VIVO,
   });

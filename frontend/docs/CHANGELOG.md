@@ -4,6 +4,18 @@ Registro cronológico detallado de arquitectura, características, refactorizaci
 
 ---
 
+## [2026-11-03] - Corrección: contadores fijos en el Sidebar del Encargado
+
+### Rama: `integracion/pendientes`
+
+- **Motivo:** En la prueba completa del proyecto, el Sidebar mostraba "Cartera de Deudas 3" y "Buzón de Sugerencias 2" mientras el encabezado decía "2 cuenta(s) por cobrar" y "3 pendientes". Esos contadores eran valores fijos que quedaron de los datos simulados.
+- **Cambios realizados:**
+  - `Sidebar.tsx`: los contadores salen de `GET /api/dashboard/encargado`, la misma consulta y la misma caché que usa el encabezado, así que no hay una petición extra. Si no hay pendientes, el contador no aparece.
+  - `hooks/useVentas.ts`: `useResumenEncargado(enabled)` permite que los demás roles no hagan la consulta.
+- **Tests:** `Sidebar.test.tsx` comprueba los contadores desde la API, que no aparezcan cuando no hay pendientes y que los otros roles no hagan la consulta.
+
+---
+
 ## [2026-11-02] - Grupos: una ficha por fila, ordenadas por reservas de hoy
 
 ### Rama: `feat/grupos-por-reservas`
