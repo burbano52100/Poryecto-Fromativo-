@@ -67,12 +67,16 @@ export const useActualizarUsuarioSesion = () => {
   );
 };
 
-/** Cierra la sesión y descarta los datos en caché del usuario anterior. */
+/**
+ * Cierra la sesión y descarta los datos en caché del usuario anterior.
+ * La consulta de sesión se vacía en lugar de borrarse: si se borrara (queryClient.clear()),
+ * ProtectedRoute seguiría observando la consulta eliminada y no volvería al login.
+ */
 export const useLogout = () => {
   const queryClient = useQueryClient();
   return useCallback(() => {
     limpiarSesion();
-    queryClient.clear();
     queryClient.setQueryData(AUTH_QUERY_KEY, null);
+    queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== AUTH_QUERY_KEY[0] });
   }, [queryClient]);
 };

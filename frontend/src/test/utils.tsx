@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Sidebar } from '../components/organisms/Sidebar';
 import type { User } from '../schemas/auth.schema';
 
 /** Renderiza con React Query (sin reintentos) y un router en memoria. */
@@ -29,6 +30,16 @@ export const usuarioDePrueba = (overrides: Partial<User> = {}): User => ({
   es_beneficiario: false,
   ...overrides,
 });
+
+/** Sustituto de un panel en los tests de rutas: su título y el Sidebar real, con "Cerrar Sesión". */
+export const panelDePrueba =
+  (titulo: string) =>
+  ({ user, onLogout }: { user: User; onLogout: () => void }) => (
+    <>
+      <h1>{titulo}</h1>
+      <Sidebar user={user} activeSection="inicio" onSelectSection={() => {}} onLogout={onLogout} />
+    </>
+  );
 
 /** Respuesta mínima de Axios para usar con vi.spyOn(apiClient, ...). */
 export const respuesta = <T,>(data: T) => ({
