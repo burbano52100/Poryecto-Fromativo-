@@ -7,6 +7,7 @@ import { LoadingSpinner } from '../../atoms/LoadingSpinner';
 import { ErrorAlert } from '../../molecules/ErrorAlert';
 import { useMateriales, useMermas, useRegistrarMerma } from '../../../hooks/useInventario';
 import { mermaSchema, type MermaData, type MermaForm } from '../../../schemas/inventario.schema';
+import { soloNumeros } from '../../../lib/numeros';
 
 const CAMPO = 'w-full bg-white border border-amber-300 rounded-xl p-2.5 text-sm font-medium focus:outline-none focus:border-amber-500';
 
@@ -81,7 +82,7 @@ export const MermasView = () => {
             <label htmlFor="merma-cantidad" className="block text-xs font-bold text-amber-900 uppercase mb-1">
               Cantidad Perdida {materialElegido ? `(${materialElegido.unit})` : ''}
             </label>
-            <input id="merma-cantidad" inputMode="decimal" placeholder="Ej: 2.5" {...register('quantity')} className={CAMPO} />
+            <input id="merma-cantidad" placeholder="Ej: 2.5" {...soloNumeros(register('quantity'))} className={CAMPO} />
             {errors.quantity && <p className="text-xs text-red-600 font-semibold mt-1">{errors.quantity.message}</p>}
           </div>
 

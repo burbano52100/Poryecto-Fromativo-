@@ -7,6 +7,7 @@ import { ConfirmDialog } from '../molecules/ConfirmDialog';
 import { ErrorAlert } from '../molecules/ErrorAlert';
 import { useCartera, usePagarDeuda } from '../../hooks/useCartera';
 import { pesos } from '../../lib/formato';
+import { filtrarNumero } from '../../lib/numeros';
 import { descargarCsv } from '../../lib/csv';
 import type { Deuda } from '../../types/api';
 
@@ -223,14 +224,13 @@ export const CarteraDeudasSection = () => {
             </label>
             <input
               id="monto-abono"
-              type="number"
               inputMode="numeric"
-              min={1}
-              max={deudaAPagar.debt}
-              step={100}
               placeholder={String(deudaAPagar.debt)}
               value={montoTexto}
-              onChange={(e) => setMontoTexto(e.target.value)}
+              onChange={(e) => {
+                filtrarNumero(e, 'entero');
+                setMontoTexto(e.target.value);
+              }}
               className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500"
             />
             {montoInvalido && <p className="text-xs font-semibold text-red-600">El monto debe ser mayor a 0.</p>}

@@ -9,6 +9,7 @@ import { Button } from '../atoms/Button';
 import { Badge } from '../atoms/Badge';
 import { useCambiarEstadoMenu, useMenus, usePublicarMenu } from '../../hooks/useMenu';
 import { hoyBogota, pesos } from '../../lib/formato';
+import { soloNumeros } from '../../lib/numeros';
 
 const entero = (campo: string) =>
   z
@@ -251,7 +252,7 @@ export const MenuDelDiaEncargadoSection = () => {
               placeholder="5000"
               required
               error={errors.priceStudents?.message}
-              {...register('priceStudents')}
+              {...soloNumeros(register('priceStudents'), 'entero')}
             />
 
             <FormField
@@ -259,7 +260,7 @@ export const MenuDelDiaEncargadoSection = () => {
               placeholder="8000"
               required
               error={errors.priceGuests?.message}
-              {...register('priceGuests')}
+              {...soloNumeros(register('priceGuests'), 'entero')}
             />
 
             <FormField
@@ -267,7 +268,7 @@ export const MenuDelDiaEncargadoSection = () => {
               placeholder="200"
               required
               error={errors.availableQuantity?.message}
-              {...register('availableQuantity')}
+              {...soloNumeros(register('availableQuantity'), 'entero')}
             />
           </div>
 

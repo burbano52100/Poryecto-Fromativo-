@@ -10,6 +10,7 @@ import { ErrorAlert } from '../../molecules/ErrorAlert';
 import { useActualizarReceta, useCrearReceta, useMateriales, useRecetas } from '../../../hooks/useInventario';
 import { recetaSchema, type RecetaData, type RecetaForm } from '../../../schemas/inventario.schema';
 import { pesos } from '../../../lib/formato';
+import { soloNumeros } from '../../../lib/numeros';
 import type { Receta } from '../../../types/api';
 
 const FormularioReceta = ({ receta, onListo }: { receta: Receta | null; onListo: () => void }) => {
@@ -48,7 +49,7 @@ const FormularioReceta = ({ receta, onListo }: { receta: Receta | null; onListo:
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <FormField label="Nombre del plato" required className="sm:col-span-2" error={errors.name?.message} {...register('name')} />
         <FormField label="Código" placeholder="REC-003" error={errors.code?.message} {...register('code')} />
-        <FormField label="Precio de venta" required inputMode="numeric" error={errors.price?.message} {...register('price')} />
+        <FormField label="Precio de venta" required error={errors.price?.message} {...soloNumeros(register('price'), 'entero')} />
       </div>
 
       <div className="space-y-2">
@@ -81,9 +82,8 @@ const FormularioReceta = ({ receta, onListo }: { receta: Receta | null; onListo:
               </label>
               <input
                 id={`ing-cantidad-${index}`}
-                inputMode="decimal"
                 placeholder="0.250"
-                {...register(`ingredients.${index}.cantidad`)}
+                {...soloNumeros(register(`ingredients.${index}.cantidad`))}
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm"
               />
               {errors.ingredients?.[index]?.cantidad && (

@@ -4,6 +4,28 @@ Registro cronológico detallado de arquitectura, características, refactorizaci
 
 ---
 
+## [2026-11-02] - Campos numéricos: solo aceptan números
+
+### Rama: `fix/campos-solo-numeros`
+
+- **Motivo:** Campos como "Cantidad" en la salida de inventario dejaban escribir letras. El error solo aparecía al enviar el formulario.
+- **Cambios realizados:**
+  - `lib/numeros.ts`:
+    - `limpiarNumero` quita lo que no sea número. En modo decimal deja un solo separador y convierte la coma en punto ("2,5" → "2.5").
+    - `soloNumeros(register(...), modo)` aplica ese filtro a un campo de React Hook Form mientras se escribe o se pega, sin mover el cursor, y abre el teclado numérico en el celular.
+  - Modo `decimal` en:
+    - Inventario/Stock: stock inicial, stock mínimo, costo unitario y las cantidades y costos de entradas y salidas.
+    - Recetas: cantidad de cada ingrediente.
+    - Mermas: cantidad perdida.
+  - Modo `entero` en:
+    - Recetas: precio de venta.
+    - Menú del Día: precio aprendiz, precio invitado y porciones.
+    - Documento de identidad en el login y en el registro.
+  - `CarteraDeudasSection`: el abono deja de ser `type="number"` (permitía `e`, `+` y `-`) y usa el mismo filtro.
+- **Tests:** `lib/numeros.test.tsx` y `inventario/StockView.test.tsx` (en la salida, "n2,5L" queda como 2.5 y se envía como número).
+
+---
+
 ## [2026-11-02] - Fase 5: login simplificado, HashRouter y paneles conectados a la API
 
 ### Rama: `julianDEV-front` (commits `de87ca4` y `41cae31`)

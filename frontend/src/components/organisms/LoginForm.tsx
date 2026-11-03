@@ -7,6 +7,7 @@ import { useLoginMutation } from '../../hooks/useAuth';
 import { FormField } from '../molecules/FormField';
 import { Button } from '../atoms/Button';
 import { RegisterModal } from './RegisterModal';
+import { soloNumeros } from '../../lib/numeros';
 
 /**
  * Login con documento y contraseña. El backend devuelve el rol de la cuenta y la
@@ -51,12 +52,11 @@ export const LoginForm = () => {
         <FormField
           label="Cédula / Documento de Identidad"
           placeholder="Ej: 1005678901"
-          inputMode="numeric"
           autoComplete="username"
           required
           icon={<IdCard className="w-4 h-4" />}
           error={errors.document?.message}
-          {...register('document')}
+          {...soloNumeros(register('document'), 'entero')}
         />
 
         <FormField
