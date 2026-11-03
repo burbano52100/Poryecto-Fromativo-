@@ -1,17 +1,33 @@
 import { describe, it, expect, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { QueryClient } from '@tanstack/react-query';
 import { AppRoutes } from './App';
 import LoginPage from './pages/LoginPage';
 import { apiClient } from './lib/api';
+import { LOGOUT_EVENT, rutaInicio } from './lib/session';
+import { AUTH_QUERY_KEY } from './hooks/useAuth';
+import { queryKeys } from './hooks/queryKeys';
 import { renderConProveedores, respuesta, usuarioDePrueba } from './test/utils';
 import type { AccountType } from './schemas/auth.schema';
 
-// Los paneles se reemplazan por marcadores: aquí solo se prueba el enrutamiento
-vi.mock('./pages/AprendizDashboardPage', () => ({ AprendizDashboardPage: () => <h1>Panel Aprendiz</h1> }));
-vi.mock('./pages/InstructorDashboardPage', () => ({ InstructorDashboardPage: () => <h1>Panel Instructor</h1> }));
-vi.mock('./pages/EncargadoDashboardPage', () => ({ EncargadoDashboardPage: () => <h1>Panel Encargado</h1> }));
-vi.mock('./pages/InvitadoDashboardPage', () => ({ InvitadoDashboardPage: () => <h1>Panel Invitado</h1> }));
+// Los paneles se reemplazan por su título y el Sidebar real: aquí solo se prueban las rutas y la sesión
+vi.mock('./pages/AprendizDashboardPage', async () => {
+  const { panelDePrueba } = await import('./test/utils');
+  return { AprendizDashboardPage: panelDePrueba('Panel Aprendiz') };
+});
+vi.mock('./pages/InstructorDashboardPage', async () => {
+  const { panelDePrueba } = await import('./test/utils');
+  return { InstructorDashboardPage: panelDePrueba('Panel Instructor') };
+});
+vi.mock('./pages/EncargadoDashboardPage', async () => {
+  const { panelDePrueba } = await import('./test/utils');
+  return { EncargadoDashboardPage: panelDePrueba('Panel Encargado') };
+});
+vi.mock('./pages/InvitadoDashboardPage', async () => {
+  const { panelDePrueba } = await import('./test/utils');
+  return { InvitadoDashboardPage: panelDePrueba('Panel Invitado') };
+});
 
 const PANELES: Record<AccountType, string> = {
   aprendiz: 'Panel Aprendiz',
@@ -20,12 +36,15 @@ const PANELES: Record<AccountType, string> = {
   invitado: 'Panel Invitado',
 };
 
-/** Simula una sesión guardada que el backend reconoce en GET /auth/me. */
+/** Simula una sesión guardada que el backend reconoce en GET /auth/me; sin token responde 401. */
 const conSesion = (role: AccountType) => {
   localStorage.setItem('gastrosena_token', 'token-valido');
-  vi.spyOn(apiClient, 'get').mockResolvedValue(
-    respuesta({ user: usuarioDePrueba({ role }), activeSession: true })
-  );
+  vi.spyOn(apiClient, 'get').mockImplementation(async () => {
+    if (!localStorage.getItem('gastrosena_token')) {
+      throw Object.assign(new Error('Request failed'), { isAxiosError: true, response: { status: 401 } });
+    }
+    return respuesta({ user: usuarioDePrueba({ role }), activeSession: true });
+  });
 };
 
 describe('Formulario de login', () => {
@@ -82,6 +101,8 @@ describe('Redirección después del login', () => {
       const post = vi.spyOn(apiClient, 'post').mockResolvedValue(
         respuesta({ token: 'jwt', user: usuarioDePrueba({ role }), message: 'ok' })
       );
+      // El Sidebar del panel pide el resumen de consumos: sin esto saldría a la red
+      vi.spyOn(apiClient, 'get').mockResolvedValue(respuesta({}));
       renderConProveedores(<AppRoutes />, { ruta: '/login' });
 
       await userEvent.type(await screen.findByLabelText(/Documento de Identidad/), '1005678901');
@@ -120,5 +141,55 @@ describe('Rutas protegidas', () => {
     conSesion('invitado');
     renderConProveedores(<AppRoutes />, { ruta: '/no-existe' });
     expect(await screen.findByRole('heading', { name: 'Panel Invitado' })).toBeInTheDocument();
+  });
+});
+
+describe('Cerrar sesión', () => {
+  /** Claves de las consultas en caché que guardan datos. */
+  const consultasConDatos = (queryClient: QueryClient) =>
+    queryClient
+      .getQueryCache()
+      .getAll()
+      .filter((q) => q.state.data !== undefined)
+      .map((q) => q.queryKey);
+
+  /** Abre el panel del rol con sesión activa y espera a que el Sidebar termine de cargar. */
+  const abrirPanel = async (role: AccountType) => {
+    conSesion(role);
+    const { queryClient } = renderConProveedores(<AppRoutes />, { ruta: rutaInicio(role) });
+    expect(await screen.findByRole('heading', { name: PANELES[role] })).toBeInTheDocument();
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0));
+    return queryClient;
+  };
+
+  /** Login visible sin recargar, token borrado y ningún dato del usuario anterior en caché. */
+  const expectSesionCerrada = async (queryClient: QueryClient, role: AccountType) => {
+    expect(await screen.findByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: PANELES[role] })).not.toBeInTheDocument();
+    expect(localStorage.getItem('gastrosena_token')).toBeNull();
+    expect(queryClient.getQueryData(AUTH_QUERY_KEY)).toBeNull();
+    expect(consultasConDatos(queryClient)).toEqual([AUTH_QUERY_KEY]);
+  };
+
+  it.each(Object.keys(PANELES) as AccountType[])(
+    'el botón "Cerrar Sesión" del Sidebar de %s muestra el login',
+    async (role) => {
+      const queryClient = await abrirPanel(role);
+
+      await userEvent.click(screen.getByRole('button', { name: 'Cerrar Sesión' }));
+
+      await expectSesionCerrada(queryClient, role);
+    }
+  );
+
+  it('el evento gastrosena:logout (un 401 del backend) muestra el login', async () => {
+    const queryClient = await abrirPanel('aprendiz');
+    expect(consultasConDatos(queryClient)).toContainEqual(queryKeys.resumenConsumos);
+
+    act(() => {
+      window.dispatchEvent(new Event(LOGOUT_EVENT));
+    });
+
+    await expectSesionCerrada(queryClient, 'aprendiz');
   });
 });

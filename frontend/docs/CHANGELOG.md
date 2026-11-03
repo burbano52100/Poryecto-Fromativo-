@@ -4,6 +4,19 @@ Registro cronológico detallado de arquitectura, características, refactorizaci
 
 ---
 
+## [2026-11-02] - Corrección: "Cerrar Sesión" no volvía al login
+
+### Rama: `fix/cerrar-sesion`
+
+- **Motivo:** Al hacer clic en "Cerrar Sesión" del Sidebar, o al recibir un 401, la pantalla seguía en el panel hasta recargar con F5. `useLogout` llamaba a `queryClient.clear()`, que borraba la consulta `['currentUser']`; `ProtectedRoute` seguía observando la consulta eliminada y no se enteraba del `null`.
+- **Cambios realizados:**
+  - `hooks/useAuth.ts`: `useLogout` limpia `localStorage`, pone `['currentUser']` en `null` y luego descarta con `removeQueries` las demás consultas, sin tocar la de sesión.
+  - `App.test.tsx`: tests de "Cerrar Sesión" en los 4 paneles y del evento `gastrosena:logout`. Comprueban que aparece el login sin recargar, que se borra el token y que no queda ningún dato del usuario anterior en caché. Los paneles simulados ahora incluyen el `Sidebar` real.
+  - `test/utils.tsx`: helper `panelDePrueba`.
+  - `docs/LOGIN_Y_REDIRECCIONAMIENTO.md`: sección "Qué hace `useLogout`".
+
+---
+
 ## [2026-11-02] - Fase 5: login simplificado, HashRouter y paneles conectados a la API
 
 ### Rama: `julianDEV-front` (commits `de87ca4` y `41cae31`)

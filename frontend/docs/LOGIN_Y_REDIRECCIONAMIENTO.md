@@ -38,8 +38,15 @@ El enlace **"Registrarse"** abre `RegisterModal`. El registro sí pide tipo de c
 
 ### Sesión vencida (401)
 1. El interceptor de `lib/api.ts` borra la sesión de `localStorage` y dispara el evento `gastrosena:logout`. Excepción: los 401 de `/auth/login` y `/auth/register` son errores de credenciales y no disparan nada.
-2. `AppRoutes` escucha el evento y ejecuta `useLogout`, que vacía la caché de React Query y deja el usuario en `null`.
-3. `ProtectedRoute` ve que no hay sesión y lleva a `#/login`.
+2. `AppRoutes` escucha el evento y ejecuta `useLogout`, el mismo que usa el botón "Cerrar Sesión" del Sidebar.
+3. `ProtectedRoute` ve que no hay sesión y lleva a `#/login`, sin recargar la página.
+
+### Qué hace `useLogout` (`hooks/useAuth.ts`)
+1. `limpiarSesion()` borra token, rol y usuario de `localStorage`.
+2. `setQueryData(['currentUser'], null)` vacía la consulta de sesión. `ProtectedRoute` la está observando y redirige al login.
+3. `removeQueries` descarta todas las demás consultas, para que el siguiente usuario no vea datos del anterior.
+
+No se usa `queryClient.clear()`: borraría también la consulta de sesión, `ProtectedRoute` quedaría observando la consulta eliminada y la pantalla no cambiaría hasta recargar con F5.
 
 ---
 
