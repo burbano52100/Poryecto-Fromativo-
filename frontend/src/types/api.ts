@@ -113,6 +113,25 @@ export interface ResumenEncargado {
   deudasPendientes: { monto: number; cantidad: number };
   sugerenciasPendientes: number;
   beneficiariosActivos: number;
+  solicitudesPendientes: number;
+}
+
+// ---------------------------------------------------------------- Solicitudes de cuenta (ADR 015)
+export type EstadoSolicitud = 'pendiente' | 'aprobada' | 'rechazada';
+export type FiltroSolicitudes = EstadoSolicitud | 'todas';
+
+export interface SolicitudCuenta {
+  id: string;
+  nombre: string;
+  documento: string;
+  email: string;
+  rol: 'instructor' | 'encargado';
+  estado: EstadoSolicitud;
+  motivo_rechazo: string | null;
+  /** ISO 8601 */
+  fecha: string;
+  revisado_por: string | null;
+  revisado_en: string | null;
 }
 
 // ---------------------------------------------------------------- Deudas

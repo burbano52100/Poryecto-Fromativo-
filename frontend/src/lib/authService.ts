@@ -1,6 +1,6 @@
 import { isAxiosError } from 'axios';
 import { apiClient } from './api';
-import type { AuthResponse, LoginInput, RegisterInput, User } from '../schemas/auth.schema';
+import type { AuthResponse, LoginInput, RegisterInput, RegisterResponse, User } from '../schemas/auth.schema';
 
 export function toFriendlyError(error: unknown): Error {
   if (isAxiosError(error)) {
@@ -22,9 +22,10 @@ export async function loginWithPassword(input: LoginInput): Promise<AuthResponse
   }
 }
 
-export async function registerUser(input: RegisterInput): Promise<AuthResponse> {
+/** Aprendiz e invitado reciben la sesión; instructor y encargado, una solicitud pendiente (202). */
+export async function registerUser(input: RegisterInput): Promise<RegisterResponse> {
   try {
-    const { data } = await apiClient.post<AuthResponse>('/auth/register', input);
+    const { data } = await apiClient.post<RegisterResponse>('/auth/register', input);
     return data;
   } catch (error) {
     throw toFriendlyError(error);

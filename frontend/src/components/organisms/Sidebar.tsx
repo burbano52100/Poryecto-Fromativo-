@@ -18,6 +18,7 @@ import {
   History,
   AlertTriangle,
   Settings,
+  UserPlus,
 } from 'lucide-react';
 import type { User as UserType } from '../../schemas/auth.schema';
 import { SidebarNavItem } from '../molecules/SidebarNavItem';
@@ -37,7 +38,8 @@ export type SectionType =
   | 'beneficiarios'
   | 'deudas'
   | 'inventario'
-  | 'grupos';
+  | 'grupos'
+  | 'solicitudes';
 
 export type InventarioSubSection =
   | 'stock'
@@ -79,6 +81,7 @@ export const Sidebar = ({
   const { data: resumenEncargado } = useResumenEncargado(isEncargado);
   const deudasPendientes = resumenEncargado?.deudasPendientes?.cantidad || undefined;
   const sugerenciasPendientes = resumenEncargado?.sugerenciasPendientes || undefined;
+  const solicitudesPendientes = resumenEncargado?.solicitudesPendientes || undefined;
 
   const [isInventarioExpanded, setIsInventarioExpanded] = useState(
     activeSection === 'inventario'
@@ -277,6 +280,19 @@ export const Sidebar = ({
                 roleVariant="encargado"
                 onClick={() => {
                   onSelectSection('grupos');
+                  if (onCloseMobile) onCloseMobile();
+                }}
+              />
+
+              <SidebarNavItem
+                id="solicitudes"
+                label="Solicitudes de Cuenta"
+                icon={<UserPlus className="w-5 h-5" />}
+                isActive={activeSection === 'solicitudes'}
+                roleVariant="encargado"
+                badge={solicitudesPendientes}
+                onClick={() => {
+                  onSelectSection('solicitudes');
                   if (onCloseMobile) onCloseMobile();
                 }}
               />

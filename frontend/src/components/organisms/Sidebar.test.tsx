@@ -12,6 +12,7 @@ const RESUMEN: ResumenEncargado = {
   deudasPendientes: { monto: 25000, cantidad: 2 },
   sugerenciasPendientes: 5,
   beneficiariosActivos: 0,
+  solicitudesPendientes: 1,
 };
 
 const abrirSidebar = (role: 'encargado' | 'aprendiz') =>
@@ -24,19 +25,24 @@ describe('Sidebar', () => {
     vi.spyOn(apiClient, 'get').mockResolvedValue(respuesta(RESUMEN));
     abrirSidebar('encargado');
 
-    expect(await screen.findByRole('button', { name: /Cartera de Deudas\s*2/ })).toBeInTheDocument();
+    // Margen amplio: con toda la suite en paralelo, la primera consulta por rol del Sidebar pasa de 1 s
+    expect(await screen.findByRole('button', { name: /Cartera de Deudas\s*2/ }, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Buzón de Sugerencias\s*5/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Solicitudes de Cuenta\s*1/ })).toBeInTheDocument();
   });
 
   it('sin pendientes no muestra contador', async () => {
     const get = vi
       .spyOn(apiClient, 'get')
-      .mockResolvedValue(respuesta({ ...RESUMEN, deudasPendientes: { monto: 0, cantidad: 0 }, sugerenciasPendientes: 0 }));
+      .mockResolvedValue(
+        respuesta({ ...RESUMEN, deudasPendientes: { monto: 0, cantidad: 0 }, sugerenciasPendientes: 0, solicitudesPendientes: 0 })
+      );
     abrirSidebar('encargado');
 
     await waitFor(() => expect(get).toHaveBeenCalledWith('/dashboard/encargado'));
     expect(screen.getByRole('button', { name: 'Cartera de Deudas' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Buzón de Sugerencias' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Solicitudes de Cuenta' })).toBeInTheDocument();
   });
 
   it('los demás roles no piden el resumen del Encargado', async () => {

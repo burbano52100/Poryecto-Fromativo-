@@ -4,6 +4,31 @@ Registro cronológico detallado de arquitectura, características, refactorizaci
 
 ---
 
+## [2026-11-04] - Registro de instructor y encargado con aprobación del encargado
+
+### Rama: `integracion/pendientes`
+
+- **Motivo:** No había forma de crear instructores ni encargados desde la aplicación. El registro solo ofrecía Aprendiz e Invitado (ADR 003) y no existía ningún flujo de aprobación (ADR 015).
+- **Cambios realizados:**
+  - `AccountTypeSelector.tsx`: los 4 tipos de cuenta en una cuadrícula de 2×2.
+  - `RegisterModal.tsx`:
+    - Para instructor y encargado muestra un aviso de aprobación, el botón dice "Enviar solicitud" y no pide ficha.
+    - Al enviar no inicia sesión: muestra "Solicitud enviada" y espera a que la persona presione "Entendido".
+    - El texto de la contraseña ahora dice "Mínimo 8 caracteres", como exige la validación (antes decía 4).
+    - El ejemplo de correo cambia según el tipo de cuenta.
+  - `schemas/auth.schema.ts`: `requiereAprobacion`, `SolicitudResponse`, `RegisterResponse` y `esSolicitud`.
+  - `useRegisterMutation`: solo inicia sesión si la respuesta trae token.
+  - `LoginForm`: muestra el aviso 403 de solicitud pendiente o rechazada (con el motivo) que envía el backend.
+  - Panel del Encargado:
+    - Nueva sección `SolicitudesCuentaSection` con pestañas "Pendientes" e "Historial".
+    - Aprobar abre un `ConfirmDialog`, que advierte cuando se trata de un encargado.
+    - Rechazar abre un `FormModal` con motivo opcional.
+    - Hooks en `hooks/useSolicitudes.ts`.
+    - Ítem "Solicitudes de Cuenta" en el Sidebar, con su contador.
+- **Tests:** `RegisterModal.test.tsx`, `SolicitudesCuentaSection.test.tsx`, el aviso 403 en `App.test.tsx` y el contador en `Sidebar.test.tsx`.
+
+---
+
 ## [2026-11-03] - Corrección: contadores fijos en el Sidebar del Encargado
 
 ### Rama: `integracion/pendientes`

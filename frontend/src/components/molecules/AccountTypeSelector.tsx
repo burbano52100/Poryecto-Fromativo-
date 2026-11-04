@@ -1,4 +1,4 @@
-import { User, Ticket } from 'lucide-react';
+import { User, Presentation, ClipboardList, Ticket } from 'lucide-react';
 import type { RegistrableAccountType } from '../../schemas/auth.schema';
 import { AccountTypeButton } from '../atoms/AccountTypeButton';
 
@@ -7,7 +7,14 @@ interface AccountTypeSelectorProps {
   onSelect: (type: RegistrableAccountType) => void;
 }
 
-/** Tipo de cuenta del registro público: solo Aprendiz o Invitado. */
+const OPCIONES: { id: RegistrableAccountType; label: string; icon: typeof User }[] = [
+  { id: 'aprendiz', label: 'Aprendiz', icon: User },
+  { id: 'invitado', label: 'Invitado', icon: Ticket },
+  { id: 'instructor', label: 'Instructor', icon: Presentation },
+  { id: 'encargado', label: 'Encargado', icon: ClipboardList },
+];
+
+/** Tipo de cuenta del registro. Instructor y encargado quedan pendientes de aprobación (ADR 015). */
 export const AccountTypeSelector = ({ selectedType, onSelect }: AccountTypeSelectorProps) => {
   return (
     <div className="mb-5">
@@ -15,20 +22,16 @@ export const AccountTypeSelector = ({ selectedType, onSelect }: AccountTypeSelec
         Tipo de Cuenta
       </span>
       <div className="grid grid-cols-2 gap-2">
-        <AccountTypeButton
-          id="aprendiz"
-          label="Aprendiz"
-          icon={<User className="w-4 h-4" />}
-          isActive={selectedType === 'aprendiz'}
-          onClick={onSelect}
-        />
-        <AccountTypeButton
-          id="invitado"
-          label="Invitado"
-          icon={<Ticket className="w-4 h-4" />}
-          isActive={selectedType === 'invitado'}
-          onClick={onSelect}
-        />
+        {OPCIONES.map(({ id, label, icon: Icono }) => (
+          <AccountTypeButton
+            key={id}
+            id={id}
+            label={label}
+            icon={<Icono className="w-4 h-4" />}
+            isActive={selectedType === id}
+            onClick={onSelect}
+          />
+        ))}
       </div>
     </div>
   );

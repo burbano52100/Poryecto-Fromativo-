@@ -3,8 +3,12 @@ import { z } from 'zod';
 // 1. Roles del sistema. El rol de la sesión lo decide el backend (usuarios.rol).
 export const accountTypeSchema = z.enum(['aprendiz', 'instructor', 'encargado', 'invitado']);
 
-// Solo estos tipos de cuenta se pueden crear desde el registro público.
-export const registrableAccountTypeSchema = z.enum(['aprendiz', 'invitado']);
+// El registro ofrece los 4 tipos. Aprendiz e invitado crean la cuenta al instante; instructor y
+// encargado envían una solicitud que un encargado debe aprobar (ADR 015).
+export const registrableAccountTypeSchema = accountTypeSchema;
+
+/** Tipos de cuenta que quedan pendientes hasta que un encargado los apruebe. */
+export const requiereAprobacion = (tipo: AccountType): boolean => tipo === 'instructor' || tipo === 'encargado';
 
 const documentoSchema = z
   .string()
@@ -19,7 +23,7 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'La contraseña es obligatoria'),
 });
 
-// 3. Registro público: sí pide tipo de cuenta (aprendiz o invitado)
+// 3. Registro público: sí pide tipo de cuenta
 export const registerSchema = z
   .object({
     name: z.string().trim().min(3, 'El nombre debe tener al menos 3 caracteres'),
@@ -60,6 +64,16 @@ export const authResponseSchema = z.object({
   user: userSchema,
   message: z.string(),
 });
+
+/** Respuesta 202 del registro de instructor o encargado: la cuenta queda pendiente, sin token. */
+export interface SolicitudResponse {
+  message: string;
+  solicitud: { id: string; rol: 'instructor' | 'encargado'; estado: 'pendiente' };
+}
+
+export type RegisterResponse = AuthResponse | SolicitudResponse;
+
+export const esSolicitud = (respuesta: RegisterResponse): respuesta is SolicitudResponse => 'solicitud' in respuesta;
 
 export type AccountType = z.infer<typeof accountTypeSchema>;
 export type RegistrableAccountType = z.infer<typeof registrableAccountTypeSchema>;

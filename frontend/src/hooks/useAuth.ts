@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { loginWithPassword, registerUser, fetchCurrentUser } from '../lib/authService';
 import { actualizarUsuarioGuardado, getToken, guardarSesion, limpiarSesion } from '../lib/session';
-import type { LoginInput, RegisterInput, AuthResponse, User } from '../schemas/auth.schema';
+import { esSolicitud, type LoginInput, type RegisterInput, type AuthResponse, type User } from '../schemas/auth.schema';
 
 export const AUTH_QUERY_KEY = ['currentUser'] as const;
 
@@ -46,12 +46,17 @@ export const useLoginMutation = () => {
   });
 };
 
-/** POST /api/auth/register: crea la cuenta e inicia sesión con ella. */
+/**
+ * POST /api/auth/register: aprendiz e invitado crean la cuenta e inician sesión con ella;
+ * instructor y encargado solo envían una solicitud, así que no hay sesión que iniciar.
+ */
 export const useRegisterMutation = () => {
   const iniciarSesion = useIniciarSesion();
   return useMutation({
     mutationFn: (userData: RegisterInput) => registerUser(userData),
-    onSuccess: iniciarSesion,
+    onSuccess: (respuesta) => {
+      if (!esSolicitud(respuesta)) iniciarSesion(respuesta);
+    },
   });
 };
 

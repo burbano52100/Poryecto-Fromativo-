@@ -92,6 +92,24 @@ describe('Formulario de login', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Credenciales inválidas');
   });
+
+  it('avisa si la cuenta de instructor sigue pendiente de aprobación (403)', async () => {
+    const aviso = 'Tu solicitud de cuenta de instructor está pendiente. Podrás ingresar cuando un encargado la apruebe.';
+    vi.spyOn(apiClient, 'post').mockRejectedValue(
+      Object.assign(new Error('Request failed'), {
+        isAxiosError: true,
+        response: { status: 403, data: { message: aviso, estado_solicitud: 'pendiente' } },
+      })
+    );
+    renderConProveedores(<AppRoutes />, { ruta: '/login' });
+
+    await userEvent.type(await screen.findByLabelText(/Documento de Identidad/), '1098765432');
+    await userEvent.type(screen.getByLabelText(/Contraseña/), 'clave-segura');
+    await userEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(aviso);
+    expect(localStorage.getItem('gastrosena_token')).toBeNull();
+  });
 });
 
 describe('Redirección después del login', () => {

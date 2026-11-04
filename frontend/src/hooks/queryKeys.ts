@@ -1,4 +1,4 @@
-import type { FiltrosKardex, PeriodoVentas } from '../types/api';
+import type { FiltroSolicitudes, FiltrosKardex, PeriodoVentas } from '../types/api';
 
 /**
  * Claves de React Query centralizadas. Invalidar una clave invalida también las que
@@ -24,6 +24,8 @@ export const queryKeys = {
   recetas: ['inventario', 'recetas'] as const,
   kardex: (filtros: FiltrosKardex) => ['inventario', 'kardex', filtros] as const,
   mermas: ['inventario', 'mermas'] as const,
+  solicitudes: ['solicitudes-cuenta'] as const,
+  solicitudesPorEstado: (estado: FiltroSolicitudes) => ['solicitudes-cuenta', estado] as const,
 };
 
 /** Datos que el Encargado sigue en vivo: se refrescan solos mientras el panel está abierto. */

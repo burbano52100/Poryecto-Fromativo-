@@ -1,8 +1,14 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { X, UserPlus, IdCard, BookOpen, Mail, Lock, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { registerSchema, type RegisterFormInput, type RegistrableAccountType } from '../../schemas/auth.schema';
+import { X, UserPlus, IdCard, BookOpen, Mail, Lock, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import {
+  esSolicitud,
+  registerSchema,
+  requiereAprobacion,
+  type RegisterFormInput,
+  type RegistrableAccountType,
+} from '../../schemas/auth.schema';
 import { useRegisterMutation } from '../../hooks/useAuth';
 import { AccountTypeSelector } from '../molecules/AccountTypeSelector';
 import { FormField } from '../molecules/FormField';
@@ -14,8 +20,17 @@ interface RegisterModalProps {
   onClose: () => void;
 }
 
+const PLACEHOLDER_CORREO: Record<RegistrableAccountType, string> = {
+  aprendiz: 'usuario@misena.edu.co',
+  instructor: 'nombre@sena.edu.co',
+  encargado: 'nombre@sena.edu.co',
+  invitado: 'correo@ejemplo.com',
+};
+
 export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  // Instructor y encargado: la cuenta queda pendiente y no se inicia sesión (ADR 015)
+  const [solicitudEnviada, setSolicitudEnviada] = useState<string | null>(null);
   const [currentAccountType, setCurrentAccountType] = useState<RegistrableAccountType>('aprendiz');
   const registerMutation = useRegisterMutation();
 
@@ -48,12 +63,21 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
     reset();
     setCurrentAccountType('aprendiz');
     setSuccessMessage(null);
+    setSolicitudEnviada(null);
+    registerMutation.reset();
     onClose();
   };
 
   const onSubmit = handleSubmit((data) => {
     registerMutation.mutate(data, {
       onSuccess: (res) => {
+        if (esSolicitud(res)) {
+          // No se cierra solo: la persona debe leer que su cuenta espera aprobación
+          setSolicitudEnviada(res.message);
+          reset();
+          setCurrentAccountType('aprendiz');
+          return;
+        }
         setSuccessMessage(`¡Cuenta creada correctamente! Bienvenido ${res.user.name}.`);
         reset();
         setCurrentAccountType('aprendiz');
@@ -90,6 +114,23 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
         </div>
 
         {/* Content */}
+        {solicitudEnviada ? (
+          <div className="p-6 space-y-5 text-center" role="status">
+            <div className="mx-auto w-14 h-14 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
+              <Clock className="w-7 h-7" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-black text-gray-900">Solicitud enviada</h3>
+              <p className="text-sm text-gray-600">{solicitudEnviada}</p>
+              <p className="text-xs text-gray-500">
+                Cuando la aprueben, ingresa con tu documento y la contraseña que acabas de crear.
+              </p>
+            </div>
+            <Button type="button" variant="primary" fullWidth onClick={handleClose}>
+              Entendido
+            </Button>
+          </div>
+        ) : (
         <div className="p-6 space-y-4 overflow-y-auto">
           {registerMutation.isError && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs sm:text-sm flex items-center gap-2">
@@ -116,6 +157,16 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
             selectedType={currentAccountType}
             onSelect={handleAccountTypeChange}
           />
+
+          {requiereAprobacion(currentAccountType) && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs sm:text-sm flex items-start gap-2">
+              <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <span>
+                Las cuentas de <strong>{currentAccountType}</strong> necesitan aprobación: un encargado del comedor
+                revisará tu solicitud antes de que puedas ingresar.
+              </span>
+            </div>
+          )}
 
           <form onSubmit={onSubmit} className="space-y-3.5 pt-2">
             <FormField
@@ -149,7 +200,7 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
             <FormField
               label="Correo Electrónico Institucional"
               type="email"
-              placeholder="usuario@misena.edu.co"
+              placeholder={PLACEHOLDER_CORREO[currentAccountType]}
               required
               icon={<Mail className="w-4 h-4" />}
               error={errors.email?.message}
@@ -159,7 +210,7 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
             <FormField
               label="Contraseña"
               type="password"
-              placeholder="Mínimo 4 caracteres"
+              placeholder="Mínimo 8 caracteres"
               required
               icon={<Lock className="w-4 h-4" />}
               error={errors.password?.message}
@@ -181,11 +232,12 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
                 fullWidth
                 isLoading={registerMutation.isPending}
               >
-                Registrarme
+                {requiereAprobacion(currentAccountType) ? 'Enviar solicitud' : 'Registrarme'}
               </Button>
             </div>
           </form>
         </div>
+        )}
       </div>
     </div>
   );
