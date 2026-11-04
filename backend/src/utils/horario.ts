@@ -23,6 +23,15 @@ const minutosEnBogota = (fecha: Date): number => {
   return valor('hour') * 60 + valor('minute');
 };
 
+/** Fecha en Colombia como 'YYYY-MM-DD'. `toISOString()` daría la fecha UTC, que después de las 7 p. m. ya es mañana. */
+export const fechaBogota = (fecha: Date = new Date()): string =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: ZONA_HORARIA,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(fecha);
+
 export const reservasAbiertas = (ahora: Date = new Date()): boolean => {
   const minutos = minutosEnBogota(ahora);
   return minutos >= APERTURA_MIN && minutos < CIERRE_MIN;

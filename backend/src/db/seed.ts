@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { query, pool } from './index.js';
 import { recalcularReceta, registrarMerma, withTransaction } from '../services/inventario.service.js';
+import { fechaBogota } from '../utils/horario.js';
 
 export async function runSeed(): Promise<void> {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -17,7 +18,8 @@ export async function runSeed(): Promise<void> {
   console.log('[Seed] Iniciando inserción de datos de prueba en la base de datos...');
 
   const passwordHash = await bcrypt.hash('demo123', 10);
-  const today = new Date().toISOString().split('T')[0];
+  // "Hoy" en Colombia: con la fecha UTC, después de las 7 p. m. se creaba el menú de mañana
+  const today = fechaBogota();
 
   // 1. INSTRUCTORES Y ENCARGADOS BASE
   const instructor1Res = await query(
@@ -114,7 +116,7 @@ export async function runSeed(): Promise<void> {
   // 4. MENÚ DEL DÍA ACTIVO
   const menuRes = await query(
     `INSERT INTO menus_dia (fecha, nombre, descripcion, precio_aprendiz, precio_invitado, cantidad_disponible, cantidad_vendida, imagen_url, estado, creado_por)
-     VALUES ($1, $2, $3, 5000, 8000, 200, 45, '/cafeteria-bg.jpg', 'activo', $4)
+     VALUES ($1, $2, $3, 5000, 8000, 200, 0, '/cafeteria-bg.jpg', 'activo', $4)
      ON CONFLICT (fecha, nombre) DO UPDATE SET estado = 'activo', precio_aprendiz = 5000, precio_invitado = 8000
      RETURNING id;`,
     [today, 'Menú Ejecutivo SENA', 'Almuerzo completo: Sopa, bandeja con proteína, arroz, ensalada, jugo natural y postre', encargadoId]
@@ -169,34 +171,36 @@ export async function runSeed(): Promise<void> {
     `INSERT INTO categorias_material (nombre) VALUES ('Verduras') ON CONFLICT (nombre) DO UPDATE SET nombre = 'Verduras' RETURNING id;`
   );
 
+  // Vencimientos relativos a hoy para que la demo no quede con productos vencidos con el paso de los días
+  // (la papa vence pronto a propósito, para mostrar el estado "Venciendo")
   const matPolloRes = await query(
     `INSERT INTO materiales (codigo_barras, nombre, categoria_id, unidad_medida, costo_unitario, fecha_vencimiento, stock_actual, stock_minimo)
-     VALUES ('770555444333', 'Pechuga de Pollo Fresca', $1, 'Kg', 14000, '2026-11-20', 28, 15)
+     VALUES ('770555444333', 'Pechuga de Pollo Fresca', $1, 'Kg', 14000, $2::date + 16, 28, 15)
      ON CONFLICT (codigo_barras) DO UPDATE SET codigo_barras = EXCLUDED.codigo_barras RETURNING id;`,
-    [catCarnes.rows[0].id]
+    [catCarnes.rows[0].id, today]
   );
   const matPolloId = matPolloRes.rows[0].id;
 
   const matArrozRes = await query(
     `INSERT INTO materiales (codigo_barras, nombre, categoria_id, unidad_medida, costo_unitario, fecha_vencimiento, stock_actual, stock_minimo)
-     VALUES ('770123456789', 'Arroz Blanco Roa 1kg', $1, 'Kg', 3800, '2026-12-15', 45, 20)
+     VALUES ('770123456789', 'Arroz Blanco Roa 1kg', $1, 'Kg', 3800, $2::date + 41, 45, 20)
      ON CONFLICT (codigo_barras) DO UPDATE SET codigo_barras = EXCLUDED.codigo_barras RETURNING id;`,
-    [catGranos.rows[0].id]
+    [catGranos.rows[0].id, today]
   );
   const matArrozId = matArrozRes.rows[0].id;
 
   await query(
     `INSERT INTO materiales (codigo_barras, nombre, categoria_id, unidad_medida, costo_unitario, fecha_vencimiento, stock_actual, stock_minimo)
-     VALUES ('770987654321', 'Aceite Vegetal Gourmet 1L', $1, 'Litros', 9500, '2026-10-30', 12, 10)
+     VALUES ('770987654321', 'Aceite Vegetal Gourmet 1L', $1, 'Litros', 9500, $2::date + 120, 12, 10)
      ON CONFLICT (codigo_barras) DO UPDATE SET codigo_barras = EXCLUDED.codigo_barras;`,
-    [catAceites.rows[0].id]
+    [catAceites.rows[0].id, today]
   );
 
   await query(
     `INSERT INTO materiales (codigo_barras, nombre, categoria_id, unidad_medida, costo_unitario, fecha_vencimiento, stock_actual, stock_minimo)
-     VALUES ('770222333444', 'Papa Pastusa', $1, 'Kg', 2500, '2026-11-10', 60, 30)
+     VALUES ('770222333444', 'Papa Pastusa', $1, 'Kg', 2500, $2::date + 5, 60, 30)
      ON CONFLICT (codigo_barras) DO UPDATE SET codigo_barras = EXCLUDED.codigo_barras;`,
-    [catVerduras.rows[0].id]
+    [catVerduras.rows[0].id, today]
   );
 
   // Saldo inicial en el kardex para los materiales que aún no tienen movimientos
@@ -243,22 +247,7 @@ export async function runSeed(): Promise<void> {
     );
   }
 
-  // 10. DEUDAS DEMO PARA INSTRUCTORES
-  const checkDeudas = await query('SELECT id FROM deudas LIMIT 1;');
-  if (checkDeudas.rows.length === 0) {
-    await query(
-      `INSERT INTO deudas (usuario_id, monto, almuerzos_pendientes, fecha_origen, estado)
-       VALUES ($1, 15000, 3, CURRENT_DATE - INTERVAL '5 days', 'vencida');`,
-      [instructor1Id]
-    );
-    await query(
-      `INSERT INTO deudas (usuario_id, monto, almuerzos_pendientes, fecha_origen, estado)
-       VALUES ($1, 10000, 2, CURRENT_DATE - INTERVAL '2 days', 'pendiente');`,
-      [instructor3Id]
-    );
-  }
-
-  // 11. SUGERENCIAS DEMO
+  // 10. SUGERENCIAS DEMO
   const checkSugerencias = await query('SELECT id FROM sugerencias LIMIT 1;');
   if (checkSugerencias.rows.length === 0) {
     await query(
@@ -278,7 +267,7 @@ export async function runSeed(): Promise<void> {
     );
   }
 
-  // 12. CONSUMOS / VENTAS RECIENTES
+  // 11. CONSUMOS / VENTAS RECIENTES (hoy y los 4 días anteriores, en hora de Colombia)
   const checkVentas = await query('SELECT id FROM ventas LIMIT 1;');
   if (checkVentas.rows.length === 0) {
     for (let i = 0; i < 5; i++) {
@@ -286,27 +275,60 @@ export async function runSeed(): Promise<void> {
       if (i > 0) {
         const pastMenuRes = await query(
           `INSERT INTO menus_dia (fecha, nombre, descripcion, precio_aprendiz, precio_invitado, cantidad_disponible, cantidad_vendida, imagen_url, estado, creado_por)
-           VALUES (CURRENT_DATE - ($1 || ' days')::INTERVAL, 'Menú del Día - ' || $1, 'Almuerzo completo tradicional SENA', 5000, 8000, 200, 40, '/cafeteria-bg.jpg', 'completado', $2)
+           VALUES ($1::date - $2::int, 'Menú del Día - ' || $2, 'Almuerzo completo tradicional SENA', 5000, 8000, 200, 0, '/cafeteria-bg.jpg', 'completado', $3)
            ON CONFLICT (fecha, nombre) DO UPDATE SET precio_aprendiz = 5000 RETURNING id;`,
-          [i, encargadoId]
+          [today, i, encargadoId]
         );
         currentMenuId = pastMenuRes.rows[0].id;
       }
 
+      // La venta queda el mismo día del menú, a las 12:30 en Colombia (o ahora, si hoy aún no es esa hora)
+      const fechaHora = `LEAST(NOW(), (($3::date - $4::int) + TIME '12:30') AT TIME ZONE 'America/Bogota')`;
+      // Aprendiz: pagó en la ventanilla (ADR 011)
       await query(
         `INSERT INTO ventas (usuario_id, menu_id, fecha_hora, precio_cobrado, metodo_pago, estado_pago, metodo_verificacion, registrado_por, estado)
-         VALUES ($1, $2, NOW() - ($3 || ' days')::INTERVAL, 5000, 'saldo', 'pagado', 'manual', $4, 'completada')
+         VALUES ($1, $2, ${fechaHora}, 5000, 'efectivo', 'pagado', 'manual', $5, 'completada')
          ON CONFLICT DO NOTHING;`,
-        [aprendizId, currentMenuId, i, encargadoId]
+        [aprendizId, currentMenuId, today, i, encargadoId]
       );
+      // Instructora: a crédito, se cobra en Cartera de Deudas
       await query(
         `INSERT INTO ventas (usuario_id, menu_id, fecha_hora, precio_cobrado, metodo_pago, estado_pago, metodo_verificacion, registrado_por, estado)
-         VALUES ($1, $2, NOW() - ($3 || ' days')::INTERVAL, 5000, 'credito', 'pendiente', 'manual', $4, 'completada')
+         VALUES ($1, $2, ${fechaHora}, 5000, 'credito', 'pendiente', 'manual', $5, 'completada')
          ON CONFLICT DO NOTHING;`,
-        [instructor1Id, currentMenuId, i, encargadoId]
+        [instructor1Id, currentMenuId, today, i, encargadoId]
       );
     }
   }
+
+  // 12. DEUDAS DE INSTRUCTORES: salen de sus ventas a crédito pendientes, igual que cuando
+  //     el instructor reserva en la app (antes eran montos fijos que no cuadraban con Ventas)
+  const checkDeudas = await query('SELECT id FROM deudas LIMIT 1;');
+  if (checkDeudas.rows.length === 0) {
+    await query(
+      `INSERT INTO deudas (usuario_id, monto, almuerzos_pendientes, fecha_origen, estado)
+       SELECT v.usuario_id, SUM(v.precio_cobrado), COUNT(*)::int,
+              MIN((v.fecha_hora AT TIME ZONE 'America/Bogota')::date), 'pendiente'
+       FROM ventas v
+       JOIN usuarios u ON u.id = v.usuario_id
+       WHERE u.rol = 'instructor' AND v.estado = 'completada' AND v.estado_pago = 'pendiente'
+       GROUP BY v.usuario_id;`
+    );
+  }
+
+  // 13. PORCIONES VENDIDAS = ventas completadas de cada menú. La app mantiene esa igualdad al
+  //     reservar; aquí se recalcula también para corregir bases sembradas con versiones anteriores.
+  await query(
+    `UPDATE menus_dia m
+     SET cantidad_vendida = c.vendidas
+     FROM (
+       SELECT m2.id, COUNT(v.id)::int AS vendidas
+       FROM menus_dia m2
+       LEFT JOIN ventas v ON v.menu_id = m2.id AND v.estado = 'completada'
+       GROUP BY m2.id
+     ) c
+     WHERE c.id = m.id AND m.cantidad_vendida <> c.vendidas;`
+  );
 
   console.log('[Seed] ✓ Datos de demostración cargados exitosamente.');
 }
