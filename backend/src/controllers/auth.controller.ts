@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { query } from '../db/index.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { crearSolicitudDeCuenta, estadoDeSolicitud } from './solicitudes.controller.js';
 
 // El rol no se pide: sale de usuarios.rol en la base de datos.
 const loginSchema = z.object({
@@ -51,7 +52,12 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
     // Mensaje genérico: no revela si falló el documento o la contraseña
     const genericError = () => res.status(401).json({ message: 'Credenciales inválidas' });
 
-    if (!user) return genericError();
+    if (!user) {
+      // Instructor o encargado que pidió cuenta: con la contraseña correcta se le dice si su
+      // solicitud sigue pendiente o fue rechazada; con una incorrecta, el error genérico (ADR 015)
+      const solicitud = await estadoDeSolicitud(document, password);
+      return solicitud ? res.status(403).json(solicitud) : genericError();
+    }
     if (!user.activo) return genericError();
     if (!user.password_hash) return genericError();
 
@@ -97,14 +103,8 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
   try {
     const data = registerSchema.parse(req.body);
 
-    if (data.accountType === 'encargado' || data.accountType === 'instructor') {
-      return res.status(403).json({
-        message: 'No está permitido auto-registrarse como instructor o encargado. Contacta a la coordinación del comedor escolar.',
-      });
-    }
-
     const existingUser = await query(
-      'SELECT id, cedula, email FROM usuarios WHERE cedula = $1 OR email = $2 LIMIT 1;',
+      'SELECT id, cedula, email FROM usuarios WHERE cedula = $1 OR lower(email) = lower($2) LIMIT 1;',
       [data.document, data.email]
     );
 
@@ -113,9 +113,12 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       if (match.cedula === data.document) {
         return res.status(409).json({ message: 'Ya existe un usuario con este número de documento.' });
       }
-      if (match.email === data.email) {
-        return res.status(409).json({ message: 'Ya existe un usuario con este correo electrónico.' });
-      }
+      return res.status(409).json({ message: 'Ya existe un usuario con este correo electrónico.' });
+    }
+
+    // Instructor y encargado no se crean aquí: queda una solicitud que un encargado aprueba (ADR 015)
+    if (data.accountType === 'encargado' || data.accountType === 'instructor') {
+      return crearSolicitudDeCuenta({ ...data, accountType: data.accountType }, res);
     }
 
     let assignedFichaId: string | null = null;

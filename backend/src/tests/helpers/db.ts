@@ -7,6 +7,7 @@ import { pool } from '../../db/index.js';
 export async function cleanDatabase(): Promise<void> {
   await pool.query(`
     TRUNCATE TABLE
+      solicitudes_cuenta,
       pagos_deuda,
       movimientos_saldo,
       mermas,

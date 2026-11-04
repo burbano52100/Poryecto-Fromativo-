@@ -121,3 +121,16 @@ Este documento recopila las decisiones técnicas clave tomadas durante el desarr
 - **Costo**: una consulta por llave primaria en cada petición, aceptable para el volumen del comedor.
 - **Alternativa descartada**: tokens de pocos minutos con *refresh token*. Requiere más infraestructura y aun así deja una ventana abierta.
 - **Relacionado**: el rate limit del login ahora cuenta solo los intentos fallidos (`skipSuccessfulRequests`), para que los aprendices que comparten la IP del wifi no se bloqueen entre sí.
+
+## ADR 015: Cuentas de instructor y encargado por solicitud aprobada
+- **Fecha**: 2026-11-04
+- **Estado**: Aceptada (amplía los ADR 003 y 007)
+- **Contexto**: El registro público solo permitía aprendiz e invitado. Abrirlo a encargado daría privilegios a cualquiera (ADR 003), pero no existía ninguna forma de crear instructores ni encargados desde la aplicación.
+- **Decisión**:
+  - El registro ofrece los 4 tipos de cuenta. Para instructor y encargado no se crea el usuario: se guarda una fila en `solicitudes_cuenta` (migración 005) con la contraseña ya cifrada, y se responde `202` sin token.
+  - **Cualquier encargado** aprueba o rechaza desde la sección "Solicitudes de cuenta" de su panel. Al aprobar, se crea el usuario en la misma transacción.
+  - Si la persona intenta entrar antes de la aprobación, con la contraseña correcta ve si su solicitud está pendiente o fue rechazada (con el motivo). Con una incorrecta recibe el error genérico de siempre.
+  - Tabla aparte y no `usuarios.activo = false`: una cuenta pendiente nunca aparece en listas de instructores, fichas, cartera ni reportes, y "pendiente" no se confunde con "desactivada".
+- **Alternativas descartadas**:
+  - *Que solo el Encargado General apruebe encargados*: requiere distinguir un superadministrador (columna y reglas nuevas). Se puede agregar después sin cambiar la tabla.
+  - *Que el encargado cree cuentas directamente*: obliga al encargado a conocer o inventar la contraseña de la otra persona.

@@ -32,7 +32,8 @@ export const getResumenEncargado = async (_req: AuthenticatedRequest, res: Respo
          (SELECT COUNT(*) FROM sugerencias s WHERE s.estado = 'pendiente')::int as sugerencias_pendientes,
          (SELECT COUNT(*) FROM usuarios u
            WHERE u.rol = 'aprendiz' AND u.es_beneficiario = true AND u.activo = true
-         )::int as beneficiarios;`
+         )::int as beneficiarios,
+         (SELECT COUNT(*) FROM solicitudes_cuenta sc WHERE sc.estado = 'pendiente')::int as solicitudes_pendientes;`
     );
 
     const row = result.rows[0];
@@ -43,6 +44,7 @@ export const getResumenEncargado = async (_req: AuthenticatedRequest, res: Respo
       deudasPendientes: { monto: row.deudas_monto, cantidad: row.deudas_cantidad },
       sugerenciasPendientes: row.sugerencias_pendientes,
       beneficiariosActivos: row.beneficiarios,
+      solicitudesPendientes: row.solicitudes_pendientes,
     });
   } catch (error) {
     next(error);

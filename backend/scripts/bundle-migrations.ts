@@ -19,7 +19,8 @@ const files = fs
 
 const migrations = files.map((file) => {
   const fullPath = path.join(migrationsDir, file);
-  const content = fs.readFileSync(fullPath, 'utf-8');
+  // Finales de línea LF: en Windows git deja los .sql con CRLF y el mapa cambiaba sin que cambiara el SQL
+  const content = fs.readFileSync(fullPath, 'utf-8').replace(/\r\n/g, '\n');
   return {
     version: file,
     sql: content,

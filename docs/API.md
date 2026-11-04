@@ -43,24 +43,26 @@ En cada petición se verifica el JWT y se consulta al usuario en la base de dato
   }
   ```
 - **Errores**: `400` (faltan campos), `401` con el mensaje genérico `"Credenciales inválidas"` sea cual sea la causa (documento inexistente, contraseña incorrecta o cuenta inactiva), `429` (rate limit).
+- **Solicitud sin aprobar**: si el documento corresponde a una solicitud de instructor o encargado `pendiente` o `rechazada` y la contraseña coincide, responde `403` con `{ "message", "estado_solicitud": "pendiente" | "rechazada" }` (el mensaje incluye el motivo del rechazo). Con contraseña incorrecta responde el `401` genérico.
 
 ### `POST /api/auth/register`
 - **Público**: Sí
 - **Rate Limit**: 10 registros por IP cada hora (desactivado con `NODE_ENV=test`).
-- **Restricción**: Solo se permite registrarse como `aprendiz` o `invitado`. Los intentos de auto-registro como `instructor` o `encargado` retornan `403 Forbidden`.
+- **Tipos de cuenta**: `aprendiz` e `invitado` crean la cuenta e inician sesión (`201`). `instructor` y `encargado` **no** crean la cuenta: guardan una solicitud que un encargado debe aprobar (`202`, sin token; ver sección 12 y ADR 015).
 - **Body**:
   ```json
   {
     "name": "Pedro Pérez",
     "document": "1001234567",
-    "accountType": "aprendiz | invitado",
+    "accountType": "aprendiz | invitado | instructor | encargado",
     "ficha": "2847251", // Obligatorio para aprendiz
     "email": "pedro@misena.edu.co",
     "password": "••••••••"
   }
   ```
-- **Respuesta 201**: `{ "token", "user": { ...igual que login }, "message" }`
-- **Errores**: `400`, `403`, `409` ("Cédula o email ya registrado").
+- **Respuesta 201** (aprendiz, invitado): `{ "token", "user": { ...igual que login }, "message" }`
+- **Respuesta 202** (instructor, encargado): `{ "message", "solicitud": { "id", "rol", "estado": "pendiente" } }`
+- **Errores**: `400`, `409` (documento o correo ya registrado como usuario, o ya hay una solicitud pendiente con ese documento o correo).
 
 ### `GET /api/auth/me`
 - **Rol requerido**: Cualquiera autenticado
@@ -205,7 +207,8 @@ En cada petición se verifica el JWT y se consulta al usuario en la base de dato
     "porCobrarHoy": 25000,
     "deudasPendientes": { "monto": 35000, "cantidad": 3 },
     "sugerenciasPendientes": 2,
-    "beneficiariosActivos": 15
+    "beneficiariosActivos": 15,
+    "solicitudesPendientes": 1
   }
   ```
 
@@ -335,3 +338,38 @@ Todas las rutas requieren rol `encargado`. Cada entrada, salida o merma registra
 ### `GET /api/health`
 - **Público**: Verifica el servicio y la conexión a PostgreSQL (`SELECT 1`).
 - **Respuesta 200**: `{ "status": "OK", "database": "connected", "timestamp": "..." }`
+
+---
+
+## 12. Solicitudes de cuenta (`/api/solicitudes-cuenta`)
+Instructores y encargados piden su cuenta con `POST /api/auth/register` y cualquier encargado la aprueba o rechaza (ADR 015). Todos los endpoints requieren rol **encargado** (`401` sin token, `403` con otro rol).
+
+### `GET /api/solicitudes-cuenta?estado=`
+- **Query**: `estado` = `pendiente` (por defecto, en orden de llegada), `aprobada`, `rechazada` o `todas` (lo más reciente primero). Otro valor responde `400`.
+- **Respuesta 200**:
+  ```json
+  [
+    {
+      "id": "uuid",
+      "nombre": "María Gómez",
+      "documento": "1098765432",
+      "email": "mgomez@sena.edu.co",
+      "rol": "instructor",
+      "estado": "pendiente",
+      "motivo_rechazo": null,
+      "fecha": "2026-11-04T15:00:00.000Z",
+      "revisado_por": null,
+      "revisado_en": null
+    }
+  ]
+  ```
+
+### `POST /api/solicitudes-cuenta/:id/aprobar`
+- Crea el usuario con el rol y la contraseña (ya cifrada) de la solicitud, en la misma transacción que marca la solicitud como `aprobada`.
+- **Respuesta 200**: `{ "message", "usuario": { "id", "name", "document", "email", "role" } }`
+- **Errores**: `400` (id no válido), `404`, `409` (la solicitud ya fue revisada, o mientras tanto se registró un usuario con ese documento o correo).
+
+### `POST /api/solicitudes-cuenta/:id/rechazar`
+- **Body** (opcional): `{ "motivo": "texto de hasta 300 caracteres" }`. El motivo se muestra a la persona cuando intenta iniciar sesión.
+- **Respuesta 200**: `{ "message" }`
+- **Errores**: `400`, `404`, `409` (ya fue revisada).
