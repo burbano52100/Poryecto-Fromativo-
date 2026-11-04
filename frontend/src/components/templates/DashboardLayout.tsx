@@ -41,6 +41,7 @@ export const DashboardLayout = ({
     deudas: 'Cartera de Deudas',
     inventario: 'Gestión de Inventarios (GastroSENA)',
     grupos: 'Grupos & Fichas SENA',
+    visitas: 'Visitas Institucionales',
     solicitudes: 'Solicitudes de Cuenta',
   };
 

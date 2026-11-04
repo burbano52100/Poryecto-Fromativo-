@@ -319,7 +319,9 @@ Todas las rutas requieren rol `encargado`. Cada entrada, salida o merma registra
 - **Rol requerido**: `encargado`
 
 ### `GET /api/visitas` y `GET /api/visitas/kpi`
-- **Rol requerido**: `encargado`
+- **Rol requerido**: `encargado`. Se usa en la sección "Visitas Institucionales" del panel del Encargado.
+- **Respuesta de `GET /api/visitas`**: lista ordenada por fecha de visita (más reciente primero). Cada visita trae `institucion_nombre`, `instructor_nombre` (si el responsable es un instructor del SENA) o `nombre_instructor_ext`, `cantidad_personas`, `fecha_visita` como `"YYYY-MM-DD"`, `precio_unitario` y `total_a_cobrar` como números, `estado` y `estado_pago`.
+- **`GET /api/visitas/kpi`**: `{ totalVisitasMes, totalPersonasAtendidas, ingresosVisitas }`.
 
 ### `POST /api/visitas`
 - **Rol requerido**: `encargado`

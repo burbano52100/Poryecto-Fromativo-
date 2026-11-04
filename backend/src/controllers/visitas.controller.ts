@@ -9,7 +9,9 @@ export const getVisitas = async (_req: AuthenticatedRequest, res: Response, next
       `SELECT v.id, v.institucion_id, i.nombre as institucion_nombre,
               v.instructor_id, u.nombre as instructor_nombre,
               v.nombre_instructor_ext, v.cantidad_personas,
-              v.fecha_visita, v.precio_unitario, v.total_a_cobrar,
+              -- Fecha como texto y montos como número: pg convierte DATE a medianoche local y NUMERIC a string
+              to_char(v.fecha_visita, 'YYYY-MM-DD') as fecha_visita,
+              v.precio_unitario::float8 as precio_unitario, v.total_a_cobrar::float8 as total_a_cobrar,
               v.estado, v.metodo_pago, v.estado_pago, v.created_at
        FROM visitas_institucionales v
        JOIN instituciones i ON v.institucion_id = i.id

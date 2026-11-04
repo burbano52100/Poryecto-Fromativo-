@@ -4,6 +4,23 @@ Registro cronológico detallado de arquitectura, características, refactorizaci
 
 ---
 
+## [2026-11-04] - Visitas institucionales en el panel del Encargado y limpieza
+
+### Rama: `integracion/pendientes`
+
+- **Motivo:** `VisitasInstitucionalesPage.tsx` ya usaba la API real, pero no tenía ruta ni ítem en el menú, así que nadie podía abrirla.
+- **Cambios realizados:**
+  - Se movió a `components/organisms/VisitasInstitucionalesSection.tsx` con `git mv`, para conservar el historial.
+  - Ya no es una página completa (`min-h-screen` con su propio fondo): es una sección del panel, con el estilo de tarjetas de las demás.
+  - Nuevo ítem "Visitas Institucionales" en el Sidebar del Encargado y su título en `DashboardLayout`.
+  - La columna "Responsable" muestra el nombre del instructor (antes mostraba su UUID). La fecha se ve como `DD/MM/AAAA`.
+  - "Cantidad de Personas" deja de ser `type="number"` y usa el filtro de solo números.
+  - Los `<select>` de institución e instructor ahora están asociados a su etiqueta (accesibilidad).
+  - Se eliminó `molecules/DemoBanner.tsx`, que ningún archivo importaba.
+- **Tests:** `VisitasInstitucionalesSection.test.tsx`.
+
+---
+
 ## [2026-11-04] - Registro de instructor y encargado con aprobación del encargado
 
 ### Rama: `integracion/pendientes`

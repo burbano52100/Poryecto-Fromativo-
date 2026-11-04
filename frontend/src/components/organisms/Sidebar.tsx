@@ -18,6 +18,7 @@ import {
   History,
   AlertTriangle,
   Settings,
+  Building2,
   UserPlus,
 } from 'lucide-react';
 import type { User as UserType } from '../../schemas/auth.schema';
@@ -39,6 +40,7 @@ export type SectionType =
   | 'deudas'
   | 'inventario'
   | 'grupos'
+  | 'visitas'
   | 'solicitudes';
 
 export type InventarioSubSection =
@@ -280,6 +282,18 @@ export const Sidebar = ({
                 roleVariant="encargado"
                 onClick={() => {
                   onSelectSection('grupos');
+                  if (onCloseMobile) onCloseMobile();
+                }}
+              />
+
+              <SidebarNavItem
+                id="visitas"
+                label="Visitas Institucionales"
+                icon={<Building2 className="w-5 h-5" />}
+                isActive={activeSection === 'visitas'}
+                roleVariant="encargado"
+                onClick={() => {
+                  onSelectSection('visitas');
                   if (onCloseMobile) onCloseMobile();
                 }}
               />

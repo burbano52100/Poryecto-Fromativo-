@@ -10,6 +10,7 @@ import { InventarioSection } from '../components/organisms/InventarioSection';
 import { GruposSection } from '../components/organisms/GruposSection';
 import { BuzonSugerenciasEncargadoSection } from '../components/organisms/BuzonSugerenciasEncargadoSection';
 import { SolicitudesCuentaSection } from '../components/organisms/SolicitudesCuentaSection';
+import { VisitasInstitucionalesSection } from '../components/organisms/VisitasInstitucionalesSection';
 
 interface EncargadoDashboardPageProps {
   user?: User;
@@ -67,7 +68,10 @@ export const EncargadoDashboardPage = ({
       {/* 7. BUZÓN DE SUGERENCIAS SECTION */}
       {activeSection === 'sugerencias' && <BuzonSugerenciasEncargadoSection />}
 
-      {/* 8. SOLICITUDES DE CUENTA (INSTRUCTOR / ENCARGADO) */}
+      {/* 8. VISITAS INSTITUCIONALES */}
+      {activeSection === 'visitas' && <VisitasInstitucionalesSection />}
+
+      {/* 9. SOLICITUDES DE CUENTA (INSTRUCTOR / ENCARGADO) */}
       {activeSection === 'solicitudes' && <SolicitudesCuentaSection />}
     </DashboardLayout>
   );
