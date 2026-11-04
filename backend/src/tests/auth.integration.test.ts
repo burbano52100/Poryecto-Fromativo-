@@ -88,6 +88,32 @@ describe('GET /api/auth/me', () => {
   });
 });
 
+describe('Token con la cuenta vigente (ADR 014)', () => {
+  const tokenDe = async (cedula: string) => (await login({ document: cedula, password: PASSWORD })).body.token as string;
+  const me = (token: string) => request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
+
+  it('una cuenta desactivada deja de entrar aunque su token no haya vencido', async () => {
+    const token = await tokenDe('7000000001');
+    assert.strictEqual((await me(token)).status, 200);
+
+    await pool.query("UPDATE usuarios SET activo = false WHERE cedula = '7000000001';");
+    const res = await me(token);
+    await pool.query("UPDATE usuarios SET activo = true WHERE cedula = '7000000001';");
+
+    assert.strictEqual(res.status, 401);
+    assert.match(res.body.message, /desactivada/);
+  });
+
+  it('el rol sale de la base de datos y no del token', async () => {
+    const token = await tokenDe('7000000002'); // encargado
+    await pool.query("UPDATE usuarios SET rol = 'aprendiz' WHERE cedula = '7000000002';");
+    const res = await request(app).get('/api/auth/users').set('Authorization', `Bearer ${token}`);
+    await pool.query("UPDATE usuarios SET rol = 'encargado' WHERE cedula = '7000000002';");
+
+    assert.strictEqual(res.status, 403);
+  });
+});
+
 describe('POST /api/auth/facial-login', () => {
   it('ya no existe: el login facial simulado se eliminó', async () => {
     const res = await request(app).post('/api/auth/facial-login').send({ document: '7000000001' });

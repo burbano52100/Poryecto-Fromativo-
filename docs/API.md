@@ -4,7 +4,7 @@ Contrato de endpoints del backend de GastroSENA (Express 5 + TypeScript). Todos 
 ```http
 Authorization: Bearer <jwt_token>
 ```
-El rol del usuario se extrae internamente del JWT verificado. Los encabezados no confiables como `x-user-role` son ignorados.
+En cada petición se verifica el JWT y se consulta al usuario en la base de datos: si ya no existe o está inactivo responde `401` ("Tu cuenta no existe o fue desactivada..."), aunque el token no haya vencido. El rol se toma de la base de datos, no del token (ADR 014). Los encabezados no confiables como `x-user-role` son ignorados.
 
 **Convenciones**
 - "Hoy", los períodos y el horario de reservas usan la hora de Colombia (`America/Bogota`).
@@ -17,7 +17,7 @@ El rol del usuario se extrae internamente del JWT verificado. Los encabezados no
 
 ### `POST /api/auth/login`
 - **Público**: Sí
-- **Rate Limit**: 15 intentos por IP cada 15 minutos.
+- **Rate Limit**: 15 intentos **fallidos** por IP cada 15 minutos (los ingresos exitosos no cuentan, porque muchos aprendices comparten la IP del wifi del SENA). Al pasarse responde `429`.
 - **Body**: solo documento y contraseña. El rol **no** se envía: sale de `usuarios.rol` en la base de datos y viaja en el token y en la respuesta. Si el cliente envía `accountType` o `ficha`, se ignoran.
   ```json
   {

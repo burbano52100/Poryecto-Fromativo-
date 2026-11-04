@@ -2,7 +2,10 @@ import rateLimit from 'express-rate-limit';
 
 export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 15, // 15 attempts per window
+  max: 15, // 15 intentos fallidos por ventana
+  // Solo cuentan los fallidos: en el SENA muchos aprendices comparten la IP pública del wifi
+  // y no deben bloquearse entre sí por iniciar sesión correctamente
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Demasiados intentos fallidos de inicio de sesión. Por favor espera 15 minutos.' },

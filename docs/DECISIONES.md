@@ -112,3 +112,12 @@ Este documento recopila las decisiones técnicas clave tomadas durante el desarr
 - **Fecha**: 2026-11-02
 - **Estado**: Aceptada
 - **Decisión**: Se eliminó `docker-compose.yml`. El desarrollo usa PostgreSQL instalado localmente, y la CI usa un servicio `postgres:16` de GitHub Actions.
+
+## ADR 014: El token se valida contra la cuenta vigente
+- **Fecha**: 2026-11-04
+- **Estado**: Aceptada
+- **Contexto**: El JWT dura 7 días y `authenticateToken` confiaba en él sin consultar la base. Una cuenta desactivada, o un encargado al que se le quitaba el rol, seguía entrando con su token hasta que vencía.
+- **Decisión**: En cada petición protegida se busca al usuario por `id` (llave primaria) y se exige `activo = true`. `req.user`, incluido el rol, se arma con los datos de la base. Si la cuenta no existe o está inactiva responde `401`, y el frontend cierra la sesión.
+- **Costo**: una consulta por llave primaria en cada petición, aceptable para el volumen del comedor.
+- **Alternativa descartada**: tokens de pocos minutos con *refresh token*. Requiere más infraestructura y aun así deja una ventana abierta.
+- **Relacionado**: el rate limit del login ahora cuenta solo los intentos fallidos (`skipSuccessfulRequests`), para que los aprendices que comparten la IP del wifi no se bloqueen entre sí.

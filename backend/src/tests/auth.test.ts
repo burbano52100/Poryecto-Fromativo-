@@ -8,7 +8,7 @@ describe('Auth Middleware & Security Unit Tests', () => {
   const mockSecret = 'test_jwt_secret_key_12345678901234567890';
   process.env.JWT_SECRET = mockSecret;
 
-  it('debe rechazar peticiones sin header Authorization con 401', () => {
+  it('debe rechazar peticiones sin header Authorization con 401', async () => {
     let statusCode = 0;
     let responseBody: any = null;
 
@@ -25,7 +25,7 @@ describe('Auth Middleware & Security Unit Tests', () => {
     } as any;
 
     let nextCalled = false;
-    authenticateToken(req, res, () => {
+    await authenticateToken(req, res, () => {
       nextCalled = true;
     });
 
@@ -34,7 +34,7 @@ describe('Auth Middleware & Security Unit Tests', () => {
     assert.ok(responseBody.message.includes('Token de autorización ausente'));
   });
 
-  it('debe rechazar tokens JWT malformados o inválidos con 401', () => {
+  it('debe rechazar tokens JWT malformados o inválidos con 401', async () => {
     let statusCode = 0;
     const req = {
       headers: { authorization: 'Bearer token_invalido_falso' },
@@ -47,7 +47,7 @@ describe('Auth Middleware & Security Unit Tests', () => {
     } as any;
 
     let nextCalled = false;
-    authenticateToken(req, res, () => {
+    await authenticateToken(req, res, () => {
       nextCalled = true;
     });
 
@@ -55,7 +55,8 @@ describe('Auth Middleware & Security Unit Tests', () => {
     assert.strictEqual(nextCalled, false);
   });
 
-  it('debe aceptar tokens JWT válidos y adjuntar req.user', () => {
+  // El caso de un token válido con usuario real está en auth.integration.test.ts (necesita la BD)
+  it('debe rechazar con 401 un token bien firmado de un usuario que no existe', async () => {
     const payload = {
       id: 'usr_test_123',
       document: '1005678901',
@@ -68,18 +69,22 @@ describe('Auth Middleware & Security Unit Tests', () => {
     const req = {
       headers: { authorization: `Bearer ${token}` },
     } as AuthenticatedRequest;
+    let statusCode = 0;
     const res = {
-      status: () => ({ json: () => {} }),
+      status: (code: number) => {
+        statusCode = code;
+        return { json: () => {} };
+      },
     } as any;
 
     let nextCalled = false;
-    authenticateToken(req, res, () => {
+    await authenticateToken(req, res, () => {
       nextCalled = true;
     });
 
-    assert.strictEqual(nextCalled, true);
-    assert.strictEqual(req.user?.id, 'usr_test_123');
-    assert.strictEqual(req.user?.role, 'aprendiz');
+    assert.strictEqual(statusCode, 401);
+    assert.strictEqual(nextCalled, false);
+    assert.strictEqual(req.user, undefined);
   });
 
   it('requireRole debe permitir acceso cuando el rol coincide', () => {
