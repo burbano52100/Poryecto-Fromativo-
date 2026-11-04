@@ -128,3 +128,29 @@ Registro cronológico de tareas, fases, comandos ejecutados y resultados obtenid
 - `.github/workflows/ci.yml` con servicio `postgres:16`: lint, build y tests de backend y frontend.
 - `render.yaml` con base de datos, `DATABASE_URL` vía `fromDatabase`, `JWT_SECRET` generado y migraciones al arrancar.
 - Se eliminó `docker-compose.yml` (ADR 013).
+
+## FASE 6: Seguridad, solicitudes de cuenta y cierre de pendientes
+- **Fecha**: 2026-11-03 y 2026-11-04
+- **Rama**: `integracion/pendientes` (incluye las ramas de facial, cierre de sesión, campos numéricos y grupos).
+
+### Backend
+- El token exige que la cuenta siga activa y el rol sale de la base de datos (ADR 014).
+- El rate limit del login cuenta solo los intentos fallidos.
+- Solicitudes de cuenta de instructor y encargado con aprobación de cualquier encargado (migración 005, `/api/solicitudes-cuenta`, ADR 015).
+- `GET /api/visitas` devuelve la fecha como `YYYY-MM-DD` y los montos como número.
+- Semilla: fecha en hora de Colombia, porciones vendidas reales y deudas calculadas desde las ventas.
+- `bundle-migrations` normaliza CRLF: `migrationsMap.ts` ya no cambia en Windows sin que cambie el SQL.
+- `npm audit fix`: 0 vulnerabilidades.
+
+### Frontend
+- Registro con 4 tipos de cuenta; instructor y encargado quedan pendientes ("Solicitud enviada").
+- Panel del Encargado:
+  - Nuevas secciones "Solicitudes de Cuenta" y "Visitas Institucionales" (antes era una página sin ruta).
+  - Contadores del Sidebar con datos reales.
+- Campos numéricos que solo aceptan números, cierre de sesión sin recargar y fichas de Grupos ordenadas por reservas.
+- `npm audit fix`: 0 vulnerabilidades.
+
+### Verificación
+- Backend: 142 tests contra PostgreSQL. Frontend: 54 tests.
+- Recorrido en Chrome de las 25 secciones de los 4 paneles, en escritorio y celular.
+- Flujos de solicitud, aprobación, rechazo y registro de visita probados sobre la base de tests.

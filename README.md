@@ -61,6 +61,8 @@ Todos con contraseña `demo123`:
 
 El seed no corre en producción salvo que `SEED_DEMO=true`.
 
+Las cuentas nuevas de **instructor** y **encargado** se piden desde "Registrarse" y quedan pendientes hasta que un encargado las apruebe en **Solicitudes de Cuenta** (ADR 015).
+
 ## Calidad
 
 ```bash

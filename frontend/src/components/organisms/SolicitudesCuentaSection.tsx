@@ -151,7 +151,8 @@ export const SolicitudesCuentaSection = () => {
                       {s.estado === 'aprobada' ? 'Aprobada' : 'Rechazada'}
                       {s.revisado_por ? ` por ${s.revisado_por}` : ''}
                       {s.revisado_en ? ` el ${fechaHora(s.revisado_en)}` : ''}
-                      {s.motivo_rechazo ? `. Motivo: ${s.motivo_rechazo}` : ''}
+                      {/* La hora ya termina en "a. m.", así que el motivo va con un separador y no con punto */}
+                      {s.motivo_rechazo ? ` · Motivo: ${s.motivo_rechazo}` : ''}
                     </p>
                   )}
                 </div>
