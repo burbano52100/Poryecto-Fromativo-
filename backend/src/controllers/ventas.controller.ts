@@ -1,8 +1,11 @@
 import { Response, NextFunction } from 'express';
 import { query } from '../db/index.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { TIPOS_ALMUERZO_INVITADO, type TipoAlmuerzoInvitado } from '../config/almuerzosInvitados.js';
 
 /**
+ * Reporte de Ventas del Encargado: reservas de la app más los registros de Almuerzos Invitados.
+ *
  * Períodos "en curso" en hora de Colombia: Día = hoy, Semana = desde el lunes,
  * Mes = desde el 1°, y trimestre, semestre y año calendario.
  * Los fragmentos SQL salen de este mapa fijo, nunca del texto que envía el cliente.
@@ -64,6 +67,17 @@ export const getVentasReport = async (req: AuthenticatedRequest, res: Response, 
          AND v.fecha_hora AT TIME ZONE 'America/Bogota' >= rango.inicio;`
     );
 
+    // Almuerzos Invitados (ADR 016): se pagan al registrarlos, así que cuentan como cobrados
+    const invitadosRes = await query<{ tipo: TipoAlmuerzoInvitado; personas: number; ingresos: number }>(
+      `WITH ${rango}
+       SELECT a.tipo,
+              SUM(a.cantidad)::int as personas,
+              SUM(a.total)::float8 as ingresos
+       FROM almuerzos_invitados a, rango
+       WHERE a.fecha_hora AT TIME ZONE 'America/Bogota' >= rango.inicio
+       GROUP BY a.tipo;`
+    );
+
     const breakdownRes = await query(
       `WITH ${rango},
        serie AS (
@@ -71,36 +85,75 @@ export const getVentasReport = async (req: AuthenticatedRequest, res: Response, 
            DATE_TRUNC('${unidad}', inicio), DATE_TRUNC('${unidad}', fin), interval '1 ${unidad}'
          ) AS bucket
          FROM rango
+       ),
+       reservas AS (
+         SELECT DATE_TRUNC('${unidad}', v.fecha_hora AT TIME ZONE 'America/Bogota') AS bucket,
+                COUNT(*) AS n,
+                COALESCE(SUM(v.precio_cobrado) FILTER (WHERE v.estado_pago = 'pagado'), 0) AS ingresos
+         FROM ventas v, rango
+         WHERE v.estado = 'completada'
+           AND v.fecha_hora AT TIME ZONE 'America/Bogota' >= rango.inicio
+         GROUP BY 1
+       ),
+       invitados AS (
+         SELECT DATE_TRUNC('${unidad}', a.fecha_hora AT TIME ZONE 'America/Bogota') AS bucket,
+                SUM(a.cantidad) AS n,
+                SUM(a.total) AS ingresos
+         FROM almuerzos_invitados a, rango
+         WHERE a.fecha_hora AT TIME ZONE 'America/Bogota' >= rango.inicio
+         GROUP BY 1
        )
        SELECT TO_CHAR(s.bucket, 'YYYY-MM-DD') as fecha,
-              COUNT(v.id)::int as count,
-              COALESCE(SUM(v.precio_cobrado) FILTER (WHERE v.estado_pago = 'pagado'), 0)::float8 as ingresos
+              (COALESCE(r.n, 0) + COALESCE(i.n, 0))::int as count,
+              (COALESCE(r.ingresos, 0) + COALESCE(i.ingresos, 0))::float8 as ingresos,
+              COALESCE(i.n, 0)::int as invitados
        FROM serie s
-       LEFT JOIN ventas v
-         ON v.estado = 'completada'
-        AND DATE_TRUNC('${unidad}', v.fecha_hora AT TIME ZONE 'America/Bogota') = s.bucket
-       GROUP BY s.bucket
+       LEFT JOIN reservas r ON r.bucket = s.bucket
+       LEFT JOIN invitados i ON i.bucket = s.bucket
        ORDER BY s.bucket ASC;`
     );
 
+    // Reservas y registros de Almuerzos Invitados, mezclados por fecha
     const transaccionesRes = await query(
       `WITH ${rango}
-       SELECT v.id, v.fecha_hora, v.precio_cobrado::float8 as precio, v.estado_pago,
-              u.nombre as cliente, u.cedula, u.rol,
-              COALESCE(f.codigo_ficha, '') as ficha,
-              m.nombre as menu
-       FROM ventas v
-       JOIN usuarios u ON v.usuario_id = u.id
-       JOIN menus_dia m ON v.menu_id = m.id
-       LEFT JOIN fichas f ON u.ficha_id = f.id,
-       rango
-       WHERE v.estado = 'completada'
-         AND v.fecha_hora AT TIME ZONE 'America/Bogota' >= rango.inicio
-       ORDER BY v.fecha_hora DESC
+       SELECT * FROM (
+         SELECT v.id, v.fecha_hora, v.precio_cobrado::float8 as precio, v.estado_pago::text as estado_pago,
+                u.nombre as cliente, u.cedula, u.rol::text as rol,
+                COALESCE(f.codigo_ficha, '') as ficha,
+                m.nombre as menu,
+                'reserva' as origen, 1 as personas
+         FROM ventas v
+         JOIN usuarios u ON v.usuario_id = u.id
+         JOIN menus_dia m ON v.menu_id = m.id
+         LEFT JOIN fichas f ON u.ficha_id = f.id,
+         rango
+         WHERE v.estado = 'completada'
+           AND v.fecha_hora AT TIME ZONE 'America/Bogota' >= rango.inicio
+         UNION ALL
+         SELECT a.id, a.fecha_hora, a.total::float8, 'pagado',
+                COALESCE(a.nombre_invitado, ''), '', a.tipo::text,
+                '',
+                'Almuerzo invitado',
+                'invitado', a.cantidad
+         FROM almuerzos_invitados a, rango
+         WHERE a.fecha_hora AT TIME ZONE 'America/Bogota' >= rango.inicio
+       ) t
+       ORDER BY t.fecha_hora DESC
        LIMIT 100;`
     );
 
     const totales = totalsRes.rows[0];
+    // Los tres tipos vienen siempre, aunque estén en cero
+    const invitadosPorTipo = Object.fromEntries(
+      TIPOS_ALMUERZO_INVITADO.map((tipo) => {
+        const fila = invitadosRes.rows.find((r) => r.tipo === tipo);
+        return [tipo, { personas: fila?.personas ?? 0, ingresos: fila?.ingresos ?? 0 }];
+      })
+    ) as Record<TipoAlmuerzoInvitado, { personas: number; ingresos: number }>;
+    const invitados = Object.values(invitadosPorTipo).reduce(
+      (acc, t) => ({ personas: acc.personas + t.personas, ingresos: acc.ingresos + t.ingresos }),
+      { personas: 0, ingresos: 0 }
+    );
     const maxCount = breakdownRes.rows.reduce((max, row) => Math.max(max, row.count), 0) || 1;
 
     return res.json({
@@ -108,16 +161,21 @@ export const getVentasReport = async (req: AuthenticatedRequest, res: Response, 
       desde: totales.desde,
       agrupacion: unidad === 'month' ? 'mes' : 'dia',
       totales: {
-        almuerzosServidos: totales.servidos,
+        almuerzosServidos: totales.servidos + invitados.personas,
         almuerzosGratis: totales.gratis,
-        ingresosCobrados: totales.cobrados,
+        ingresosCobrados: totales.cobrados + invitados.ingresos,
         porCobrar: totales.por_cobrar,
+        almuerzosInvitados: invitados.personas,
+        ingresosInvitados: invitados.ingresos,
+        invitadosPorTipo,
       },
       breakdown: breakdownRes.rows.map((row) => ({
         fecha: row.fecha,
         label: etiquetaBucket(row.fecha, unidad),
         count: row.count,
         ingresos: row.ingresos,
+        // Personas de Almuerzos Invitados incluidas en `count`
+        invitados: row.invitados,
         percent: Math.round((row.count / maxCount) * 100),
       })),
       transacciones: transaccionesRes.rows.map((v) => ({
@@ -131,6 +189,9 @@ export const getVentasReport = async (req: AuthenticatedRequest, res: Response, 
         precio: v.precio,
         estado_pago: v.estado_pago,
         beneficiario: v.estado_pago === 'gratis',
+        // 'invitado': registro de Almuerzos Invitados; `rol` trae su tipo y `personas` cuántas fueron
+        origen: v.origen,
+        personas: v.personas,
       })),
     });
   } catch (error) {

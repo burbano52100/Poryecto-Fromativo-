@@ -11,7 +11,6 @@ const app = createApp();
 let encargado: UsuarioTest;
 let aprendiz: UsuarioTest;
 let instructor: UsuarioTest;
-let invitado: UsuarioTest;
 
 const enviar = (usuario: UsuarioTest, asunto: string) =>
   request(app)
@@ -31,24 +30,23 @@ beforeAll(async () => {
   encargado = await crearUsuario('Encargado', '8500000001', 'encargado');
   aprendiz = await crearUsuario('Aprendiz', '8500000002', 'aprendiz', { fichaId });
   instructor = await crearUsuario('Instructor', '8500000003', 'instructor');
-  invitado = await crearUsuario('Invitado', '8500000004', 'invitado');
 });
 
 describe('Buzón de sugerencias entre roles', () => {
-  it('las sugerencias de los tres roles llegan al buzón del encargado', async () => {
+  it('las sugerencias de aprendices e instructores llegan al buzón del encargado', async () => {
     assert.strictEqual((await enviar(aprendiz, 'Sopa fría')).status, 201);
     assert.strictEqual((await enviar(instructor, 'Más opciones')).status, 201);
-    assert.strictEqual((await enviar(invitado, 'Excelente atención')).status, 201);
 
     const res = await listar(encargado);
     assert.strictEqual(res.status, 200);
-    assert.strictEqual(res.body.length, 3);
+    assert.strictEqual(res.body.length, 2);
     const delAprendiz = res.body.find((s: any) => s.subject === 'Sopa fría');
     assert.strictEqual(delAprendiz.role, 'Aprendiz');
     assert.strictEqual(delAprendiz.fichaOrDoc, 'Ficha 2847251');
     assert.strictEqual(delAprendiz.status, 'PENDIENTE');
+    assert.strictEqual(res.body.find((s: any) => s.subject === 'Más opciones').role, 'Instructor');
 
-    assert.strictEqual((await resumen()).body.sugerenciasPendientes, 3);
+    assert.strictEqual((await resumen()).body.sugerenciasPendientes, 2);
   });
 
   it('cada usuario ve solo sus propias sugerencias', async () => {
@@ -70,7 +68,7 @@ describe('Buzón de sugerencias entre roles', () => {
     const delAprendiz = await listar(aprendiz);
     assert.strictEqual(delAprendiz.body[0].status, 'ATENDIDA');
     assert.strictEqual(delAprendiz.body[0].respuesta, 'Gracias, ya revisamos la temperatura.');
-    assert.strictEqual((await resumen()).body.sugerenciasPendientes, 2);
+    assert.strictEqual((await resumen()).body.sugerenciasPendientes, 1);
   });
 
   it('valida el contenido y solo deja responder al encargado', async () => {
@@ -98,8 +96,8 @@ describe('Buzón de sugerencias entre roles', () => {
 describe('GET /api/dashboard/encargado', () => {
   it('resume ventas, ingresos y deudas de hoy', async () => {
     const menu = await pool.query(
-      `INSERT INTO menus_dia (fecha, nombre, precio_aprendiz, precio_invitado, cantidad_disponible, estado)
-       VALUES ((NOW() AT TIME ZONE 'America/Bogota')::date, 'Menú', 5000, 8000, 50, 'activo') RETURNING id;`
+      `INSERT INTO menus_dia (fecha, nombre, precio_aprendiz, cantidad_disponible, estado)
+       VALUES ((NOW() AT TIME ZONE 'America/Bogota')::date, 'Menú', 5000, 50, 'activo') RETURNING id;`
     );
     await pool.query(
       `INSERT INTO ventas (usuario_id, menu_id, precio_cobrado, metodo_pago, estado_pago)

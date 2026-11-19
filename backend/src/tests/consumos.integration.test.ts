@@ -23,8 +23,8 @@ const signToken = (user: { id: string; cedula: string; nombre: string }) =>
 
 const crearMenu = async (nombre: string, estado: string, disponible = 10, vendida = 0): Promise<string> => {
   const res = await pool.query(
-    `INSERT INTO menus_dia (fecha, nombre, precio_aprendiz, precio_invitado, cantidad_disponible, cantidad_vendida, estado)
-     VALUES (CURRENT_DATE, $1, 5000, 8000, $2, $3, $4) RETURNING id;`,
+    `INSERT INTO menus_dia (fecha, nombre, precio_aprendiz, cantidad_disponible, cantidad_vendida, estado)
+     VALUES (CURRENT_DATE, $1, 5000, $2, $3, $4) RETURNING id;`,
     [nombre, disponible, vendida, estado]
   );
   return res.rows[0].id;

@@ -1,4 +1,5 @@
 import { pool } from '../../db/index.js';
+import { CONFIGURACION_POR_DEFECTO } from '../../services/configuracion.service.js';
 
 /**
  * Limpia las tablas en orden correcto (respetando FK constraints) antes de cada suite.
@@ -7,6 +8,14 @@ import { pool } from '../../db/index.js';
 export async function cleanDatabase(): Promise<void> {
   await pool.query(`
     TRUNCATE TABLE
+      auditoria,
+      alertas,
+      recordatorios_deuda,
+      calificaciones_almuerzo,
+      cierres_caja,
+      beneficios,
+      cargas_masivas,
+      almuerzos_invitados,
       solicitudes_cuenta,
       pagos_deuda,
       movimientos_saldo,
@@ -29,4 +38,16 @@ export async function cleanDatabase(): Promise<void> {
       instituciones
     RESTART IDENTITY CASCADE;
   `);
+  await restablecerConfiguracion();
+}
+
+/** Deja la configuración con sus valores por defecto (algunas pruebas la cambian). */
+export async function restablecerConfiguracion(): Promise<void> {
+  for (const [clave, valor] of Object.entries(CONFIGURACION_POR_DEFECTO)) {
+    await pool.query(
+      `INSERT INTO configuracion (clave, valor) VALUES ($1, $2::jsonb)
+       ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor;`,
+      [clave, JSON.stringify(valor)]
+    );
+  }
 }

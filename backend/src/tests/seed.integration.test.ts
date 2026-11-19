@@ -65,4 +65,28 @@ describe('Semilla de demostración', () => {
     const vencidos = await q("SELECT nombre FROM materiales WHERE fecha_vencimiento < (NOW() AT TIME ZONE 'America/Bogota')::date");
     assert.deepStrictEqual(vencidos, []);
   });
+
+  it('crea el coordinador y el encargado, solicitudes pendientes y una cuenta de carga masiva', async () => {
+    const cuentas = await q<{ cedula: string; rol: string; estado: string; debe_cambiar_clave: boolean }>(
+      `SELECT cedula, rol::text AS rol, estado::text AS estado, debe_cambiar_clave FROM usuarios
+       WHERE cedula IN ('1023456789', '1012345678', '1065432101', '1054321098', '1005678920') ORDER BY cedula`
+    );
+    assert.deepStrictEqual(cuentas, [
+      { cedula: '1005678920', rol: 'aprendiz', estado: 'activo', debe_cambiar_clave: true },
+      { cedula: '1012345678', rol: 'encargado', estado: 'activo', debe_cambiar_clave: false },
+      { cedula: '1023456789', rol: 'coordinador', estado: 'activo', debe_cambiar_clave: false },
+      { cedula: '1054321098', rol: 'instructor', estado: 'pendiente', debe_cambiar_clave: false },
+      { cedula: '1065432101', rol: 'instructor', estado: 'pendiente', debe_cambiar_clave: false },
+    ]);
+  });
+
+  it('deja historia suficiente para la sugerencia y cierres de caja de días anteriores', async () => {
+    const { sugerenciaParaFecha } = await import('../services/sugerencia.service.js');
+    const sugerencia = await sugerenciaParaFecha(fechaBogota());
+    assert.strictEqual(sugerencia.suficiente, true, sugerencia.mensaje);
+    const [cierres] = await q<{ n: number }>('SELECT count(*)::int AS n FROM cierres_caja');
+    assert.strictEqual(cierres.n, 6);
+    const [beneficios] = await q<{ n: number }>("SELECT count(*)::int AS n FROM beneficios WHERE estado = 'activo'");
+    assert.strictEqual(beneficios.n, 2);
+  });
 });

@@ -14,6 +14,7 @@ import {
   registrarMovimiento,
   withTransaction,
 } from '../services/inventario.service.js';
+import { registrarAuditoria } from '../services/auditoria.service.js';
 
 // ---------------------------------------------------------------------
 // Validaciones comunes
@@ -268,6 +269,16 @@ export const registrarEntrada = async (req: AuthenticatedRequest, res: Response,
         concepto: data.concepto || 'Entrada de stock',
         usuarioId: req.user?.id || null,
       });
+      await registrarAuditoria(
+        {
+          usuario: req.user,
+          accion: 'crear',
+          entidad: 'movimiento_inventario',
+          entidadId: mov.movimientoId,
+          despues: { tipo: 'entrada', material: mov.nombre, cantidad: data.cantidad, saldo: mov.saldo, concepto: data.concepto || 'Entrada de stock' },
+        },
+        client
+      );
 
       if (data.costo_unitario !== undefined) {
         const costoRes = await client.query(
@@ -308,6 +319,16 @@ export const registrarSalida = async (req: AuthenticatedRequest, res: Response, 
         concepto: data.concepto,
         usuarioId: req.user?.id || null,
       });
+      await registrarAuditoria(
+        {
+          usuario: req.user,
+          accion: 'crear',
+          entidad: 'movimiento_inventario',
+          entidadId: mov.movimientoId,
+          despues: { tipo: 'salida', material: mov.nombre, cantidad: data.cantidad, saldo: mov.saldo, concepto: data.concepto },
+        },
+        client
+      );
       return { movimiento_id: mov.movimientoId, material: await obtenerMaterial(client, id) };
     });
 
@@ -598,12 +619,23 @@ export const addMerma = async (req: AuthenticatedRequest, res: Response, next: N
         materialId = matRes.rows[0].id as string;
       }
 
-      return registrarMerma(client, {
+      const merma = await registrarMerma(client, {
         materialId,
         cantidad: data.quantity,
         razon: data.reason,
         usuarioId: req.user?.id || null,
       });
+      await registrarAuditoria(
+        {
+          usuario: req.user,
+          accion: 'crear',
+          entidad: 'merma',
+          entidadId: merma.id,
+          despues: { material: merma.movimiento.nombre, cantidad: data.quantity, razon: data.reason, saldo: merma.movimiento.saldo },
+        },
+        client
+      );
+      return merma;
     });
 
     return res.status(201).json({

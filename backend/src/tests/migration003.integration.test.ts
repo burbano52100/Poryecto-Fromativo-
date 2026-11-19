@@ -18,7 +18,7 @@ interface VentaCaso {
 const casos: VentaCaso[] = [
   // Ventas anteriores a la 002: se corrigen
   { etiqueta: 'previa-saldo', metodo: 'saldo', precio: 5000, estadoInicial: 'pendiente', previa: true, esperado: 'pagado' },
-  { etiqueta: 'previa-efectivo', metodo: 'efectivo', precio: 8000, estadoInicial: 'pendiente', previa: true, esperado: 'pagado' },
+  { etiqueta: 'previa-efectivo', metodo: 'efectivo', precio: 5000, estadoInicial: 'pendiente', previa: true, esperado: 'pagado' },
   { etiqueta: 'previa-credito', metodo: 'credito', precio: 5000, estadoInicial: 'pagado', previa: true, esperado: 'pendiente' },
   { etiqueta: 'previa-cortesia', metodo: 'cortesia', precio: 0, estadoInicial: 'pendiente', previa: true, esperado: 'gratis' },
   // Empates: precio 0 con otro método -> gana 'gratis'
@@ -26,7 +26,7 @@ const casos: VentaCaso[] = [
   { etiqueta: 'previa-credito-0', metodo: 'credito', precio: 0, estadoInicial: 'pendiente', previa: true, esperado: 'gratis' },
   // Ventas posteriores a la 002: no se tocan
   { etiqueta: 'post-saldo', metodo: 'saldo', precio: 5000, estadoInicial: 'pendiente', previa: false, esperado: 'pendiente' },
-  { etiqueta: 'post-efectivo', metodo: 'efectivo', precio: 8000, estadoInicial: 'pendiente', previa: false, esperado: 'pendiente' },
+  { etiqueta: 'post-efectivo', metodo: 'efectivo', precio: 5000, estadoInicial: 'pendiente', previa: false, esperado: 'pendiente' },
   { etiqueta: 'post-credito', metodo: 'credito', precio: 5000, estadoInicial: 'pagado', previa: false, esperado: 'pagado' },
   { etiqueta: 'post-saldo-0', metodo: 'saldo', precio: 0, estadoInicial: 'pendiente', previa: false, esperado: 'pendiente' },
 ];
@@ -48,8 +48,8 @@ beforeAll(async () => {
   for (const caso of casos) {
     // Un menú por venta para no chocar con el índice único (usuario_id, menu_id)
     const menuRes = await pool.query(
-      `INSERT INTO menus_dia (fecha, nombre, precio_aprendiz, precio_invitado, estado)
-       VALUES (CURRENT_DATE, $1, 5000, 8000, 'completado') RETURNING id;`,
+      `INSERT INTO menus_dia (fecha, nombre, precio_aprendiz, estado)
+       VALUES (CURRENT_DATE, $1, 5000, 'completado') RETURNING id;`,
       [caso.etiqueta]
     );
     await pool.query(

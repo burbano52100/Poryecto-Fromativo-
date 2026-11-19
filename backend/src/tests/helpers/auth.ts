@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { pool } from '../../db/index.js';
 
-export type Rol = 'aprendiz' | 'instructor' | 'encargado' | 'invitado';
+export type Rol = 'aprendiz' | 'instructor' | 'encargado' | 'coordinador';
 
 export interface UsuarioTest {
   id: string;
@@ -47,8 +47,8 @@ export const crearMenu = async (
   opciones: { estado?: string; disponible?: number; vendida?: number; diasAtras?: number } = {}
 ): Promise<string> => {
   const res = await pool.query(
-    `INSERT INTO menus_dia (fecha, nombre, precio_aprendiz, precio_invitado, cantidad_disponible, cantidad_vendida, estado)
-     VALUES ((NOW() AT TIME ZONE 'America/Bogota')::date - $5::int, $1, 5000, 8000, $2, $3, $4)
+    `INSERT INTO menus_dia (fecha, nombre, precio_aprendiz, cantidad_disponible, cantidad_vendida, estado)
+     VALUES ((NOW() AT TIME ZONE 'America/Bogota')::date - $5::int, $1, 5000, $2, $3, $4)
      RETURNING id;`,
     [nombre, opciones.disponible ?? 50, opciones.vendida ?? 0, opciones.estado ?? 'activo', opciones.diasAtras ?? 0]
   );

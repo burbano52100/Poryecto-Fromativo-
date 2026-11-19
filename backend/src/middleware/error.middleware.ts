@@ -33,7 +33,15 @@ export const errorHandler = (
     });
   }
 
-  // 3. Códigos de error de PostgreSQL
+  // 3. Cuerpos demasiado grandes o mal formados (express.json / express.raw)
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({ message: 'El archivo o los datos enviados superan el tamaño máximo permitido (5 MB).' });
+  }
+  if (err?.type === 'entity.parse.failed') {
+    return res.status(400).json({ message: 'El cuerpo de la petición no es un JSON válido.' });
+  }
+
+  // 4. Códigos de error de PostgreSQL
   if (err && err.code) {
     // 23505: Unique violation
     if (err.code === '23505') {

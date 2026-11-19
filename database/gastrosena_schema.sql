@@ -17,10 +17,12 @@
 create extension if not exists "pgcrypto"; -- gen_random_uuid()
 
 -- ---------------------------------------------------------------------
--- 1. USUARIOS Y FICHAS (roles: aprendiz, instructor, encargado, invitado)
+-- 1. USUARIOS Y FICHAS (roles: aprendiz, instructor, encargado)
 -- ---------------------------------------------------------------------
+-- Los almuerzos de personas externas no usan cuenta: los registra el
+-- encargado en `almuerzos_invitados` (sección 10, ADR 016).
 
-create type rol_usuario as enum ('aprendiz', 'instructor', 'encargado', 'invitado');
+create type rol_usuario as enum ('aprendiz', 'instructor', 'encargado');
 create type metodo_verificacion as enum ('facial', 'qr', 'manual');
 
 -- Una "ficha" es el grupo/curso SENA (antes referenciado como "Grupo"
@@ -89,7 +91,6 @@ create table menus_dia (
   nombre                text not null,               -- 'Menú Ejecutivo', 'Menú Saludable'
   descripcion           text,
   precio_aprendiz       numeric(12,2) not null,
-  precio_invitado       numeric(12,2) not null,
   cantidad_disponible   integer not null default 0,
   cantidad_vendida      integer not null default 0,
   imagen_url            text,
@@ -370,9 +371,12 @@ create table instituciones (
 
 create table visitas_institucionales (
   id                      uuid primary key default gen_random_uuid(),
-  institucion_id          uuid not null references instituciones(id),
-  instructor_id           uuid references usuarios(id),           -- Opcional (Instructor SENA)
-  nombre_instructor_ext   text,                                   -- Opcional (Instructor Externo)
+  institucion_nombre      text not null check (btrim(institucion_nombre) <> '' and char_length(institucion_nombre) <= 150), -- escrito a mano (migración 008)
+  responsable_nombre      text not null check (btrim(responsable_nombre) <> '' and char_length(responsable_nombre) <= 150), -- escrito a mano (migración 008)
+  -- Historial de las visitas anteriores a la migración 008 (la app ya no los usa):
+  institucion_id          uuid references instituciones(id) on delete set null,
+  instructor_id           uuid references usuarios(id),
+  nombre_instructor_ext   text,
   cantidad_personas       integer not null check (cantidad_personas > 0),
   fecha_visita            date not null,
   precio_unitario         numeric(12,2) not null,
@@ -386,15 +390,6 @@ create table visitas_institucionales (
   created_at              timestamptz not null default now(),
   updated_at              timestamptz not null default now()
 );
-
--- Constraint XOR: Exige que exactamente uno de los dos instructores esté presente
-alter table visitas_institucionales
-  add constraint chk_instructor_presente
-  check (
-    (instructor_id is not null and nombre_instructor_ext is null)
-    or
-    (instructor_id is null and nombre_instructor_ext is not null)
-  );
 
 create index idx_visitas_institucion on visitas_institucionales(institucion_id);
 create index idx_visitas_instructor on visitas_institucionales(instructor_id);
@@ -416,3 +411,34 @@ alter table fichas add column if not exists vocero              text;
 alter table fichas add column if not exists jornada             text check (jornada in ('mañana','tarde','noche'));
 alter table fichas add column if not exists cantidad_estudiantes integer not null default 0;
 
+
+-- ---------------------------------------------------------------------
+-- 10. ALMUERZOS INVITADOS (ADR 016, migración 007)
+-- El encargado registra los almuerzos vendidos a invitados en tres tipos
+-- con tarifa fija; las tarifas vigentes están en un solo lugar:
+-- backend/src/config/almuerzosInvitados.ts.
+-- Cada fila copia su precio_unitario: el histórico no cambia si cambian
+-- las tarifas. `cantidad` es el número de personas.
+-- ---------------------------------------------------------------------
+
+create type tipo_almuerzo_invitado as enum ('instructor', 'aprendiz', 'corriente');
+
+create table almuerzos_invitados (
+  id               uuid primary key default gen_random_uuid(),
+  tipo             tipo_almuerzo_invitado not null,
+  cantidad         integer not null check (cantidad > 0),               -- número de personas
+  precio_unitario  numeric(12,2) not null check (precio_unitario >= 0),
+  total            numeric(12,2) generated always as (cantidad * precio_unitario) stored,
+  nombre_invitado  text,                                                -- nombre o nota del grupo (opcional)
+  registrado_por   uuid not null references usuarios(id),               -- encargado que lo registró
+  fecha_hora       timestamptz not null default now(),
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now()
+);
+
+create index idx_almuerzos_invitados_fecha on almuerzos_invitados(fecha_hora);
+create index idx_almuerzos_invitados_tipo_fecha on almuerzos_invitados(tipo, fecha_hora);
+create index idx_almuerzos_invitados_registrado_por on almuerzos_invitados(registrado_por);
+
+create trigger trg_almuerzos_invitados_updated_at before update on almuerzos_invitados
+  for each row execute function set_updated_at();

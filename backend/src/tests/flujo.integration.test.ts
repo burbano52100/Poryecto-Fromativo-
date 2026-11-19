@@ -1,6 +1,7 @@
 /**
  * Flujo completo entre roles, solo a través de la API:
- * registro → menú → beneficio → reservas → Ventas y Grupos del Encargado → pago → Consumos del aprendiz.
+ * registro → aprobación del Coordinador → menú → beneficio → reservas → Ventas y Grupos del Encargado
+ * → pago → Consumos del aprendiz.
  */
 import { describe, it, beforeAll, afterAll } from 'vitest';
 import assert from 'node:assert';
@@ -25,7 +26,14 @@ const registrar = async (name: string, document: string) => {
     email: `${document}@misena.edu.co`,
     password: PASSWORD,
   });
-  assert.strictEqual(res.status, 201, JSON.stringify(res.body));
+  // Queda pendiente hasta que el coordinador lo apruebe (ADR 018)
+  assert.strictEqual(res.status, 202, JSON.stringify(res.body));
+  return res.body.solicitud as { id: string };
+};
+
+const iniciarSesion = async (document: string) => {
+  const res = await request(app).post('/api/auth/login').send({ document, password: PASSWORD });
+  assert.strictEqual(res.status, 200, JSON.stringify(res.body));
   return res.body as { token: string; user: { id: string } };
 };
 
@@ -34,7 +42,8 @@ beforeAll(async () => {
   await cleanDatabase();
   const hash = await bcrypt.hash(PASSWORD, 10);
   await pool.query(
-    "INSERT INTO usuarios (nombre, cedula, password_hash, rol) VALUES ('Encargado Flujo', '8700000001', $1, 'encargado');",
+    `INSERT INTO usuarios (nombre, cedula, password_hash, rol)
+     VALUES ('Encargado Flujo', '8700000001', $1, 'encargado'), ('Coordinadora Flujo', '8700000009', $1, 'coordinador');`,
     [hash]
   );
 });
@@ -52,9 +61,18 @@ describe('Flujo completo Aprendiz → Encargado → Aprendiz', () => {
     assert.strictEqual(loginEncargado.body.user.role, 'encargado');
     const encargado = loginEncargado.body.token as string;
 
-    // 2. Dos aprendices crean su cuenta en la misma ficha
-    const carlos = await registrar('Carlos Normal', '8700000002');
-    const ana = await registrar('Ana Beneficiaria', '8700000003');
+    // 2. Dos aprendices piden su cuenta en la misma ficha; no pueden entrar hasta que el coordinador apruebe
+    const solicitudes = [await registrar('Carlos Normal', '8700000002'), await registrar('Ana Beneficiaria', '8700000003')];
+    const pendiente = await request(app).post('/api/auth/login').send({ document: '8700000002', password: PASSWORD });
+    assert.strictEqual(pendiente.status, 403);
+    const coordinadora = (await iniciarSesion('8700000009')).token;
+    const aprobar = await request(app)
+      .post('/api/coordinador/solicitudes/aprobar')
+      .set(auth(coordinadora))
+      .send({ ids: solicitudes.map((s) => s.id) });
+    assert.strictEqual(aprobar.status, 200, JSON.stringify(aprobar.body));
+    const carlos = await iniciarSesion('8700000002');
+    const ana = await iniciarSesion('8700000003');
 
     // 3. El encargado publica el menú de hoy y vuelve beneficiaria a Ana
     const hoy = (await pool.query("SELECT TO_CHAR((NOW() AT TIME ZONE 'America/Bogota')::date, 'YYYY-MM-DD') AS d;")).rows[0].d;
@@ -62,7 +80,6 @@ describe('Flujo completo Aprendiz → Encargado → Aprendiz', () => {
       nombre: 'Bandeja Huilense',
       fecha: hoy,
       precio_aprendiz: 5000,
-      precio_invitado: 8000,
       cantidad_disponible: 100,
       estado: 'activo',
     });
@@ -71,10 +88,11 @@ describe('Flujo completo Aprendiz → Encargado → Aprendiz', () => {
     const estudiantes = await request(app).get('/api/beneficiarios/estudiantes').set(auth(encargado));
     assert.strictEqual(estudiantes.body.length, 2);
     const beneficio = await request(app)
-      .patch(`/api/beneficiarios/${ana.user.id}`)
+      .post('/api/beneficiarios')
       .set(auth(encargado))
-      .send({ es_beneficiario: true });
-    assert.strictEqual(beneficio.status, 200);
+      .send({ usuario_id: ana.user.id, sin_apoyo_incompatible: true });
+    assert.strictEqual(beneficio.status, 201, JSON.stringify(beneficio.body));
+    assert.strictEqual(beneficio.body.beneficio.estado, 'activo');
 
     // 4. Ana ve $0 y reserva con un clic (sin menu_id); Carlos reserva a $5.000
     const menuAna = await request(app).get('/api/menus/activo').set(auth(ana.token));
@@ -98,6 +116,13 @@ describe('Flujo completo Aprendiz → Encargado → Aprendiz', () => {
       almuerzosGratis: 1,
       ingresosCobrados: 0,
       porCobrar: 5000,
+      almuerzosInvitados: 0,
+      ingresosInvitados: 0,
+      invitadosPorTipo: {
+        instructor: { personas: 0, ingresos: 0 },
+        aprendiz: { personas: 0, ingresos: 0 },
+        corriente: { personas: 0, ingresos: 0 },
+      },
     });
     const resumen = await request(app).get('/api/dashboard/encargado').set(auth(encargado));
     assert.strictEqual(resumen.body.ventasHoy, 2);

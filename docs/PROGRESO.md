@@ -154,3 +154,24 @@ Registro cronológico de tareas, fases, comandos ejecutados y resultados obtenid
 - Backend: 142 tests contra PostgreSQL. Frontend: 54 tests.
 - Recorrido en Chrome de las 25 secciones de los 4 paneles, en escritorio y celular.
 - Flujos de solicitud, aprobación, rechazo y registro de visita probados sobre la base de tests.
+
+
+## FASE 7: Sin perfil invitado y Almuerzos Invitados (ADR 016)
+- **Fecha**: 2026-11-16
+- **Rama**: `integracion/pendientes`
+
+### Base de datos y backend
+- Migración 006: elimina los usuarios invitados y sus datos, el valor `invitado` del enum `rol_usuario` y `menus_dia.precio_invitado`. El registro rechaza `accountType: "invitado"` con `400`.
+- Migración 007: tabla `almuerzos_invitados` (tipo, personas, precio unitario guardado, total generado, nombre opcional, encargado y fecha) con índices por fecha y tipo y trigger de `updated_at`.
+- `/api/almuerzos-invitados` (solo encargado): tarifas, historial con filtro de fechas y tipo, resumen de hoy y del período, registrar, editar y eliminar. Tarifas en `backend/src/config/almuerzosInvitados.ts`.
+- Ventas y el panel del encargado suman los almuerzos invitados, con desglose por tipo. El precio por defecto de las visitas es la tarifa corriente.
+- `database/migracion_almuerzos_invitados.sql` aplica la 006 y la 007 con `psql`; el esquema de referencia de `database/` quedó al día.
+
+### Frontend
+- Sin panel, ruta, sidebar, encabezado ni color del invitado; Menú del Día solo con precio para estudiantes; registro con 3 tipos de cuenta.
+- Sección "Almuerzos Invitados" del encargado: tres tarjetas con número de personas (− / +), total en vivo, resumen, historial, edición y eliminación con confirmación.
+- Ventas muestra los almuerzos invitados en las tarjetas, por tipo, en el gráfico y en las transacciones.
+
+### Verificación
+- Backend: 172 tests contra PostgreSQL. Frontend: 69 tests. Lint y build sin errores en los dos proyectos.
+- `database/migracion_almuerzos_invitados.sql` probado con `psql` sobre una base temporal (dos corridas).

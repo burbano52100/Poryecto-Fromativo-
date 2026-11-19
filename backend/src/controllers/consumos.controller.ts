@@ -2,7 +2,14 @@ import { Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { query, getClient } from '../db/index.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
-import { reservasAbiertas, MENSAJE_FUERA_DE_HORARIO } from '../utils/horario.js';
+import { reservasAbiertas, MENSAJE_FUERA_DE_HORARIO, fechaBogota } from '../utils/horario.js';
+import { AppError } from '../middleware/error.middleware.js';
+import { parseId } from '../utils/validacion.js';
+import { withTransaction } from '../services/inventario.service.js';
+import { verificarDiaAbierto } from '../services/cierreCaja.service.js';
+import { finalizarBeneficiosVencidos } from '../services/beneficios.service.js';
+import { descontarPorReceta, revertirDescuento } from '../services/descuentoReceta.service.js';
+import { registrarAuditoria } from '../services/auditoria.service.js';
 
 const reservaSchema = z.object({
   menu_id: z.string().uuid().nullish(),
@@ -33,11 +40,14 @@ export const getUserConsumos = async (req: AuthenticatedRequest, res: Response, 
     const result = await query(
       `SELECT v.id, v.fecha_hora, v.precio_cobrado::float8 as precio_cobrado,
               v.estado_pago,
-              m.nombre as menu_nombre,
+              m.id as menu_id, m.nombre as menu_nombre,
               TO_CHAR(m.fecha, 'YYYY-MM-DD') as menu_fecha,
-              (m.fecha >= (NOW() AT TIME ZONE 'America/Bogota')::date) as vigente
+              (m.fecha >= (NOW() AT TIME ZONE 'America/Bogota')::date) as vigente,
+              (m.fecha = (NOW() AT TIME ZONE 'America/Bogota')::date) as es_hoy,
+              c.estrellas, c.comentario
        FROM ventas v
        JOIN menus_dia m ON v.menu_id = m.id
+       LEFT JOIN calificaciones_almuerzo c ON c.menu_id = m.id AND c.usuario_id = v.usuario_id
        WHERE v.usuario_id = $1 AND v.estado = 'completada'
        ORDER BY v.fecha_hora DESC;`,
       [userId]
@@ -48,7 +58,13 @@ export const getUserConsumos = async (req: AuthenticatedRequest, res: Response, 
       return {
         id: row.id,
         fecha: new Date(row.fecha_hora).toISOString(),
+        menu_id: row.menu_id,
         menu_fecha: row.menu_fecha,
+        // Se puede cancelar mientras el menú sea de hoy o futuro y no esté pagada
+        cancelable: Boolean(row.vigente) && estadoPago !== 'pagado',
+        // Calificación del almuerzo (ADR 022): solo el día del menú
+        calificable: Boolean(row.es_hoy),
+        calificacion: row.estrellas ? { estrellas: row.estrellas, comentario: row.comentario } : null,
         date: new Date(row.fecha_hora).toLocaleDateString('es-CO', {
           day: 'numeric',
           month: 'short',
@@ -116,6 +132,9 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
   if (req.user?.role === 'encargado') {
     return res.status(403).json({ message: 'El encargado del comedor no reserva almuerzos desde su panel.' });
   }
+  if (req.user?.role === 'coordinador') {
+    return res.status(403).json({ message: 'El coordinador no reserva almuerzos desde su panel.' });
+  }
 
   const parsed = reservaSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
@@ -127,10 +146,20 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
     return res.status(409).json({ message: MENSAJE_FUERA_DE_HORARIO, fuera_de_horario: true });
   }
 
+  // Los beneficios con la fecha de fin ya cumplida terminan antes de calcular el precio (ADR 019)
+  try {
+    await withTransaction((tx) => finalizarBeneficiosVencidos(tx));
+  } catch (error) {
+    return next(error);
+  }
+
   const client = await getClient();
 
   try {
     await client.query('BEGIN');
+
+    // 0. La reserva entra a la caja de hoy: si hoy ya se cerró, no se registra (ADR 021)
+    await verificarDiaAbierto(fechaBogota(), client);
 
     // 1. Obtener usuario con rol y estado de beneficiario
     const userRes = await client.query(
@@ -146,7 +175,7 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
     // 2. Obtener el menú del día
     let targetMenu: any = null;
     if (menuId) {
-      const specificMenu = await client.query('SELECT * FROM menus_dia WHERE id = $1 FOR UPDATE;', [menuId]);
+      const specificMenu = await client.query("SELECT *, TO_CHAR(fecha, 'YYYY-MM-DD') AS fecha_texto FROM menus_dia WHERE id = $1 FOR UPDATE;", [menuId]);
       targetMenu = specificMenu.rows[0];
 
       if (!targetMenu) {
@@ -168,7 +197,7 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
       }
     } else {
       const activeMenuRes = await client.query(
-        `SELECT * FROM menus_dia
+        `SELECT *, TO_CHAR(fecha, 'YYYY-MM-DD') AS fecha_texto FROM menus_dia
          WHERE estado = 'activo'
          ORDER BY (fecha = (NOW() AT TIME ZONE 'America/Bogota')::date) DESC, fecha DESC, created_at DESC
          LIMIT 1
@@ -208,9 +237,6 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
       estadoPago = 'gratis';
     } else if (user.rol === 'instructor') {
       metodoPago = 'credito';
-    } else if (user.rol === 'invitado') {
-      price = Number(targetMenu.precio_invitado);
-      estadoPago = 'pagado';
     }
 
     // 5. Insertar venta garantizando unicidad usuario/menú
@@ -259,9 +285,25 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
       }
     }
 
-    await client.query('COMMIT');
-
     const venta = insertVenta.rows[0];
+
+    // 7. Descuento de inventario por la receta del menú, en la misma transacción (ADR 020)
+    await descontarPorReceta(client, {
+      menu: {
+        id: targetMenu.id,
+        nombre: targetMenu.nombre,
+        receta_id: targetMenu.receta_id ?? null,
+        fecha: targetMenu.fecha_texto,
+      },
+      fecha: fechaBogota(),
+      porciones: 1,
+      referenciaTipo: 'venta',
+      referenciaId: venta.id,
+      concepto: `Almuerzo vendido: reserva de ${user.nombre}${price === 0 ? ' (beneficiario)' : ''}`,
+      usuario: req.user,
+    });
+
+    await client.query('COMMIT');
 
     return res.status(201).json({
       id: venta.id,
@@ -288,5 +330,82 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
     next(error);
   } finally {
     client.release();
+  }
+};
+
+/**
+ * POST /api/consumos/:id/cancelar — el aprendiz o instructor cancela su propia reserva mientras
+ * el menú sea de hoy o futuro, en horario de reservas, y si no la ha pagado. Devuelve el cupo,
+ * descuenta la deuda del instructor y genera el movimiento inverso en el kardex (ADR 020).
+ * Si la caja del día de la reserva está cerrada, responde 409 (ADR 021).
+ */
+export const cancelarReserva = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = parseId(req.params.id, 'El identificador de la reserva no es válido.');
+    if (!reservasAbiertas()) {
+      return res.status(409).json({ message: MENSAJE_FUERA_DE_HORARIO, fuera_de_horario: true });
+    }
+
+    const venta = await withTransaction(async (client) => {
+      const ventaRes = await client.query(
+        `SELECT v.id, v.usuario_id, v.menu_id, v.precio_cobrado::float8 AS precio, v.estado, v.estado_pago,
+                TO_CHAR(v.fecha_hora AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') AS fecha,
+                (m.fecha >= (NOW() AT TIME ZONE 'America/Bogota')::date) AS vigente, m.nombre AS menu, u.rol
+         FROM ventas v
+         JOIN menus_dia m ON m.id = v.menu_id
+         JOIN usuarios u ON u.id = v.usuario_id
+         WHERE v.id = $1
+         FOR UPDATE OF v;`,
+        [id]
+      );
+      const actual = ventaRes.rows[0];
+      if (!actual || actual.usuario_id !== req.user!.id) throw new AppError('Reserva no encontrada.', 404);
+      if (actual.estado !== 'completada') throw new AppError('La reserva ya estaba cancelada.', 409);
+      if (!actual.vigente) throw new AppError('No puedes cancelar el almuerzo de un día que ya pasó.', 409);
+      if (actual.estado_pago === 'pagado') {
+        throw new AppError('Esta reserva ya fue pagada: pide al encargado del comedor que la anule.', 409);
+      }
+      await verificarDiaAbierto(actual.fecha, client);
+
+      await client.query("UPDATE ventas SET estado = 'anulada' WHERE id = $1;", [id]);
+      await client.query(
+        'UPDATE menus_dia SET cantidad_vendida = GREATEST(cantidad_vendida - 1, 0) WHERE id = $1;',
+        [actual.menu_id]
+      );
+      if (actual.rol === 'instructor' && actual.precio > 0) {
+        await client.query(
+          `UPDATE deudas
+           SET monto = GREATEST(monto - $1, 0),
+               almuerzos_pendientes = GREATEST(almuerzos_pendientes - 1, 0),
+               estado = CASE WHEN monto - $1 <= 0 THEN 'pagada'::estado_deuda ELSE estado END,
+               updated_at = NOW()
+           WHERE id = (SELECT id FROM deudas WHERE usuario_id = $2 AND estado <> 'pagada'
+                       ORDER BY created_at DESC LIMIT 1 FOR UPDATE);`,
+          [actual.precio, actual.usuario_id]
+        );
+      }
+      await revertirDescuento(client, {
+        referenciaTipo: 'venta',
+        referenciaId: id,
+        concepto: `Reserva cancelada por ${req.user!.name}`,
+        usuario: req.user,
+      });
+      await registrarAuditoria(
+        {
+          usuario: req.user,
+          accion: 'cancelar',
+          entidad: 'venta',
+          entidadId: id,
+          antes: { estado: 'completada', menu: actual.menu, precio: actual.precio },
+          despues: { estado: 'anulada' },
+        },
+        client
+      );
+      return actual;
+    });
+
+    return res.json({ message: `Cancelaste tu reserva de "${venta.menu}".` });
+  } catch (error) {
+    next(error);
   }
 };

@@ -15,8 +15,9 @@ Sistema web para reservar almuerzos en el SENA (Tecnoparque Yamboró, Pitalito, 
 |---|---|
 | Aprendiz | Reserva su almuerzo ($5.000; $0 si es beneficiario, con un clic), ve sus fichas y si están pagadas, usa el buzón. |
 | Instructor | Reserva a crédito; su consumo se acumula en la Cartera de Deudas y lo ve en Mi Cuenta. |
-| Encargado | Ventas, menú del día, beneficiarios, cartera, inventario, grupos (control de pago por aprendiz) y buzón. |
-| Invitado | Compra el almuerzo a $8.000 y usa el buzón. |
+| Encargado | Ventas, menú del día, almuerzos invitados, beneficiarios, cartera, inventario, grupos (control de pago por aprendiz) y buzón. |
+
+No hay perfil de invitado: los almuerzos de personas externas los registra el encargado en **Almuerzos Invitados**, por número de personas y con tarifa fija por tipo (instructores $10.000, aprendices $5.000, corrientes $11.000). Esos ingresos se suman en Ventas (ADR 016).
 
 El login pide **solo documento y contraseña**: el rol sale de la base de datos y la app abre el panel correspondiente. Las reservas se reciben de **7:00 a. m. a 9:00 p. m.** (hora de Colombia).
 
@@ -55,13 +56,16 @@ Todos con contraseña `demo123`:
 
 | Rol | Documento |
 |---|---|
-| Aprendiz | `1005678901` |
-| Instructor | `1098765432` |
+| Coordinador | `1023456789` |
 | Encargado | `1012345678` |
+| Instructor | `1098765432` |
+| Aprendiz | `1005678901` |
+
+Además, `1005678920` es una aprendiz creada por carga masiva: entra con su documento como contraseña y debe cambiarla al ingresar.
 
 El seed no corre en producción salvo que `SEED_DEMO=true`.
 
-Las cuentas nuevas de **instructor** y **encargado** se piden desde "Registrarse" y quedan pendientes hasta que un encargado las apruebe en **Solicitudes de Cuenta** (ADR 015).
+Las cuentas nuevas de **aprendiz** e **instructor** se piden desde "Registrarse" y quedan pendientes hasta que el **Coordinador** las apruebe en **Solicitudes de Cuenta** (ADR 018). Encargados y coordinadores no se registran solos.
 
 ## Calidad
 

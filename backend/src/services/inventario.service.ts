@@ -28,6 +28,7 @@ export interface MovimientoInput {
   concepto: string;
   usuarioId: string | null;
   referenciaTipo?: string;
+  referenciaId?: string | null;
 }
 
 export interface MovimientoResultado {
@@ -92,8 +93,9 @@ export async function registrarMovimiento(
   // clock_timestamp() conserva el orden de varios movimientos dentro de una misma transacción
   const kardexRes = await client.query(
     `INSERT INTO movimientos_kardex
-       (material_id, fecha_hora, usuario_id, tipo, concepto, cantidad_entrada, cantidad_salida, saldo_resultante, referencia_tipo)
-     VALUES ($1, clock_timestamp(), $2, $3, $4, $5, $6, $7, $8)
+       (material_id, fecha_hora, usuario_id, tipo, concepto, cantidad_entrada, cantidad_salida, saldo_resultante,
+        referencia_tipo, referencia_id)
+     VALUES ($1, clock_timestamp(), $2, $3, $4, $5, $6, $7, $8, $9)
      RETURNING id;`,
     [
       material.id,
@@ -104,6 +106,7 @@ export async function registrarMovimiento(
       input.tipo === 'entrada' ? null : input.cantidad,
       saldo,
       input.referenciaTipo ?? null,
+      input.referenciaId ?? null,
     ]
   );
 

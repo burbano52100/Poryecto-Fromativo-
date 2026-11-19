@@ -27,8 +27,8 @@ export async function bootstrapAdmin(): Promise<void> {
     const passwordHash = await bcrypt.hash(password, 10);
 
     const result = await query(
-      `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, activo)
-       VALUES ($1, $2, $3, $4, 'encargado', true)
+      `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, estado)
+       VALUES ($1, $2, $3, $4, 'encargado', 'activo')
        RETURNING id, nombre, cedula, rol`,
       [name, document, email, passwordHash]
     );

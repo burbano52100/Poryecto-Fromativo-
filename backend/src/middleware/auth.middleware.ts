@@ -6,9 +6,11 @@ export interface AuthenticatedUser {
   id: string;
   document: string;
   name: string;
-  role: 'aprendiz' | 'instructor' | 'encargado' | 'invitado';
+  role: 'aprendiz' | 'instructor' | 'encargado' | 'coordinador';
   email?: string;
   ficha_id?: string;
+  /** Cuenta creada por carga masiva o con clave restablecida: debe cambiarla antes de usar la app. */
+  debe_cambiar_clave?: boolean;
 }
 
 export interface AuthenticatedRequest extends Request {
@@ -30,9 +32,9 @@ const tokenDelHeader = (req: Request): string | null => {
 const usuarioVigente = async (id: unknown): Promise<AuthenticatedUser | null> => {
   if (typeof id !== 'string' || !UUID.test(id)) return null;
   const res = await query(
-    `SELECT id, cedula, nombre, rol, email, ficha_id
+    `SELECT id, cedula, nombre, rol, email, ficha_id, debe_cambiar_clave
      FROM usuarios
-     WHERE id = $1 AND activo = true;`,
+     WHERE id = $1 AND estado = 'activo';`,
     [id]
   );
   const u = res.rows[0];
@@ -44,8 +46,12 @@ const usuarioVigente = async (id: unknown): Promise<AuthenticatedUser | null> =>
     role: u.rol,
     email: u.email ?? undefined,
     ficha_id: u.ficha_id ?? undefined,
+    debe_cambiar_clave: Boolean(u.debe_cambiar_clave),
   };
 };
+
+/** Mientras la cuenta deba cambiar su contraseña, solo puede usar las rutas de /api/auth (me, cambiar-clave). */
+const RUTAS_CON_CLAVE_PENDIENTE = '/api/auth/';
 
 export const authenticateToken = async (
   req: AuthenticatedRequest,
@@ -86,6 +92,12 @@ export const authenticateToken = async (
     if (!user) {
       return res.status(401).json({
         message: 'Tu cuenta no existe o fue desactivada. Inicia sesión nuevamente.',
+      });
+    }
+    if (user.debe_cambiar_clave && !req.originalUrl.startsWith(RUTAS_CON_CLAVE_PENDIENTE)) {
+      return res.status(403).json({
+        message: 'Debes cambiar tu contraseña inicial antes de continuar.',
+        debe_cambiar_clave: true,
       });
     }
     req.user = user;

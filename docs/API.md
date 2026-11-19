@@ -48,19 +48,19 @@ En cada petición se verifica el JWT y se consulta al usuario en la base de dato
 ### `POST /api/auth/register`
 - **Público**: Sí
 - **Rate Limit**: 10 registros por IP cada hora (desactivado con `NODE_ENV=test`).
-- **Tipos de cuenta**: `aprendiz` e `invitado` crean la cuenta e inician sesión (`201`). `instructor` y `encargado` **no** crean la cuenta: guardan una solicitud que un encargado debe aprobar (`202`, sin token; ver sección 12 y ADR 015).
+- **Tipos de cuenta**: `aprendiz` crea la cuenta e inicia sesión (`201`). `instructor` y `encargado` **no** crean la cuenta: guardan una solicitud que un encargado debe aprobar (`202`, sin token; ver sección 12 y ADR 015). Cualquier otro valor (incluido el antiguo `invitado`) responde `400` ("El tipo de cuenta no es válido..."; ADR 016).
 - **Body**:
   ```json
   {
     "name": "Pedro Pérez",
     "document": "1001234567",
-    "accountType": "aprendiz | invitado | instructor | encargado",
+    "accountType": "aprendiz | instructor | encargado",
     "ficha": "2847251", // Obligatorio para aprendiz
     "email": "pedro@misena.edu.co",
     "password": "••••••••"
   }
   ```
-- **Respuesta 201** (aprendiz, invitado): `{ "token", "user": { ...igual que login }, "message" }`
+- **Respuesta 201** (aprendiz): `{ "token", "user": { ...igual que login }, "message" }`
 - **Respuesta 202** (instructor, encargado): `{ "message", "solicitud": { "id", "rol", "estado": "pendiente" } }`
 - **Errores**: `400`, `409` (documento o correo ya registrado como usuario, o ya hay una solicitud pendiente con ese documento o correo).
 
@@ -87,7 +87,6 @@ En cada petición se verifica el JWT y se consulta al usuario en la base de dato
     "nombre": "Bandeja Huilense",
     "descripcion": "Sopa, arroz, proteína, ensalada y jugo",
     "precio_aprendiz": 5000,
-    "precio_invitado": 8000,
     "cantidad_disponible": 150,
     "cantidad_vendida": 45,
     "estado": "activo",
@@ -100,7 +99,7 @@ En cada petición se verifica el JWT y se consulta al usuario en la base de dato
     "motivo_no_reservable": "Ya tienes tu almuerzo reservado para este menú."
   }
   ```
-  `precio_aplicable` depende del usuario del token: $0 para aprendiz beneficiario, `precio_aprendiz` para aprendiz e instructor, `precio_invitado` para invitado. `mi_reserva` es `null` si el usuario no ha reservado ese menú.
+  `precio_aplicable` depende del usuario del token: $0 para aprendiz beneficiario y `precio_aprendiz` para aprendiz e instructor. `mi_reserva` es `null` si el usuario no ha reservado ese menú.
 
 ### `GET /api/menus`
 - **Rol requerido**: `encargado`
@@ -108,7 +107,7 @@ En cada petición se verifica el JWT y se consulta al usuario en la base de dato
 
 ### `POST /api/menus`
 - **Rol requerido**: `encargado`
-- **Body**: `{ nombre, fecha, descripcion?, precio_aprendiz, precio_invitado, cantidad_disponible, imagen_url?, estado? }`. Al publicar uno `activo`, los otros activos del mismo día pasan a `completado`.
+- **Body**: `{ nombre, fecha, descripcion?, precio_aprendiz, cantidad_disponible, imagen_url?, estado? }`. Al publicar uno `activo`, los otros activos del mismo día pasan a `completado`.
 
 ### `PATCH /api/menus/:id/estado`
 - **Rol requerido**: `encargado`
@@ -119,7 +118,7 @@ En cada petición se verifica el JWT y se consulta al usuario en la base de dato
 ## 3. Reservas y Consumos (`/api/consumos`)
 
 ### `POST /api/consumos/reservar`
-- **Rol requerido**: `aprendiz`, `instructor` o `invitado` (el `encargado` recibe `403`).
+- **Rol requerido**: `aprendiz` o `instructor` (el `encargado` recibe `403`).
 - **Horario**: de 7:00 a. m. a 9:00 p. m. Fuera de ese horario responde `409` con `{ "fuera_de_horario": true }`.
 - **Body**: `{ "menu_id": "uuid" }`. Opcional: sin `menu_id` se usa el menú activo de hoy.
 - **Precio**: lo fija siempre el servidor; cualquier precio enviado por el cliente se ignora.
@@ -129,7 +128,6 @@ En cada petición se verifica el JWT y se consulta al usuario en la base de dato
   | Aprendiz beneficiario | $0 | `gratis` | `cortesia` |
   | Aprendiz | `precio_aprendiz` ($5.000) | `pendiente` | `efectivo` |
   | Instructor | `precio_aprendiz`, suma a su deuda | `pendiente` | `credito` |
-  | Invitado | `precio_invitado` ($8.000) | `pagado` | `efectivo` |
 
 - **Respuesta 201**: `{ id, fecha, date, title, precio, price, paymentStatus, estado_pago, status: "RESERVED", message }`
 - **Errores**: `400` (menú inválido o no activo, o no hay menú activo), `404` (menú inexistente), `409` (cupo agotado, reserva duplicada con `duplicate: true`, o fuera de horario).
@@ -174,28 +172,42 @@ En cada petición se verifica el JWT y se consulta al usuario en la base de dato
     "desde": "2026-11-02",
     "agrupacion": "dia | mes",
     "totales": {
-      "almuerzosServidos": 120,
+      "almuerzosServidos": 126,
       "almuerzosGratis": 15,
-      "ingresosCobrados": 450000,
-      "porCobrar": 75000
+      "ingresosCobrados": 512000,
+      "porCobrar": 75000,
+      "almuerzosInvitados": 6,
+      "ingresosInvitados": 62000,
+      "invitadosPorTipo": {
+        "instructor": { "personas": 2, "ingresos": 20000 },
+        "aprendiz": { "personas": 2, "ingresos": 10000 },
+        "corriente": { "personas": 2, "ingresos": 22000 }
+      }
     },
     "breakdown": [
-      { "fecha": "2026-11-02", "label": "lun, 2", "count": 40, "ingresos": 150000, "percent": 100 }
+      { "fecha": "2026-11-02", "label": "lun, 2", "count": 46, "ingresos": 212000, "invitados": 6, "percent": 100 }
     ],
     "transacciones": [
       {
         "id": "uuid", "fecha": "2026-11-02T17:03:00.000Z", "cliente": "Carlos Ruiz", "cedula": "1005678901",
         "rol": "aprendiz", "ficha": "2847251", "menu": "Bandeja Huilense", "precio": 5000,
-        "estado_pago": "pendiente", "beneficiario": false
+        "estado_pago": "pendiente", "beneficiario": false, "origen": "reserva", "personas": 1
+      },
+      {
+        "id": "uuid", "fecha": "2026-11-02T17:10:00.000Z", "cliente": "Proveedor", "cedula": "",
+        "rol": "corriente", "ficha": "", "menu": "Almuerzo invitado", "precio": 22000,
+        "estado_pago": "pagado", "beneficiario": false, "origen": "invitado", "personas": 2
       }
     ]
   }
   ```
-  - `almuerzosServidos` incluye los gratis de beneficiarios.
-  - `ingresosCobrados` suma solo `estado_pago = 'pagado'`.
-  - `porCobrar` suma `estado_pago = 'pendiente'`.
-  - El gráfico (`breakdown`) trae un punto por día hasta Trimestre y uno por mes en Semestre y Año, incluidos los días en cero.
-  - `transacciones` trae las 100 más recientes del período.
+  - **Regla de ingresos**: suma las reservas de la app (`precio_cobrado`: $5.000 o el precio del menú, o $0 del beneficiario) más los registros de **Almuerzos Invitados** (`total` = personas × precio unitario guardado; sección 13).
+  - `almuerzosServidos` = reservas (incluidos los gratis de beneficiarios) + personas de Almuerzos Invitados.
+  - `ingresosCobrados` = reservas con `estado_pago = 'pagado'` + `total` de los Almuerzos Invitados, que se pagan al registrarlos.
+  - `porCobrar` suma las reservas con `estado_pago = 'pendiente'`.
+  - `almuerzosInvitados`, `ingresosInvitados` e `invitadosPorTipo` desglosan la parte de Almuerzos Invitados; los tres tipos vienen siempre, aunque estén en cero.
+  - El gráfico (`breakdown`) trae un punto por día hasta Trimestre y uno por mes en Semestre y Año, incluidos los días en cero. `count` incluye las personas invitadas y `invitados` dice cuántas son.
+  - `transacciones` trae las 100 más recientes del período, reservas y Almuerzos Invitados mezcladas por fecha. En un Almuerzo Invitado `origen` es `"invitado"`, `rol` trae su tipo, `cliente` el nombre o nota (o vacío) y `personas` cuántas fueron.
 
 ### `GET /api/dashboard/encargado`
 - **Rol requerido**: `encargado`
@@ -204,6 +216,8 @@ En cada petición se verifica el JWT y se consulta al usuario en la base de dato
   {
     "ventasHoy": 42,
     "ingresosHoy": 150000,
+    "invitadosHoy": 6,
+    "ingresosInvitadosHoy": 62000,
     "porCobrarHoy": 25000,
     "deudasPendientes": { "monto": 35000, "cantidad": 3 },
     "sugerenciasPendientes": 2,
@@ -211,6 +225,7 @@ En cada petición se verifica el JWT y se consulta al usuario en la base de dato
     "solicitudesPendientes": 1
   }
   ```
+  `ventasHoy` e `ingresosHoy` incluyen los Almuerzos Invitados de hoy; `invitadosHoy` e `ingresosInvitadosHoy` son esa parte.
 
 ---
 
@@ -320,12 +335,15 @@ Todas las rutas requieren rol `encargado`. Cada entrada, salida o merma registra
 
 ### `GET /api/visitas` y `GET /api/visitas/kpi`
 - **Rol requerido**: `encargado`. Se usa en la sección "Visitas Institucionales" del panel del Encargado.
-- **Respuesta de `GET /api/visitas`**: lista ordenada por fecha de visita (más reciente primero). Cada visita trae `institucion_nombre`, `instructor_nombre` (si el responsable es un instructor del SENA) o `nombre_instructor_ext`, `cantidad_personas`, `fecha_visita` como `"YYYY-MM-DD"`, `precio_unitario` y `total_a_cobrar` como números, `estado` y `estado_pago`.
+- **Respuesta de `GET /api/visitas`**: lista ordenada por fecha de visita (más reciente primero). Cada visita trae `id`, `institucion_nombre` y `responsable_nombre` (tal como los escribió el encargado), `cantidad_personas`, `fecha_visita` como `"YYYY-MM-DD"`, `precio_unitario` y `total_a_cobrar` como números, `estado`, `metodo_pago`, `estado_pago` y `created_at`.
 - **`GET /api/visitas/kpi`**: `{ totalVisitasMes, totalPersonasAtendidas, ingresosVisitas }`.
 
 ### `POST /api/visitas`
 - **Rol requerido**: `encargado`
-- **Body**: Validación con Zod (institución real, precio derivado del menú activo o ingresado, validación XOR de instructor).
+- **Body**: `{ "institucionNombre": "Colegio San José", "responsableNombre": "María Fernanda Gómez", "cantidad_personas": 25, "fecha_visita": "2026-11-20", "precio_unitario"?: 11000 }`.
+  - `institucionNombre` y `responsableNombre` son texto libre (migración 008): obligatorios, se les quitan los espacios al inicio y al final, no pueden quedar vacíos y tienen máximo 150 caracteres. Si no cumplen responde `400`. Ya no se reciben `institucion_id`, `instructor_id` ni `nombre_instructor_ext`.
+  - `precio_unitario` es opcional: si no se envía se usa la tarifa de almuerzo invitado `corriente` de `backend/src/config/almuerzosInvitados.ts`. El total es `cantidad_personas × precio_unitario`.
+- **Respuesta 201**: la visita creada, con el mismo formato de la lista.
 
 ---
 
@@ -375,3 +393,73 @@ Instructores y encargados piden su cuenta con `POST /api/auth/register` y cualqu
 - **Body** (opcional): `{ "motivo": "texto de hasta 300 caracteres" }`. El motivo se muestra a la persona cuando intenta iniciar sesión.
 - **Respuesta 200**: `{ "message" }`
 - **Errores**: `400`, `404`, `409` (ya fue revisada).
+
+
+---
+
+## 13. Almuerzos Invitados (`/api/almuerzos-invitados`)
+
+Almuerzos vendidos a personas externas, registrados por el encargado por **número de personas** en tres tipos con tarifa fija (ADR 016). Todo el módulo exige rol **`encargado`**: sin token responde `401` y con otro rol `403`.
+
+Las tarifas y el máximo de personas se definen en un solo lugar, `backend/src/config/almuerzosInvitados.ts`. El servidor cobra siempre con la tarifa vigente (cualquier precio que envíe el cliente se ignora) y copia `precio_unitario` en el registro, así el historial no cambia si cambian las tarifas.
+
+| Tipo | Etiqueta | Precio por persona |
+|---|---|---|
+| `instructor` | Almuerzos Invitados Instructores | $10.000 |
+| `aprendiz` | Almuerzos Invitados Aprendices | $5.000 |
+| `corriente` | Almuerzos Invitados Corrientes | $11.000 |
+
+### `GET /api/almuerzos-invitados/tarifas`
+- **Respuesta 200**: `{ "tarifas": [{ "tipo": "instructor", "precio": 10000 }, { "tipo": "aprendiz", "precio": 5000 }, { "tipo": "corriente", "precio": 11000 }], "maxPersonas": 500 }`
+
+### `GET /api/almuerzos-invitados?desde=&hasta=&tipo=`
+- **Query** (todo opcional): `desde` y `hasta` como `YYYY-MM-DD` en hora de Colombia, ambos días incluidos. Sin `hasta` se usa hoy; sin `desde`, el mismo día de `hasta`. `tipo` = `instructor | aprendiz | corriente`.
+- **Respuesta 200**: historial, el más reciente primero.
+  ```json
+  [
+    {
+      "id": "uuid",
+      "tipo": "instructor",
+      "cantidad": 4,
+      "precio_unitario": 10000,
+      "total": 40000,
+      "nombre_invitado": "Delegación SENA Neiva",
+      "registrado_por": { "id": "uuid", "nombre": "Encargado General Comedor" },
+      "fecha_hora": "2026-11-16T17:10:00.000Z",
+      "fecha_local": "2026-11-16T12:10"
+    }
+  ]
+  ```
+- **Errores**: `400` (fecha inexistente o con otro formato, `desde` posterior a `hasta`, tipo no válido).
+
+### `GET /api/almuerzos-invitados/resumen?desde=&hasta=`
+- Personas, pesos y número de registros de **hoy** y del **período**, por tipo y en total. Los tres tipos vienen siempre.
+- **Respuesta 200**:
+  ```json
+  {
+    "hoy": "2026-11-16", "desde": "2026-11-01", "hasta": "2026-11-16",
+    "dia": {
+      "porTipo": {
+        "instructor": { "personas": 2, "total": 20000, "registros": 1 },
+        "aprendiz": { "personas": 3, "total": 15000, "registros": 1 },
+        "corriente": { "personas": 0, "total": 0, "registros": 0 }
+      },
+      "personas": 5, "total": 35000, "registros": 2
+    },
+    "periodo": { "porTipo": { "...": "..." }, "personas": 12, "total": 98000, "registros": 6 }
+  }
+  ```
+
+### `POST /api/almuerzos-invitados`
+- **Body**: `{ "tipo": "instructor | aprendiz | corriente", "cantidad": 4, "nombre_invitado": "opcional, hasta 120 caracteres" }`
+- `cantidad` (número de personas) debe ser un **entero** entre 1 y `maxPersonas` (500). Un texto como `"4"`, un decimal, 0 o un negativo responden `400`.
+- Guarda el tipo, las personas, el precio unitario vigente, el total, la fecha y hora actuales y el encargado del token.
+- **Respuesta 201**: el registro, con el mismo formato del historial.
+
+### `PUT /api/almuerzos-invitados/:id`
+- **Body**: `{ "cantidad": 5, "nombre_invitado": "opcional", "fecha_hora": "YYYY-MM-DDTHH:mm" }` (`fecha_hora` en hora de Colombia, no futura).
+- El tipo y el precio unitario no cambian: el total se recalcula con el precio guardado.
+- **Respuesta 200**: el registro actualizado. **Errores**: `400`, `404`.
+
+### `DELETE /api/almuerzos-invitados/:id`
+- **Respuesta 200**: `{ "message": "Registro de almuerzo invitado eliminado." }`. **Errores**: `400` (id no válido), `404`.

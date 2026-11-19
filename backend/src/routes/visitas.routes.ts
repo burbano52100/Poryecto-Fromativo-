@@ -3,6 +3,7 @@ import {
   getVisitas,
   getVisitasKPI,
   createVisita,
+  marcarVisitaRealizada,
 } from '../controllers/visitas.controller.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
 import { requireRole } from '../middleware/role.middleware.js';
@@ -15,5 +16,6 @@ router.use(requireRole('encargado'));
 router.get('/', getVisitas);
 router.get('/kpi', getVisitasKPI);
 router.post('/', createVisita);
+router.patch('/:id/realizada', marcarVisitaRealizada);
 
 export default router;

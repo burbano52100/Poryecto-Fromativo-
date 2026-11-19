@@ -23,7 +23,7 @@ PostgreSQL 14+ es el motor relacional exclusivo de GastroSENA. Este documento de
   - `cedula` (TEXT, NOT NULL, UNIQUE)
   - `email` (TEXT, UNIQUE)
   - `password_hash` (TEXT, NULL) — hash generado con bcrypt (10 rondas)
-  - `rol` (`rol_usuario`: `'aprendiz'`, `'instructor'`, `'encargado'`, `'invitado'`)
+  - `rol` (`rol_usuario`: `'aprendiz'`, `'instructor'`, `'encargado'`). El valor `'invitado'` se eliminó en la migración 006 (ADR 016).
   - `ficha_id` (UUID, FK -> `fichas(id)`)
   - `saldo` (NUMERIC(12,2), DEFAULT 0)
   - `precio_almuerzo_fijo` (NUMERIC(12,2), NULL)
@@ -45,8 +45,7 @@ PostgreSQL 14+ es el motor relacional exclusivo de GastroSENA. Este documento de
   - `fecha` (DATE, NOT NULL)
   - `nombre` (TEXT, NOT NULL)
   - `descripcion` (TEXT)
-  - `precio_aprendiz` (NUMERIC(12,2), NOT NULL)
-  - `precio_invitado` (NUMERIC(12,2), NOT NULL)
+  - `precio_aprendiz` (NUMERIC(12,2), NOT NULL) — único precio del menú (la columna `precio_invitado` se eliminó en la migración 006)
   - `cantidad_disponible` (INTEGER, DEFAULT 0)
   - `cantidad_vendida` (INTEGER, DEFAULT 0)
   - `imagen_url` (TEXT)
@@ -105,9 +104,9 @@ PostgreSQL 14+ es el motor relacional exclusivo de GastroSENA. Este documento de
 - **`instituciones`**: `id`, `nombre` (UNIQUE), `tipo` (`'colegio'`, `'universidad'`, `'empresa'`, `'otro'`), `ciudad`, `activo`.
 - **`visitas_institucionales`**:
   - `id` (UUID, PK)
-  - `institucion_id` (UUID, FK -> `instituciones(id)`)
-  - `instructor_id` (UUID, FK -> `usuarios(id)`) — opcional si es interno
-  - `nombre_instructor_ext` (TEXT) — opcional si es externo
+  - `institucion_nombre` (TEXT, NOT NULL, CHECK no vacío y máximo 150) — escrito a mano por el encargado (migración 008)
+  - `responsable_nombre` (TEXT, NOT NULL, CHECK no vacío y máximo 150) — escrito a mano por el encargado (migración 008)
+  - `institucion_id` (UUID, FK -> `instituciones(id)` ON DELETE SET NULL), `instructor_id` (UUID, FK -> `usuarios(id)`) y `nombre_instructor_ext` (TEXT) — historial de las visitas anteriores a la 008; opcionales y sin uso en la aplicación
   - `cantidad_personas` (INTEGER, CHECK > 0)
   - `fecha_visita` (DATE, NOT NULL)
   - `precio_unitario` (NUMERIC(12,2), NOT NULL)
@@ -115,7 +114,22 @@ PostgreSQL 14+ es el motor relacional exclusivo de GastroSENA. Este documento de
   - `estado` (`estado_visita`: `'programada'`, `'realizada'`, `'cancelada'`)
   - `metodo_pago` (`metodo_pago_visita`: `'efectivo'`, `'transferencia'`, `'credito_deuda'`)
   - `estado_pago` (`estado_pago_visita`: `'pendiente'`, `'pagado'`)
-  - Restricción XOR `chk_instructor_presente`: Requiere exactamente uno de `instructor_id` o `nombre_instructor_ext`.
+  - La restricción XOR `chk_instructor_presente` se eliminó en la migración 008.
+  - Si el encargado no envía `precio_unitario`, el backend usa la tarifa de almuerzo invitado `corriente`.
+
+### 2.7 Almuerzos Invitados (migración 007, ADR 016)
+- **`almuerzos_invitados`**: almuerzos vendidos a invitados, registrados por el encargado por número de personas.
+  - `id` (UUID, PK)
+  - `tipo` (`tipo_almuerzo_invitado`: `'instructor'`, `'aprendiz'`, `'corriente'`)
+  - `cantidad` (INTEGER, NOT NULL, CHECK > 0) — número de personas
+  - `precio_unitario` (NUMERIC(12,2), NOT NULL, CHECK >= 0) — tarifa vigente al registrar; no cambia si después cambian las tarifas
+  - `total` (GENERATED ALWAYS AS (cantidad * precio_unitario) STORED)
+  - `nombre_invitado` (TEXT, NULL) — nombre o nota del grupo
+  - `registrado_por` (UUID, NOT NULL, FK -> `usuarios(id)`) — encargado que lo registró
+  - `fecha_hora` (TIMESTAMPTZ, DEFAULT NOW()), `created_at`, `updated_at` (trigger `trg_almuerzos_invitados_updated_at`)
+  - Índices: `idx_almuerzos_invitados_fecha (fecha_hora)`, `idx_almuerzos_invitados_tipo_fecha (tipo, fecha_hora)`, `idx_almuerzos_invitados_registrado_por (registrado_por)`.
+  - Las tarifas vigentes (instructor $10.000, aprendiz $5.000, corriente $11.000) y el máximo de 500 personas por registro están en un solo lugar: `backend/src/config/almuerzosInvitados.ts`.
+  - Al leer con `pg`, `precio_unitario` y `total` se convierten con `::float8` para que lleguen como número.
 
 ---
 
@@ -135,3 +149,13 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 2. Escribir sentencias SQL DDL compatibles y seguras.
 3. Al compilar el backend (`npm run build`), el script `bundle-migrations` registrará el archivo en `migrationsMap.ts`.
 4. Al arrancar el servicio (`npm run migrate`), el runner detectará que la versión `002_agregar_columna_telefono.sql` aún no existe en `schema_migrations`, la ejecutará dentro de una transacción y la registrará.
+
+### Migraciones 006 y 007 (ADR 016)
+- `006_eliminar_perfil_invitado.sql`: borra los usuarios con rol `invitado` y sus datos (ventas, deudas, movimientos y sugerencias; antes devuelve al menú las porciones que habían reservado), recrea el enum `rol_usuario` sin `'invitado'` (cambia `usuarios.rol` y `solicitudes_cuenta.rol` y recrea su CHECK) y elimina `menus_dia.precio_invitado`. No toca las demás tablas.
+- `007_almuerzos_invitados.sql`: crea el enum `tipo_almuerzo_invitado`, la tabla `almuerzos_invitados`, sus índices y su trigger.
+- Las dos son idempotentes. Se aplican con `cd backend && npm run migrate:dev` o, a mano con psql, con `database/migracion_almuerzos_invitados.sql` (incluye los mismos archivos y los registra en `schema_migrations`).
+
+### Migración 008: visitas con institución y responsable en texto
+- `008_visitas_nombres_texto.sql` agrega `institucion_nombre` y `responsable_nombre`, copia los nombres de las visitas que ya existían (la institución desde `instituciones` y el responsable desde el instructor o `nombre_instructor_ext`, sin el sufijo "(Instructor SENA)" del instructor demo) y los deja obligatorios con máximo 150 caracteres.
+- `institucion_id` deja de ser obligatoria, se elimina `chk_instructor_presente` y la FK a `instituciones` pasa de `ON DELETE CASCADE` a `ON DELETE SET NULL`: borrar una institución ya no borra visitas.
+- Es idempotente y no borra datos. Se aplica con `cd backend && npm run migrate:dev`.

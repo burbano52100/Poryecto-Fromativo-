@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { query } from '../db/index.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { parseId } from '../utils/validacion.js';
+import { withTransaction } from '../services/inventario.service.js';
+import { registrarAuditoria } from '../services/auditoria.service.js';
+import { verificarDiaAbierto } from '../services/cierreCaja.service.js';
 
 /** Condición SQL: la venta se registró hoy en hora de Colombia. */
 const VENTA_DE_HOY =
@@ -106,9 +109,15 @@ export const getAprendicesDeGrupo = async (req: AuthenticatedRequest, res: Respo
       [id]
     );
 
+    // Con la caja de hoy cerrada no se pueden cambiar los pagos (ADR 021)
+    const cerrada = await query(
+      "SELECT 1 FROM cierres_caja WHERE estado = 'cerrado' AND fecha = (NOW() AT TIME ZONE 'America/Bogota')::date;"
+    );
+
     return res.json({
       ficha: fichaRes.rows[0],
       aprendices: result.rows,
+      caja_cerrada: Boolean(cerrada.rowCount),
     });
   } catch (error) {
     next(error);
@@ -136,7 +145,8 @@ export const marcarPagoVenta = async (req: AuthenticatedRequest, res: Response, 
     const { pagado } = parsed.data;
 
     const ventaRes = await query(
-      `SELECT v.id, v.precio_cobrado::float8 as precio_cobrado, v.estado_pago, v.estado, u.rol
+      `SELECT v.id, v.precio_cobrado::float8 as precio_cobrado, v.estado_pago, v.estado, u.rol,
+              TO_CHAR(v.fecha_hora AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') as fecha
        FROM ventas v
        JOIN usuarios u ON u.id = v.usuario_id
        WHERE v.id = $1;`,
@@ -167,7 +177,22 @@ export const marcarPagoVenta = async (req: AuthenticatedRequest, res: Response, 
 
     const nuevoEstado = pagado ? 'pagado' : 'pendiente';
 
-    await query('UPDATE ventas SET estado_pago = $1 WHERE id = $2;', [nuevoEstado, ventaId]);
+    await withTransaction(async (client) => {
+      // El pago pertenece al día de la reserva: si ese día está cerrado, no se cambia (ADR 021)
+      await verificarDiaAbierto(venta.fecha, client);
+      await client.query('UPDATE ventas SET estado_pago = $1 WHERE id = $2;', [nuevoEstado, ventaId]);
+      await registrarAuditoria(
+        {
+          usuario: req.user,
+          accion: 'pagar',
+          entidad: 'venta',
+          entidadId: ventaId,
+          antes: { estado_pago: venta.estado_pago },
+          despues: { estado_pago: nuevoEstado },
+        },
+        client
+      );
+    });
 
     return res.json({
       message: pagado ? 'Almuerzo marcado como pagado.' : 'Almuerzo revertido a pendiente.',

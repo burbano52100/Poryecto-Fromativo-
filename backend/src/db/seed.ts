@@ -2,6 +2,9 @@ import bcrypt from 'bcryptjs';
 import { query, pool } from './index.js';
 import { recalcularReceta, registrarMerma, withTransaction } from '../services/inventario.service.js';
 import { fechaBogota } from '../utils/horario.js';
+import { TARIFAS_ALMUERZO_INVITADO, type TipoAlmuerzoInvitado } from '../config/almuerzosInvitados.js';
+import { restarDias } from '../utils/rango.js';
+import { resumenDia } from '../services/cierreCaja.service.js';
 
 export async function runSeed(): Promise<void> {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -23,8 +26,8 @@ export async function runSeed(): Promise<void> {
 
   // 1. INSTRUCTORES Y ENCARGADOS BASE
   const instructor1Res = await query(
-    `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, activo)
-     VALUES ($1, $2, $3, $4, 'instructor', true)
+    `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, estado)
+     VALUES ($1, $2, $3, $4, 'instructor', 'activo')
      ON CONFLICT (cedula) DO UPDATE SET password_hash = EXCLUDED.password_hash
      RETURNING id;`,
     ['María Fernanda Gómez (Instructor SENA)', '1098765432', 'mgomez@sena.edu.co', passwordHash]
@@ -32,8 +35,8 @@ export async function runSeed(): Promise<void> {
   const instructor1Id = instructor1Res.rows[0].id;
 
   const instructor2Res = await query(
-    `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, activo)
-     VALUES ($1, $2, $3, $4, 'instructor', true)
+    `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, estado)
+     VALUES ($1, $2, $3, $4, 'instructor', 'activo')
      ON CONFLICT (cedula) DO UPDATE SET password_hash = EXCLUDED.password_hash
      RETURNING id;`,
     ['Jorge Eduardo Martínez', '1085432190', 'jmartinez@sena.edu.co', passwordHash]
@@ -41,8 +44,8 @@ export async function runSeed(): Promise<void> {
   const instructor2Id = instructor2Res.rows[0].id;
 
   const instructor3Res = await query(
-    `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, activo)
-     VALUES ($1, $2, $3, $4, 'instructor', true)
+    `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, estado)
+     VALUES ($1, $2, $3, $4, 'instructor', 'activo')
      ON CONFLICT (cedula) DO UPDATE SET password_hash = EXCLUDED.password_hash
      RETURNING id;`,
     ['Diana Patricia Salazar', '1076543210', 'dsalazar@sena.edu.co', passwordHash]
@@ -50,8 +53,8 @@ export async function runSeed(): Promise<void> {
   const instructor3Id = instructor3Res.rows[0].id;
 
   const encargadoRes = await query(
-    `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, activo)
-     VALUES ($1, $2, $3, $4, 'encargado', true)
+    `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, estado)
+     VALUES ($1, $2, $3, $4, 'encargado', 'activo')
      ON CONFLICT (cedula) DO UPDATE SET password_hash = EXCLUDED.password_hash
      RETURNING id;`,
     ['Encargado General Comedor', '1012345678', 'encargado@sena.edu.co', passwordHash]
@@ -96,28 +99,71 @@ export async function runSeed(): Promise<void> {
     ['2847255', 'Gestión del Talento Humano', 'Diego Alexander Parra']
   );
 
-  // 3. APRENDIZ Y INVITADO DEMO
+  // 3. APRENDIZ DEMO
   const aprendizRes = await query(
-    `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, ficha_id, saldo, codigo_qr, activo)
-     VALUES ($1, $2, $3, $4, 'aprendiz', $5, 25000, 'QR_1005678901', true)
+    `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, ficha_id, saldo, codigo_qr, estado)
+     VALUES ($1, $2, $3, $4, 'aprendiz', $5, 25000, 'QR_1005678901', 'activo')
      ON CONFLICT (cedula) DO UPDATE SET ficha_id = EXCLUDED.ficha_id, password_hash = EXCLUDED.password_hash
      RETURNING id;`,
     ['Carlos Ruiz (Aprendiz SENA)', '1005678901', 'carlos.ruiz@misena.edu.co', passwordHash, ficha1Id]
   );
   const aprendizId = aprendizRes.rows[0].id;
 
-  await query(
-    `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, activo)
-     VALUES ($1, $2, $3, $4, 'invitado', true)
-     ON CONFLICT (cedula) DO NOTHING;`,
-    ['Invitado Particular', 'INV001', 'visitante@sena.edu.co', passwordHash]
+  // 3b. COORDINADOR (ADR 018): lo crea el equipo, no se auto-registra
+  const coordinadorRes = await query(
+    `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, estado)
+     VALUES ('Coordinadora Académica Yamboró', '1023456789', 'coordinacion@sena.edu.co', $1, 'coordinador', 'activo')
+     ON CONFLICT (cedula) DO UPDATE SET password_hash = EXCLUDED.password_hash, rol = 'coordinador', estado = 'activo'
+     RETURNING id;`,
+    [passwordHash]
   );
+  const coordinadorId = coordinadorRes.rows[0].id;
+
+  // 3c. SOLICITUDES PENDIENTES para la bandeja del coordinador: dos instructores y un aprendiz que
+  //     se registraron solos, y una cuenta rechazada (su login muestra el motivo)
+  const ficha2Id = (await query("SELECT id FROM fichas WHERE codigo_ficha = '2847252';")).rows[0].id;
+  for (const [nombre, cedula, email, rol, fichaId, estado, motivo] of [
+    ['Luis Alberto Pérez', '1065432101', 'lperez@sena.edu.co', 'instructor', null, 'pendiente', null],
+    ['Sandra Milena Torres', '1054321098', 'storres@sena.edu.co', 'instructor', null, 'pendiente', null],
+    ['Camila Andrea Ortiz', '1005678910', 'camila.ortiz@misena.edu.co', 'aprendiz', ficha2Id, 'pendiente', null],
+    ['Ricardo Gómez Vargas', '1043210987', 'rgomez@correo.com', 'instructor', null, 'rechazado', 'No figura en la planta de instructores del centro'],
+  ] as const) {
+    await query(
+      `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, ficha_id, estado, origen, motivo_rechazo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'registro', $8)
+       ON CONFLICT (cedula) DO NOTHING;`,
+      [nombre, cedula, email, passwordHash, rol, fichaId, estado, motivo]
+    );
+  }
+
+  // 3d. CUENTA CREADA POR CARGA MASIVA: entra con su cédula como contraseña y debe cambiarla
+  await query(
+    `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, ficha_id, estado, origen, debe_cambiar_clave, aprobado_por, fecha_aprobacion)
+     VALUES ('Valeria Muñoz Cárdenas', '1005678920', 'valeria.munoz@misena.edu.co', $1, 'aprendiz', $2, 'activo', 'carga_masiva', true, $3, NOW())
+     ON CONFLICT (cedula) DO NOTHING;`,
+    [await bcrypt.hash('1005678920', 10), ficha1Id, coordinadorId]
+  );
+
+  // 3e. APRENDICES DE LA FICHA 2847251 que alimentan el historial de ventas, la sugerencia de
+  //     preparación, los cierres de caja y las calificaciones (contraseña demo123)
+  const comensales: string[] = [];
+  for (let n = 0; n < 12; n++) {
+    const cedula = `10056789${30 + n}`;
+    const res = await query(
+      `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, ficha_id, estado)
+       VALUES ($1, $2, $3, $4, 'aprendiz', $5, 'activo')
+       ON CONFLICT (cedula) DO UPDATE SET ficha_id = EXCLUDED.ficha_id
+       RETURNING id;`,
+      [`Aprendiz Demo ${String(n + 1).padStart(2, '0')}`, cedula, `aprendiz${n + 1}@misena.edu.co`, passwordHash, ficha1Id]
+    );
+    comensales.push(res.rows[0].id);
+  }
 
   // 4. MENÚ DEL DÍA ACTIVO
   const menuRes = await query(
-    `INSERT INTO menus_dia (fecha, nombre, descripcion, precio_aprendiz, precio_invitado, cantidad_disponible, cantidad_vendida, imagen_url, estado, creado_por)
-     VALUES ($1, $2, $3, 5000, 8000, 200, 0, '/cafeteria-bg.jpg', 'activo', $4)
-     ON CONFLICT (fecha, nombre) DO UPDATE SET estado = 'activo', precio_aprendiz = 5000, precio_invitado = 8000
+    `INSERT INTO menus_dia (fecha, nombre, descripcion, precio_aprendiz, cantidad_disponible, cantidad_vendida, imagen_url, estado, creado_por)
+     VALUES ($1, $2, $3, 5000, 200, 0, '/cafeteria-bg.jpg', 'activo', $4)
+     ON CONFLICT (fecha, nombre) DO UPDATE SET estado = 'activo', precio_aprendiz = 5000
      RETURNING id;`,
     [today, 'Menú Ejecutivo SENA', 'Almuerzo completo: Sopa, bandeja con proteína, arroz, ensalada, jugo natural y postre', encargadoId]
   );
@@ -127,13 +173,11 @@ export async function runSeed(): Promise<void> {
   await query("UPDATE menus_dia SET precio_aprendiz = 5000 WHERE precio_aprendiz = 3500;");
 
   // 5. INSTITUCIONES DEMO
-  const inst1Res = await query(
+  await query(
     `INSERT INTO instituciones (nombre, tipo, ciudad, activo)
      VALUES ('Colegio San José', 'colegio', 'Pitalito', true)
-     ON CONFLICT (nombre) DO UPDATE SET activo = true
-     RETURNING id;`
+     ON CONFLICT (nombre) DO UPDATE SET activo = true;`
   );
-  const inst1Id = inst1Res.rows[0].id;
 
   await query(
     `INSERT INTO instituciones (nombre, tipo, ciudad, activo)
@@ -151,9 +195,9 @@ export async function runSeed(): Promise<void> {
   const checkVisita = await query('SELECT id FROM visitas_institucionales LIMIT 1;');
   if (checkVisita.rows.length === 0) {
     await query(
-      `INSERT INTO visitas_institucionales (institucion_id, instructor_id, cantidad_personas, fecha_visita, precio_unitario, estado, metodo_pago, estado_pago, creado_por)
-       VALUES ($1, $2, 25, $3, 8000, 'programada', 'efectivo', 'pendiente', $4);`,
-      [inst1Id, instructor1Id, today, encargadoId]
+      `INSERT INTO visitas_institucionales (institucion_nombre, responsable_nombre, cantidad_personas, fecha_visita, precio_unitario, estado, metodo_pago, estado_pago, creado_por)
+       VALUES ('Colegio San José', 'María Fernanda Gómez', 25, $1, $2, 'programada', 'efectivo', 'pendiente', $3);`,
+      [today, TARIFAS_ALMUERZO_INVITADO.corriente, encargadoId]
     );
   }
 
@@ -274,8 +318,8 @@ export async function runSeed(): Promise<void> {
       let currentMenuId = menuId;
       if (i > 0) {
         const pastMenuRes = await query(
-          `INSERT INTO menus_dia (fecha, nombre, descripcion, precio_aprendiz, precio_invitado, cantidad_disponible, cantidad_vendida, imagen_url, estado, creado_por)
-           VALUES ($1::date - $2::int, 'Menú del Día - ' || $2, 'Almuerzo completo tradicional SENA', 5000, 8000, 200, 0, '/cafeteria-bg.jpg', 'completado', $3)
+          `INSERT INTO menus_dia (fecha, nombre, descripcion, precio_aprendiz, cantidad_disponible, cantidad_vendida, imagen_url, estado, creado_por)
+           VALUES ($1::date - $2::int, 'Menú del Día - ' || $2, 'Almuerzo completo tradicional SENA', 5000, 200, 0, '/cafeteria-bg.jpg', 'completado', $3)
            ON CONFLICT (fecha, nombre) DO UPDATE SET precio_aprendiz = 5000 RETURNING id;`,
           [today, i, encargadoId]
         );
@@ -316,7 +360,130 @@ export async function runSeed(): Promise<void> {
     );
   }
 
-  // 13. PORCIONES VENDIDAS = ventas completadas de cada menú. La app mantiene esa igualdad al
+  // 13. ALMUERZOS INVITADOS (ADR 016): registros del encargado de hoy y de los 2 días anteriores,
+  //     con la tarifa vigente de cada tipo
+  const checkInvitados = await query('SELECT id FROM almuerzos_invitados LIMIT 1;');
+  if (checkInvitados.rows.length === 0) {
+    const registros: { diasAtras: number; hora: string; tipo: TipoAlmuerzoInvitado; personas: number; nombre: string | null }[] = [
+      { diasAtras: 0, hora: '12:10', tipo: 'instructor', personas: 2, nombre: 'Instructores visitantes SENA Neiva' },
+      { diasAtras: 0, hora: '12:25', tipo: 'aprendiz', personas: 3, nombre: null },
+      { diasAtras: 0, hora: '12:40', tipo: 'corriente', personas: 1, nombre: 'Proveedor de verduras' },
+      { diasAtras: 1, hora: '12:15', tipo: 'aprendiz', personas: 4, nombre: 'Aprendices de intercambio' },
+      { diasAtras: 1, hora: '12:50', tipo: 'corriente', personas: 2, nombre: null },
+      { diasAtras: 2, hora: '12:30', tipo: 'instructor', personas: 1, nombre: null },
+    ];
+    for (const r of registros) {
+      // Como en las ventas: a esa hora en Colombia, o ahora si hoy todavía no es esa hora
+      await query(
+        `INSERT INTO almuerzos_invitados (tipo, cantidad, precio_unitario, nombre_invitado, registrado_por, fecha_hora)
+         VALUES ($1, $2, $3, $4, $5,
+                 LEAST(NOW(), (($6::date - $7::int) + $8::time) AT TIME ZONE 'America/Bogota'));`,
+        [r.tipo, r.personas, TARIFAS_ALMUERZO_INVITADO[r.tipo], r.nombre, encargadoId, today, r.diasAtras, r.hora]
+      );
+    }
+  }
+
+  // 13b. EL MENÚ DE HOY DESCUENTA INVENTARIO CON SU RECETA (ADR 020)
+  await query('UPDATE menus_dia SET receta_id = $1 WHERE id = $2 AND receta_id IS NULL;', [recetaId, menuId]);
+
+  // 13c. BENEFICIARIOS (ADR 019): dos activos (almuerzo a $0) y uno finalizado para el historial
+  const checkBeneficios = await query('SELECT id FROM beneficios LIMIT 1;');
+  if (checkBeneficios.rows.length === 0) {
+    await query(
+      `INSERT INTO beneficios (usuario_id, estado, fecha_inicio, fecha_fin, prioridad, sin_apoyo_incompatible, creado_por)
+       VALUES ($1, 'activo', $3::date - 60, $3::date + 60, 1, true, $4),
+              ($2, 'activo', $3::date - 45, NULL, 2, true, $4);`,
+      [comensales[0], comensales[1], today, encargadoId]
+    );
+    await query(
+      `INSERT INTO beneficios (usuario_id, estado, fecha_inicio, fecha_fin, prioridad, sin_apoyo_incompatible, creado_por,
+                               motivo_fin, detalle_fin, fecha_finalizacion, finalizado_por)
+       VALUES ($1, 'finalizado', $2::date - 90, $2::date - 20, 1, true, $3, 'inasistencias',
+               'Faltó a más de 5 almuerzos reservados', NOW() - interval '20 days', $3);`,
+      [comensales[2], today, encargadoId]
+    );
+  }
+
+  // 13d. HISTORIAL DE 5 SEMANAS (lunes a sábado) para la sugerencia de preparación: cada día de la
+  //      semana tiene su propia demanda, y algunos invitados. Las reservas de los beneficiarios van a $0.
+  const checkHistorial = await query("SELECT 1 FROM menus_dia WHERE nombre = 'Menú del Día - 30';");
+  if (checkHistorial.rows.length === 0) {
+    const DEMANDA_POR_DIA = [0, 9, 8, 10, 8, 7, 4]; // domingo … sábado
+    for (let i = 1; i <= 35; i++) {
+      const fecha = restarDias(today, i);
+      const [anio, mes, dia] = fecha.split('-').map(Number);
+      const diaSemana = new Date(Date.UTC(anio, mes - 1, dia)).getUTCDay();
+      if (diaSemana === 0) continue; // el comedor no abre los domingos
+      const menuDia = await query(
+        `INSERT INTO menus_dia (fecha, nombre, descripcion, precio_aprendiz, cantidad_disponible, cantidad_vendida, imagen_url, estado, creado_por)
+         VALUES ($1, 'Menú del Día - ' || $2, 'Almuerzo completo tradicional SENA', 5000, 200, 0, '/cafeteria-bg.jpg', 'completado', $3)
+         ON CONFLICT (fecha, nombre) DO UPDATE SET precio_aprendiz = 5000 RETURNING id;`,
+        [fecha, i, encargadoId]
+      );
+      const reservas = Math.min(comensales.length, DEMANDA_POR_DIA[diaSemana] + (i % 3) - 1);
+      for (let n = 0; n < reservas; n++) {
+        const beneficiario = n < 2;
+        await query(
+          `INSERT INTO ventas (usuario_id, menu_id, fecha_hora, precio_cobrado, metodo_pago, estado_pago, metodo_verificacion, estado)
+           VALUES ($1, $2, ($3::date + TIME '11:45' + make_interval(mins => $4)) AT TIME ZONE 'America/Bogota', $5, $6, $7, 'manual', 'completada')
+           ON CONFLICT DO NOTHING;`,
+          [comensales[n], menuDia.rows[0].id, fecha, n * 3, beneficiario ? 0 : 5000, beneficiario ? 'cortesia' : 'efectivo', beneficiario ? 'gratis' : 'pagado']
+        );
+      }
+      if (diaSemana !== 6 && i > 2) {
+        const tipo: TipoAlmuerzoInvitado = (['instructor', 'aprendiz', 'corriente'] as const)[i % 3];
+        await query(
+          `INSERT INTO almuerzos_invitados (tipo, cantidad, precio_unitario, registrado_por, fecha_hora)
+           VALUES ($1, $2, $3, $4, ($5::date + TIME '12:20') AT TIME ZONE 'America/Bogota');`,
+          [tipo, 1 + (i % 2), TARIFAS_ALMUERZO_INVITADO[tipo], encargadoId, fecha]
+        );
+      }
+    }
+  }
+
+  // 13e. CALIFICACIONES DEL ALMUERZO (ADR 022) de las últimas dos semanas, con algunas bajas
+  const checkCalificaciones = await query('SELECT id FROM calificaciones_almuerzo LIMIT 1;');
+  if (checkCalificaciones.rows.length === 0) {
+    const ESTRELLAS = [5, 4, 4, 3, 5, 2, 4, 5, 1, 4];
+    const COMENTARIOS: Record<number, string> = {
+      1: 'El arroz estaba crudo y la porción muy pequeña.',
+      2: 'La sopa llegó fría.',
+      5: '¡Excelente sazón, gracias!',
+    };
+    const vendidas = await query(
+      `SELECT v.usuario_id, v.menu_id, (($1::date) - m.fecha) AS dias
+       FROM ventas v JOIN menus_dia m ON m.id = v.menu_id
+       WHERE v.estado = 'completada' AND m.fecha BETWEEN $1::date - 14 AND $1::date - 1
+       ORDER BY m.fecha, v.usuario_id;`,
+      [today]
+    );
+    for (const [n, v] of vendidas.rows.entries()) {
+      if (n % 2 === 1) continue; // la mitad de los comensales califica
+      const estrellas = ESTRELLAS[(n + Number(v.dias)) % ESTRELLAS.length];
+      await query(
+        `INSERT INTO calificaciones_almuerzo (menu_id, usuario_id, estrellas, comentario, fecha_hora)
+         VALUES ($1, $2, $3, $4, NOW() - make_interval(days => $5))
+         ON CONFLICT ON CONSTRAINT unq_calificacion_menu_usuario DO NOTHING;`,
+        [v.menu_id, v.usuario_id, estrellas, COMENTARIOS[estrellas] ?? null, Number(v.dias)]
+      );
+    }
+  }
+
+  // 13f. VISITAS: una pasada sin confirmar ("Por confirmar"), una realizada y una futura
+  const checkVisitasDemo = await query("SELECT 1 FROM visitas_institucionales WHERE institucion_nombre = 'Universidad Surcolombiana';");
+  if (checkVisitasDemo.rows.length === 0) {
+    await query(
+      `INSERT INTO visitas_institucionales (institucion_nombre, responsable_nombre, cantidad_personas, fecha_visita, precio_unitario,
+                                            estado, metodo_pago, estado_pago, creado_por, fecha_hora_realizada, confirmada_por)
+       VALUES ('Institución Educativa Yamboró', 'Rector Hernán Silva', 30, $1::date - 6, $2, 'programada', 'efectivo', 'pendiente', $3, NULL, NULL),
+              ('Universidad Surcolombiana', 'Docente Paola Rincón', 18, $1::date - 3, $2, 'realizada', 'transferencia', 'pagado', $3,
+               NOW() - interval '3 days', $3),
+              ('Colegio Departamental La Laguna', 'Coordinador Iván Muñoz', 40, $1::date + 7, $2, 'programada', 'efectivo', 'pendiente', $3, NULL, NULL);`,
+      [today, TARIFAS_ALMUERZO_INVITADO.corriente, encargadoId]
+    );
+  }
+
+  // 14. PORCIONES VENDIDAS = ventas completadas de cada menú. La app mantiene esa igualdad al
   //     reservar; aquí se recalcula también para corregir bases sembradas con versiones anteriores.
   await query(
     `UPDATE menus_dia m
@@ -329,6 +496,49 @@ export async function runSeed(): Promise<void> {
      ) c
      WHERE c.id = m.id AND m.cantidad_vendida <> c.vendidas;`
   );
+
+  // 15. CIERRES DE CAJA (ADR 021) de los 6 días hábiles anteriores a hoy (sin domingos, cuando el
+  //     comedor no abre), con el resumen real de cada día; el más reciente reabierto y el siguiente
+  //     con un faltante para mostrar el historial. Un cierre por fecha: si ya existe, se respeta.
+  const diasConCierre: string[] = [];
+  for (let i = 1; diasConCierre.length < 6; i++) {
+    const fecha = restarDias(today, i);
+    const [anio, mes, dia] = fecha.split('-').map(Number);
+    if (new Date(Date.UTC(anio, mes - 1, dia)).getUTCDay() !== 0) diasConCierre.push(fecha);
+  }
+  for (const [n, fecha] of diasConCierre.entries()) {
+    const reabierto = n === 0;
+    const conFaltante = n === 1;
+    const resumen = await resumenDia(fecha);
+    const faltante = conFaltante ? Math.min(5000, resumen.ingresos_esperados) : 0;
+    await query(
+      `INSERT INTO cierres_caja (fecha, almuerzos_aprendices, almuerzos_beneficiarios, almuerzos_instructores,
+         almuerzos_invitados_instructores, almuerzos_invitados_aprendices, almuerzos_invitados_corrientes,
+         ingresos_esperados, ingresos_recibidos, detalle, observaciones, cerrado_por, estado, fecha_hora_cierre,
+         reabierto_por, fecha_hora_reapertura, motivo_reapertura)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13,
+               ($1::date + TIME '15:30') AT TIME ZONE 'America/Bogota', $14, $15, $16)
+       ON CONFLICT (fecha) DO NOTHING;`,
+      [
+        fecha,
+        resumen.almuerzos.aprendices,
+        resumen.almuerzos.beneficiarios,
+        resumen.almuerzos.instructores,
+        resumen.almuerzos.invitados_instructores,
+        resumen.almuerzos.invitados_aprendices,
+        resumen.almuerzos.invitados_corrientes,
+        resumen.ingresos_esperados,
+        resumen.ingresos_esperados - faltante,
+        JSON.stringify(resumen.ingresos),
+        faltante > 0 ? 'Faltó el pago de un aprendiz; se cobrará mañana.' : null,
+        encargadoId,
+        reabierto ? 'reabierto' : 'cerrado',
+        reabierto ? encargadoId : null,
+        reabierto ? new Date() : null,
+        reabierto ? 'Se registró tarde un almuerzo invitado del mediodía' : null,
+      ]
+    );
+  }
 
   console.log('[Seed] ✓ Datos de demostración cargados exitosamente.');
 }

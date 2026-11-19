@@ -16,7 +16,14 @@ import visitasRoutes from './routes/visitas.routes.js';
 import perfilRoutes from './routes/perfil.routes.js';
 import beneficiariosRoutes from './routes/beneficiarios.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
-import solicitudesRoutes from './routes/solicitudes.routes.js';
+import coordinadorRoutes from './routes/coordinador.routes.js';
+import almuerzosInvitadosRoutes from './routes/almuerzosInvitados.routes.js';
+import auditoriaRoutes from './routes/auditoria.routes.js';
+import configuracionRoutes from './routes/configuracion.routes.js';
+import alertasRoutes from './routes/alertas.routes.js';
+import cierresCajaRoutes from './routes/cierresCaja.routes.js';
+import calificacionesRoutes from './routes/calificaciones.routes.js';
+import reportesRoutes from './routes/reportes.routes.js';
 import healthRoutes from './routes/health.routes.js';
 import { getInstructoresList } from './controllers/instituciones.controller.js';
 import { authenticateToken } from './middleware/auth.middleware.js';
@@ -58,7 +65,9 @@ export const createApp = (): Express => {
         return callback(new Error('Origin not allowed by CORS'), false);
       },
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning', 'X-Nombre-Archivo'],
+      // Nombre del archivo en las descargas de Excel y PDF
+      exposedHeaders: ['Content-Disposition'],
       credentials: true,
     })
   );
@@ -82,7 +91,14 @@ export const createApp = (): Express => {
   app.use('/api/perfil', perfilRoutes);
   app.use('/api/beneficiarios', beneficiariosRoutes);
   app.use('/api/dashboard', dashboardRoutes);
-  app.use('/api/solicitudes-cuenta', solicitudesRoutes);
+  app.use('/api/coordinador', coordinadorRoutes);
+  app.use('/api/almuerzos-invitados', almuerzosInvitadosRoutes);
+  app.use('/api/auditoria', auditoriaRoutes);
+  app.use('/api/configuracion', configuracionRoutes);
+  app.use('/api/alertas', alertasRoutes);
+  app.use('/api/cierres-caja', cierresCajaRoutes);
+  app.use('/api/calificaciones', calificacionesRoutes);
+  app.use('/api/reportes', reportesRoutes);
 
   // 6. Manejo de rutas inexistentes (404)
   app.use((_req, res) => {

@@ -134,3 +134,19 @@ Este documento recopila las decisiones técnicas clave tomadas durante el desarr
 - **Alternativas descartadas**:
   - *Que solo el Encargado General apruebe encargados*: requiere distinguir un superadministrador (columna y reglas nuevas). Se puede agregar después sin cambiar la tabla.
   - *Que el encargado cree cuentas directamente*: obliga al encargado a conocer o inventar la contraseña de la otra persona.
+
+
+## ADR 016: Sin perfil invitado; Almuerzos Invitados registrados por el encargado
+- **Fecha**: 2026-11-16
+- **Estado**: Aceptada (reemplaza el registro de invitados de los ADR 007 y 015)
+- **Contexto**: El perfil "invitado" obligaba a una persona externa a crear una cuenta para comprar un almuerzo a $8.000, y su compra quedaba `pagado` aunque se pagara en la caja (pendiente de la fase 6). En la práctica los almuerzos de externos los cobra el encargado en la ventanilla, a veces para un grupo, y con tarifas distintas según quién sea el invitado.
+- **Decisión**:
+  - Se elimina el perfil: el rol `invitado` sale del enum `rol_usuario`, de los tipos y esquemas del frontend y del backend, de las rutas (`#/invitado/inicio`) y del Menú del Día (`precio_invitado`). La migración 006 borra los usuarios invitados y sus datos sin tocar el resto de la base. El registro con `accountType: "invitado"` responde `400` y un token antiguo de invitado responde `401` (ADR 014).
+  - Nueva sección del encargado, **Almuerzos Invitados**, con tres tipos de tarifa fija: instructores $10.000, aprendices $5.000 y corrientes $11.000. El encargado indica el **número de personas** y el total (personas × tarifa) se calcula en vivo. Tabla `almuerzos_invitados` (migración 007) con un registro por grupo.
+  - Las tarifas y el máximo de personas por registro (500) se definen en un solo lugar, `backend/src/config/almuerzosInvitados.ts`. El frontend las lee de `GET /api/almuerzos-invitados/tarifas` y el servidor siempre cobra con ellas, ignorando cualquier precio del cliente.
+  - Cada registro copia su `precio_unitario` y su `total` es una columna generada: si las tarifas cambian, el histórico no cambia. Al editar se puede corregir personas, nombre y fecha; el tipo y el precio guardado no cambian.
+  - Los registros se pagan al registrarlos, así que suman en Ventas como cobrados: almuerzos servidos, ingresos, gráfico y transacciones, con desglose por tipo. El encabezado del panel también los incluye.
+  - El precio por defecto de una visita institucional, que antes salía de `precio_invitado`, ahora es la tarifa `corriente`.
+- **Alternativas descartadas**:
+  - *Tarifas en una tabla de configuración editable*: requiere pantalla y permisos para editarla. Con una constante en el backend basta un cambio de código, y la tabla se puede agregar después sin cambiar los registros.
+  - *Conservar el rol invitado sin usarlo*: deja código y datos muertos y la posibilidad de crear cuentas que ya no tienen panel.

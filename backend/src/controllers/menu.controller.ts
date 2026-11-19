@@ -2,19 +2,30 @@ import { Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { query } from '../db/index.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
-import { estadoHorario, MENSAJE_FUERA_DE_HORARIO } from '../utils/horario.js';
+import { AppError } from '../middleware/error.middleware.js';
+import { estadoHorario, fechaBogota, MENSAJE_FUERA_DE_HORARIO } from '../utils/horario.js';
+import { fechaSchema } from '../utils/rango.js';
+import { sugerenciaParaFecha } from '../services/sugerencia.service.js';
 import { parseId } from '../utils/validacion.js';
+import { withTransaction } from '../services/inventario.service.js';
+import { registrarAuditoria } from '../services/auditoria.service.js';
 
 const menuSchema = z.object({
   nombre: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
   fecha: z.string().min(1, 'La fecha es obligatoria'),
   descripcion: z.string().optional(),
   precio_aprendiz: z.coerce.number().min(0, 'El precio debe ser positivo'),
-  precio_invitado: z.coerce.number().min(0, 'El precio debe ser positivo'),
   cantidad_disponible: z.coerce.number().min(0, 'La cantidad debe ser positiva'),
   imagen_url: z.string().optional(),
   estado: z.enum(['borrador', 'activo', 'agotado', 'completado']).default('activo'),
+  // Receta con la que se descuenta el inventario por cada almuerzo vendido (ADR 020)
+  receta_id: z.string().uuid('La receta seleccionada no es válida.').nullish(),
 });
+
+/** Columnas del menú que devuelve el historial del encargado. */
+const COLUMNAS_MENU = `m.id, TO_CHAR(m.fecha, 'YYYY-MM-DD') as fecha, m.nombre, m.descripcion,
+  m.precio_aprendiz::float8 as precio_aprendiz, m.cantidad_disponible, m.cantidad_vendida,
+  m.imagen_url, m.estado, m.receta_id, r.nombre as receta_nombre, m.created_at`;
 
 export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
@@ -22,7 +33,6 @@ export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, ne
     const result = await query(
       `SELECT id, TO_CHAR(fecha, 'YYYY-MM-DD') as fecha, nombre, descripcion,
               precio_aprendiz::float8 as precio_aprendiz,
-              precio_invitado::float8 as precio_invitado,
               cantidad_disponible, cantidad_vendida, imagen_url, estado
        FROM menus_dia
        WHERE estado = 'activo'
@@ -42,7 +52,6 @@ export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, ne
         nombre: 'Menú del Día',
         descripcion: 'Almuerzo completo: Sopa, bandeja con proteína, arroz, ensalada, jugo natural y postre.',
         precio_aprendiz: 5000,
-        precio_invitado: 8000,
         cantidad_disponible: 100,
         cantidad_vendida: 0,
         imagen_url: '/cafeteria-bg.jpg',
@@ -50,7 +59,7 @@ export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, ne
       };
     }
 
-    // 2. Determinar precio aplicable según el rol y si es beneficiario en la base de datos
+    // 2. Precio aplicable: aprendiz e instructor pagan precio_aprendiz; el aprendiz beneficiario, $0
     let precioAplicable = Number(menu.precio_aprendiz);
     let esBeneficiario = false;
 
@@ -61,15 +70,9 @@ export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, ne
       );
       const user = userRes.rows[0];
 
-      if (user) {
-        if (user.rol === 'aprendiz') {
-          esBeneficiario = Boolean(user.es_beneficiario);
-          precioAplicable = esBeneficiario ? 0 : Number(menu.precio_aprendiz);
-        } else if (user.rol === 'instructor') {
-          precioAplicable = Number(menu.precio_aprendiz);
-        } else if (user.rol === 'invitado') {
-          precioAplicable = Number(menu.precio_invitado);
-        }
+      if (user?.rol === 'aprendiz') {
+        esBeneficiario = Boolean(user.es_beneficiario);
+        precioAplicable = esBeneficiario ? 0 : Number(menu.precio_aprendiz);
       }
     }
 
@@ -100,7 +103,6 @@ export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, ne
     return res.json({
       ...menu,
       precio_aprendiz: Number(menu.precio_aprendiz),
-      precio_invitado: Number(menu.precio_invitado),
       precio_aplicable: precioAplicable,
       es_beneficiario: esBeneficiario,
       mi_reserva: miReserva,
@@ -116,11 +118,10 @@ export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, ne
 export const getAllMenus = async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const result = await query(
-      `SELECT id, TO_CHAR(fecha, 'YYYY-MM-DD') as fecha, nombre, descripcion,
-              precio_aprendiz::float8 as precio_aprendiz, precio_invitado::float8 as precio_invitado,
-              cantidad_disponible, cantidad_vendida, imagen_url, estado, created_at
-       FROM menus_dia
-       ORDER BY fecha DESC, created_at DESC;`
+      `SELECT ${COLUMNAS_MENU}
+       FROM menus_dia m
+       LEFT JOIN recetas r ON r.id = m.receta_id
+       ORDER BY m.fecha DESC, m.created_at DESC;`
     );
     return res.json(result.rows);
   } catch (error) {
@@ -137,44 +138,72 @@ export const createMenu = async (req: AuthenticatedRequest, res: Response, next:
       fecha: raw.fecha || raw.date,
       descripcion: raw.descripcion || raw.description,
       precio_aprendiz: raw.precio_aprendiz ?? raw.priceStudents,
-      precio_invitado: raw.precio_invitado ?? raw.priceGuests,
       cantidad_disponible: raw.cantidad_disponible ?? raw.availableQuantity,
       imagen_url: raw.imagen_url || raw.imageUrl || '/cafeteria-bg.jpg',
       estado: raw.estado || (raw.isAvailable === false ? 'borrador' : 'activo'),
+      receta_id: raw.receta_id ?? raw.recetaId ?? null,
     };
 
     const data = menuSchema.parse(body);
 
-    // Si este nuevo menú está activo, desactivamos otros menús del mismo día
-    if (data.estado === 'activo') {
-      await query("UPDATE menus_dia SET estado = 'completado' WHERE fecha = $1 AND estado = 'activo';", [data.fecha]);
-    }
+    const menu = await withTransaction(async (client) => {
+      if (data.receta_id) {
+        const receta = await client.query('SELECT 1 FROM recetas WHERE id = $1 AND activa = true;', [data.receta_id]);
+        if (receta.rowCount === 0) throw new AppError('La receta seleccionada no existe.', 404);
+      }
 
-    const insertRes = await query(
-      `INSERT INTO menus_dia (fecha, nombre, descripcion, precio_aprendiz, precio_invitado, cantidad_disponible, imagen_url, estado, creado_por)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       ON CONFLICT (fecha, nombre) DO UPDATE SET
-         descripcion = EXCLUDED.descripcion,
-         precio_aprendiz = EXCLUDED.precio_aprendiz,
-         precio_invitado = EXCLUDED.precio_invitado,
-         cantidad_disponible = EXCLUDED.cantidad_disponible,
-         imagen_url = EXCLUDED.imagen_url,
-         estado = EXCLUDED.estado
-       RETURNING *;`,
-      [
+      const anterior = await client.query('SELECT * FROM menus_dia WHERE fecha = $1 AND nombre = $2;', [
         data.fecha,
         data.nombre,
-        data.descripcion || '',
-        data.precio_aprendiz,
-        data.precio_invitado,
-        data.cantidad_disponible,
-        data.imagen_url,
-        data.estado,
-        req.user?.id || null,
-      ]
-    );
+      ]);
 
-    return res.status(201).json(insertRes.rows[0]);
+      // Si este nuevo menú está activo, desactivamos otros menús del mismo día
+      if (data.estado === 'activo') {
+        await client.query(
+          "UPDATE menus_dia SET estado = 'completado' WHERE fecha = $1 AND estado = 'activo' AND nombre <> $2;",
+          [data.fecha, data.nombre]
+        );
+      }
+
+      const insertRes = await client.query(
+        `INSERT INTO menus_dia (fecha, nombre, descripcion, precio_aprendiz, cantidad_disponible, imagen_url, estado, creado_por, receta_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         ON CONFLICT (fecha, nombre) DO UPDATE SET
+           descripcion = EXCLUDED.descripcion,
+           precio_aprendiz = EXCLUDED.precio_aprendiz,
+           cantidad_disponible = EXCLUDED.cantidad_disponible,
+           imagen_url = EXCLUDED.imagen_url,
+           estado = EXCLUDED.estado,
+           receta_id = EXCLUDED.receta_id
+         RETURNING *;`,
+        [
+          data.fecha,
+          data.nombre,
+          data.descripcion || '',
+          data.precio_aprendiz,
+          data.cantidad_disponible,
+          data.imagen_url,
+          data.estado,
+          req.user?.id || null,
+          data.receta_id ?? null,
+        ]
+      );
+      const creado = insertRes.rows[0];
+      await registrarAuditoria(
+        {
+          usuario: req.user,
+          accion: anterior.rows[0] ? 'editar' : 'crear',
+          entidad: 'menu_dia',
+          entidadId: creado.id,
+          antes: anterior.rows[0] ?? null,
+          despues: creado,
+        },
+        client
+      );
+      return creado;
+    });
+
+    return res.status(201).json(menu);
   } catch (error) {
     next(error);
   }
@@ -189,16 +218,51 @@ export const updateMenuStatus = async (req: AuthenticatedRequest, res: Response,
       return res.status(400).json({ message: 'Estado de menú inválido.' });
     }
 
-    const updateRes = await query(
-      'UPDATE menus_dia SET estado = $1 WHERE id = $2 RETURNING *;',
-      [estado, id]
+    const menu = await withTransaction(async (client) => {
+      const anterior = await client.query('SELECT * FROM menus_dia WHERE id = $1 FOR UPDATE;', [id]);
+      if (!anterior.rows[0]) throw new AppError('Menú no encontrado.', 404);
+      const updateRes = await client.query('UPDATE menus_dia SET estado = $1 WHERE id = $2 RETURNING *;', [estado, id]);
+      await registrarAuditoria(
+        {
+          usuario: req.user,
+          accion: 'cambiar_estado',
+          entidad: 'menu_dia',
+          entidadId: id,
+          antes: { estado: anterior.rows[0].estado },
+          despues: { estado },
+        },
+        client
+      );
+      return updateRes.rows[0];
+    });
+
+    return res.json(menu);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** GET /api/menus/sugerencia?fecha= — cuántos almuerzos preparar ese día (hoy por defecto). */
+export const getSugerenciaPreparacion = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { fecha = fechaBogota() } = z.object({ fecha: fechaSchema('La fecha').optional() }).parse(req.query);
+    return res.json(await sugerenciaParaFecha(fecha));
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** GET /api/menus/recetas — recetas activas para elegir en el formulario del menú. */
+export const getRecetasParaMenu = async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await query(
+      `SELECT r.id, r.codigo, r.nombre, COUNT(ri.id)::int AS ingredientes
+       FROM recetas r LEFT JOIN receta_ingredientes ri ON ri.receta_id = r.id
+       WHERE r.activa = true
+       GROUP BY r.id
+       ORDER BY r.nombre;`
     );
-
-    if (updateRes.rows.length === 0) {
-      return res.status(404).json({ message: 'Menú no encontrado.' });
-    }
-
-    return res.json(updateRes.rows[0]);
+    return res.json(result.rows);
   } catch (error) {
     next(error);
   }

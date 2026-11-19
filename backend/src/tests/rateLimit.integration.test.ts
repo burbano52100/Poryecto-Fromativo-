@@ -14,8 +14,8 @@ const login = (password: string) => request(app).post('/api/auth/login').send({ 
 beforeAll(async () => {
   await cleanDatabase();
   await pool.query(
-    `INSERT INTO usuarios (nombre, cedula, password_hash, rol, activo)
-     VALUES ('Aprendiz Limite', '7100000001', $1, 'aprendiz', true);`,
+    `INSERT INTO usuarios (nombre, cedula, password_hash, rol, estado)
+     VALUES ('Aprendiz Limite', '7100000001', $1, 'aprendiz', 'activo');`,
     [await bcrypt.hash(PASSWORD, 4)]
   );
 });

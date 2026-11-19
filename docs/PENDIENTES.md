@@ -42,7 +42,7 @@ Estado al **4 de noviembre de 2026**, en la rama `integracion/pendientes`. Lo ya
 - [ ] **Reconocimiento facial real** (Teachable Machine) con verificación de vida (mirar arriba, girar, parpadear). La tabla `reconocimiento_facial` ya existe en la base de datos.
 - [ ] **Marca de entrega del almuerzo**: hoy "Consumido" se deduce de la fecha del menú (ADR 010).
 - [ ] **Cierre de menús**: los menús de días pasados quedan en `activo` y nunca pasan a `completado`.
-- [ ] **Compra de invitado**: se registra como `pagado` al confirmarla, aunque se paga en la caja. Para controlarlo se necesita una vista de cobro de invitados, que no tienen ficha y no aparecen en Grupos.
+- [ ] **Tarifas de Almuerzos Invitados editables desde la app (opcional)**: hoy se cambian en `backend/src/config/almuerzosInvitados.ts` (ADR 016). Si el encargado debe cambiarlas sin un despliegue, hace falta una tabla de configuración y su pantalla.
 - [ ] **Inventario**:
   - Stock con 3 decimales (requiere migrar a `NUMERIC(12,3)`).
   - Costo promedio ponderado en las entradas.

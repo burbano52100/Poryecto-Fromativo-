@@ -8,10 +8,10 @@ El script SQL completo y listo para ejecutar está en `gastrosena_schema.sql`.
 
 Del código extraje estas estructuras que ya existen como datos "quemados" en el frontend:
 
-- `Usuario`: id, nombre, rol (aprendiz/instructor/encargado/invitado), cedula, ficha, grupoId, saldo, precioAlmuerzo, codigoQR.
+- `Usuario`: id, nombre, rol (aprendiz/instructor/encargado), cedula, ficha, grupoId, saldo, precioAlmuerzo, codigoQR.
 - `Grupo` (ficha): id, nombre, ficha, programa, estudiantesActivos, vocero, estudiantes[].
 - `Estudiante` (dentro de un grupo): id, nombre, cedula, saldo, almuerzosConsumidos.
-- Menú del día: nombre del plato, precio para aprendices, precio para invitados, cantidad disponible, historial de menús con ventas y estado.
+- Menú del día: nombre del plato, precio para aprendices, cantidad disponible, historial de menús con ventas y estado.
 - Deudas: nombre, tipo (instructor), cédula, ficha, deuda, almuerzos, días vencidos, estado (vencida/pendiente).
 - Sugerencias: id, remitente, tipo, ficha, asunto, mensaje, fecha, estado (pendiente/atendida).
 - Inventario GastroSENA — `Material`: id, codigo, nombre, categoria, unidadMedida, fechaVencimiento, stockActual, stockMinimo, estado (bueno/bajo/critico/venciendo).
@@ -60,7 +60,6 @@ erDiagram
         date fecha
         text nombre
         numeric precio_aprendiz
-        numeric precio_invitado
         enum estado
     }
     VENTAS {
@@ -116,9 +115,9 @@ erDiagram
 
 ## 3. Los 6 bloques del modelo
 
-**Usuarios y fichas.** Una tabla `usuarios` para los cuatro roles (con un `enum rol_usuario`, no cuatro tablas separadas — evita duplicar lógica de login/auth) y una tabla `fichas` para los grupos SENA. Cada aprendiz referencia su ficha con `ficha_id`; cada ficha referencia a su instructor. Nota de seguridad importante: el prototipo guarda usuarios y contraseñas en `localStorage`, lo cual es solo válido para la demo — en producción eso debe migrar a Supabase Auth (o al menos a contraseñas hasheadas con bcrypt/argon2, nunca texto plano).
+**Usuarios y fichas.** Una tabla `usuarios` para los tres roles (con un `enum rol_usuario`, no tres tablas separadas — evita duplicar lógica de login/auth) y una tabla `fichas` para los grupos SENA. Cada aprendiz referencia su ficha con `ficha_id`; cada ficha referencia a su instructor. Nota de seguridad importante: el prototipo guarda usuarios y contraseñas en `localStorage`, lo cual es solo válido para la demo — en producción eso debe migrar a Supabase Auth (o al menos a contraseñas hasheadas con bcrypt/argon2, nunca texto plano).
 
-**Menú y ventas.** `menus_dia` reemplaza el objeto quemado del menú del día, con precio diferenciado por rol (aprendiz/invitado) y estado (borrador/activo/agotado/completado) igual que en la UI. `ventas` es la tabla central: cada almuerzo servido es una fila, y de ahí salen tanto el reporte de "Ventas" del encargado como el "historial de fichas utilizadas" que ve el aprendiz — es la misma información vista desde dos ángulos, así que debe vivir en un solo lugar. Agregué `movimientos_saldo` como bitácora de la billetera (recargas, consumos, ajustes) porque `usuarios.saldo` por sí solo no te deja auditar qué pasó ni revertir un error.
+**Menú y ventas.** `menus_dia` reemplaza el objeto quemado del menú del día, con el precio para aprendices y estado (borrador/activo/agotado/completado) igual que en la UI. `ventas` es la tabla central: cada almuerzo servido es una fila, y de ahí salen tanto el reporte de "Ventas" del encargado como el "historial de fichas utilizadas" que ve el aprendiz — es la misma información vista desde dos ángulos, así que debe vivir en un solo lugar. Agregué `movimientos_saldo` como bitácora de la billetera (recargas, consumos, ajustes) porque `usuarios.saldo` por sí solo no te deja auditar qué pasó ni revertir un error.
 
 **Cartera de deudas.** Tal como está en el prototipo ("Instructores con deudas pendientes"), pero generalizada a cualquier `usuario_id` por si mañana se permite deuda a otros roles. `dias_vencidos` no se guarda como columna: se calcula en la consulta (`current_date - fecha_origen`) para que nunca quede desincronizado del reloj real. Agregué `pagos_deuda` para poder registrar abonos parciales, algo que la UI actual no contempla pero que cualquier cartera real necesita tarde o temprano.
 
@@ -141,3 +140,8 @@ erDiagram
 1. Correr `gastrosena_schema.sql` en un proyecto de Supabase (o cualquier Postgres 14+).
 2. Migrar los arrays quemados del frontend (`gruposDelSena`, `materiales`, etc.) como datos semilla (`INSERT`) para no perder los datos de ejemplo mientras conectan el backend real.
 3. Reemplazar `localStorage` en `LoginScreen.tsx` por llamadas a la base de datos (o a Supabase Auth) antes de considerar el login "listo para producción".
+
+
+## Actualización: Almuerzos Invitados (ADR 016)
+
+El perfil "invitado" se eliminó: ya nadie se registra ni inicia sesión como invitado y `menus_dia` quedó solo con `precio_aprendiz` (migración 006). Los almuerzos de personas externas los registra el encargado en la tabla `almuerzos_invitados` (migración 007), por número de personas y en tres tipos con tarifa fija: instructores $10.000, aprendices $5.000 y corrientes $11.000. Cada registro guarda su `precio_unitario` y su `total` (columna generada), así el histórico no cambia si cambian las tarifas, que viven en `backend/src/config/almuerzosInvitados.ts`. Estos registros se suman en el reporte de Ventas del encargado.

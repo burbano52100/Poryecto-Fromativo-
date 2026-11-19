@@ -22,11 +22,17 @@ beforeAll(async () => {
   const hash = await bcrypt.hash(PASSWORD, 10);
   const fichaId = await crearFicha('2847251');
   await pool.query(
-    `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, ficha_id, es_beneficiario, activo)
-     VALUES ('Aprendiz Login', '7000000001', 'aprendiz@misena.edu.co', $1, 'aprendiz', $2, true, true),
-            ('Encargado Login', '7000000002', 'encargado@sena.edu.co', $1, 'encargado', NULL, false, true),
-            ('Aprendiz Inactivo', '7000000003', NULL, $1, 'aprendiz', NULL, false, false);`,
+    `INSERT INTO usuarios (nombre, cedula, email, password_hash, rol, ficha_id, es_beneficiario, estado)
+     VALUES ('Aprendiz Login', '7000000001', 'aprendiz@misena.edu.co', $1, 'aprendiz', $2, true, 'activo'),
+            ('Encargado Login', '7000000002', 'encargado@sena.edu.co', $1, 'encargado', NULL, false, 'activo'),
+            ('Aprendiz Inactivo', '7000000003', NULL, $1, 'aprendiz', NULL, false, 'inactivo'),
+            ('Instructor Pendiente', '7000000004', NULL, $1, 'instructor', NULL, false, 'pendiente');`,
     [hash, fichaId]
+  );
+  await pool.query(
+    `INSERT INTO usuarios (nombre, cedula, password_hash, rol, estado, motivo_rechazo)
+     VALUES ('Instructor Rechazado', '7000000005', $1, 'instructor', 'rechazado', 'No es instructor del centro');`,
+    [hash]
   );
 });
 
@@ -66,8 +72,28 @@ describe('POST /api/auth/login', () => {
     assert.strictEqual(res.body.message, 'Credenciales inválidas');
   });
 
-  it('responde el mismo error genérico si la cuenta está inactiva', async () => {
+  it('bloquea la cuenta desactivada con un mensaje claro (403)', async () => {
     const res = await login({ document: '7000000003', password: PASSWORD });
+    assert.strictEqual(res.status, 403);
+    assert.strictEqual(res.body.message, 'Tu cuenta está desactivada.');
+    assert.strictEqual(res.body.estado_cuenta, 'inactivo');
+    assert.strictEqual(res.body.token, undefined);
+  });
+
+  it('bloquea la cuenta pendiente de aprobación del Coordinador', async () => {
+    const res = await login({ document: '7000000004', password: PASSWORD });
+    assert.strictEqual(res.status, 403);
+    assert.strictEqual(res.body.message, 'Tu cuenta está pendiente de aprobación del Coordinador.');
+  });
+
+  it('bloquea la solicitud rechazada y muestra el motivo', async () => {
+    const res = await login({ document: '7000000005', password: PASSWORD });
+    assert.strictEqual(res.status, 403);
+    assert.match(res.body.message, /^Tu solicitud fue rechazada\. Motivo: No es instructor del centro/);
+  });
+
+  it('con la contraseña incorrecta no revela el estado de la cuenta', async () => {
+    const res = await login({ document: '7000000004', password: 'otra-clave' });
     assert.strictEqual(res.status, 401);
     assert.strictEqual(res.body.message, 'Credenciales inválidas');
   });
@@ -96,9 +122,9 @@ describe('Token con la cuenta vigente (ADR 014)', () => {
     const token = await tokenDe('7000000001');
     assert.strictEqual((await me(token)).status, 200);
 
-    await pool.query("UPDATE usuarios SET activo = false WHERE cedula = '7000000001';");
+    await pool.query("UPDATE usuarios SET estado = 'inactivo' WHERE cedula = '7000000001';");
     const res = await me(token);
-    await pool.query("UPDATE usuarios SET activo = true WHERE cedula = '7000000001';");
+    await pool.query("UPDATE usuarios SET estado = 'activo' WHERE cedula = '7000000001';");
 
     assert.strictEqual(res.status, 401);
     assert.match(res.body.message, /desactivada/);

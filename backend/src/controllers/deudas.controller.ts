@@ -3,13 +3,18 @@ import { z } from 'zod';
 import { query, getClient } from '../db/index.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { parseId } from '../utils/validacion.js';
+import { fechaBogota } from '../utils/horario.js';
+import { registrarAuditoria } from '../services/auditoria.service.js';
+import { verificarDiaAbierto } from '../services/cierreCaja.service.js';
 
 export const getDeudas = async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const result = await query(
       `SELECT d.id, d.monto::float8 as monto, d.almuerzos_pendientes, d.fecha_origen, d.estado,
               ((NOW() AT TIME ZONE 'America/Bogota')::date - d.fecha_origen)::int as dias_vencidos,
-              u.nombre as usuario_nombre, u.cedula, u.rol
+              u.id as usuario_id, u.nombre as usuario_nombre, u.cedula, u.rol, NULLIF(BTRIM(u.email), '') as email,
+              (SELECT MAX(r.fecha_hora) FROM recordatorios_deuda r
+                WHERE r.instructor_id = u.id AND r.estado = 'enviado') as ultimo_recordatorio
        FROM deudas d
        JOIN usuarios u ON d.usuario_id = u.id
        WHERE d.estado != 'pagada' AND d.monto > 0
@@ -18,6 +23,10 @@ export const getDeudas = async (_req: AuthenticatedRequest, res: Response, next:
 
     const formatted = result.rows.map((row) => ({
       id: row.id,
+      userId: row.usuario_id,
+      email: row.email,
+      // Último recordatorio enviado: solo se permite uno cada 24 horas (ADR 023)
+      lastReminderAt: row.ultimo_recordatorio ? new Date(row.ultimo_recordatorio).toISOString() : null,
       name: row.usuario_nombre,
       type: row.rol.charAt(0).toUpperCase() + row.rol.slice(1),
       document: row.cedula,
@@ -90,6 +99,8 @@ export const registrarPagoDeuda = async (req: AuthenticatedRequest, res: Respons
   const client = await getClient();
   try {
     await client.query('BEGIN');
+    // El pago entra a la caja de hoy: si hoy está cerrado, no se registra (ADR 021)
+    await verificarDiaAbierto(fechaBogota(), client);
 
     const deudaRes = await client.query(
       'SELECT id, usuario_id, monto::float8 as monto, estado FROM deudas WHERE id = $1 FOR UPDATE;',
@@ -150,6 +161,18 @@ export const registrarPagoDeuda = async (req: AuthenticatedRequest, res: Respons
        SET monto = $1, almuerzos_pendientes = COALESCE($2, almuerzos_pendientes), estado = $3, updated_at = NOW()
        WHERE id = $4;`,
       [nuevoMonto, almuerzosPendientes, nuevoEstado, deuda.id]
+    );
+
+    await registrarAuditoria(
+      {
+        usuario: req.user,
+        accion: 'pagar',
+        entidad: 'pago_deuda',
+        entidadId: deuda.id,
+        antes: { saldo: totalDeuda, estado: deuda.estado },
+        despues: { pago, saldo: nuevoMonto, estado: nuevoEstado, almuerzosPagados: quedanPagadas.length },
+      },
+      client
     );
 
     await client.query('COMMIT');
