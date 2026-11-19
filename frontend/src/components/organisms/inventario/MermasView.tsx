@@ -1,7 +1,7 @@
-import { Fragment, useState } from 'react';
+import { Fragment } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Alert, Card, Separator } from '@heroui/react';
+import { Card, Separator, toast } from '@heroui/react';
 import { Button } from '../../atoms/Button';
 import { EmptyMessage } from '../../molecules/EmptyMessage';
 import { ErrorAlert } from '../../molecules/ErrorAlert';
@@ -17,7 +17,6 @@ export const MermasView = () => {
   const { data: materiales = [] } = useMateriales();
   const { data: mermas = [], isPending, isError, error, refetch } = useMermas();
   const registrar = useRegistrarMerma();
-  const [mermaSuccess, setMermaSuccess] = useState(false);
 
   const {
     register,
@@ -37,8 +36,7 @@ export const MermasView = () => {
     registrar.mutate(data, {
       onSuccess: () => {
         reset();
-        setMermaSuccess(true);
-        setTimeout(() => setMermaSuccess(false), 3500);
+        toast.success('Merma registrada', { description: 'Se descontó del stock y quedó en el Kardex.' });
       },
     })
   );
@@ -46,14 +44,6 @@ export const MermasView = () => {
   return (
     <div className="flex flex-col gap-6">
       <SectionCard titulo="Registrar merma" descripcion="Desperdicios, alimentos vencidos o deterioro">
-        {mermaSuccess && (
-          <Alert status="success" role="status">
-            <Alert.Indicator />
-            <Alert.Content>
-              <Alert.Description>Merma registrada. Se descontó del stock y quedó en el Kardex.</Alert.Description>
-            </Alert.Content>
-          </Alert>
-        )}
 
         <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
           {registrar.isError && <ErrorAlert error={registrar.error} titulo="No se pudo registrar la merma" />}

@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import { ProtectedRoute } from './routes/ProtectedRoute';
-import { LoadingSpinner } from './components/atoms/LoadingSpinner';
+import { DashboardSkeleton } from './components/templates/DashboardSkeleton';
 import { useLogout } from './hooks/useAuth';
 import { LOGOUT_EVENT } from './lib/session';
 
@@ -34,7 +34,7 @@ export const AppRoutes = () => {
   }, [logout]);
 
   return (
-    <Suspense fallback={<LoadingSpinner fullScreen label="Cargando panel..." />}>
+    <Suspense fallback={<DashboardSkeleton />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route

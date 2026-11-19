@@ -107,7 +107,8 @@ describe('Almuerzos Invitados (Encargado)', () => {
     await userEvent.click(card.getByRole('button', { name: 'Registrar' }));
 
     expect(post).toHaveBeenCalledWith('/almuerzos-invitados', { tipo: 'instructor', cantidad: 4, nombre_invitado: 'Delegación Neiva' });
-    expect(await card.findByText(/Registrado: 4 personas · \$40\.000/)).toBeInTheDocument();
+    // El aviso es un toast de HeroUI: aparece fuera de la tarjeta
+    expect(await screen.findByText(/Registrado: 4 personas · \$40\.000/)).toBeInTheDocument();
     expect(campo).toHaveValue('1');
   });
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Flag, RotateCcw, Users } from 'lucide-react';
-import { Card, Chip } from '@heroui/react';
+import { Card, Chip, toast } from '@heroui/react';
 import { Button } from '../../atoms/Button';
 import { ConfirmDialog } from '../../molecules/ConfirmDialog';
 import { EmptyMessage } from '../../molecules/EmptyMessage';
@@ -9,8 +9,6 @@ import { ListSkeleton } from '../../molecules/ListSkeleton';
 import { SectionCard } from '../../molecules/SectionCard';
 import { useCambiarEstadoFicha, useFichasCoordinador } from '../../../hooks/useCoordinador';
 import type { FichaCoordinador } from '../../../types/api';
-import { useAviso } from '../../../hooks/useAviso';
-import { AvisoExito } from './AvisoExito';
 
 /**
  * Fichas (ADR 018): el Coordinador las marca como finalizadas cuando termina la formación. Al
@@ -20,7 +18,7 @@ export const FichasCoordinadorSection = () => {
   const { data: fichas = [], isPending, isError, error, refetch } = useFichasCoordinador();
   const cambiarEstado = useCambiarEstadoFicha();
   const [aCambiar, setACambiar] = useState<FichaCoordinador | null>(null);
-  const { aviso, mostrarAviso } = useAviso();
+  const mostrarAviso = (texto: string) => toast.success(texto);
 
   const finalizar = aCambiar?.estado === 'activa';
 
@@ -40,10 +38,9 @@ export const FichasCoordinadorSection = () => {
   return (
     <div className="flex flex-col gap-6">
       <SectionCard titulo="Fichas" descripcion="Programas de formación del centro y cuántos aprendices activos tiene cada uno.">
-        <AvisoExito aviso={aviso} />
 
         {isPending ? (
-          <ListSkeleton label="Cargando fichas..." />
+          <ListSkeleton label="Cargando fichas..." forma="tarjetas" />
         ) : isError ? (
           <ErrorAlert error={error} titulo="No se pudieron cargar las fichas" onReintentar={() => refetch()} />
         ) : fichas.length === 0 ? (

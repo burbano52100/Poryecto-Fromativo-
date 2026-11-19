@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Pencil, X } from 'lucide-react';
-import { Alert, Avatar, Chip, CloseButton, Separator } from '@heroui/react';
+import { Avatar, Chip, Separator, toast } from '@heroui/react';
 import type { User } from '../../schemas/auth.schema';
 import { Button } from '../atoms/Button';
 import { FormField } from '../molecules/FormField';
@@ -39,7 +39,6 @@ export const PerfilSection = ({ user }: PerfilSectionProps) => {
   // El Coordinador no reserva almuerzos: no tiene consumos que mostrar
   const consumeAlmuerzos = user.role === 'aprendiz' || isInstructor;
   const [isEditing, setIsEditing] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const actualizarPerfil = useActualizarPerfil();
   const { data: resumen } = useResumenConsumos(consumeAlmuerzos);
@@ -68,8 +67,7 @@ export const PerfilSection = ({ user }: PerfilSectionProps) => {
       {
         onSuccess: () => {
           setIsEditing(false);
-          setSaveSuccess(true);
-          setTimeout(() => setSaveSuccess(false), 3000);
+          toast.success('¡Perfil actualizado correctamente!');
         },
       }
     );
@@ -86,15 +84,6 @@ export const PerfilSection = ({ user }: PerfilSectionProps) => {
         </Button>
       }
     >
-      {saveSuccess && (
-        <Alert status="success">
-          <Alert.Indicator />
-          <Alert.Content>
-            <Alert.Description>¡Perfil actualizado correctamente!</Alert.Description>
-          </Alert.Content>
-          <CloseButton aria-label="Cerrar aviso" onPress={() => setSaveSuccess(false)} />
-        </Alert>
-      )}
 
       <div className="flex items-center gap-4">
         <Avatar size="lg" color="accent" variant="soft">

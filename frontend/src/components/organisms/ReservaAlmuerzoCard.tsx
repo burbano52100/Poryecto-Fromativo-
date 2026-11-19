@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { Alert, Card, CloseButton, Skeleton } from '@heroui/react';
+import { Alert, Card, CloseButton } from '@heroui/react';
+import { Hueso } from '../atoms/Hueso';
 import { CheckCircle2 } from 'lucide-react';
 import type { User } from '../../schemas/auth.schema';
 import type { ReservaCreada } from '../../types/api';
@@ -36,17 +37,21 @@ export const ReservaAlmuerzoCard = ({
 
   if (isPending) {
     return (
-      <Card role="status" aria-label="Cargando el menú del día..." className="overflow-hidden p-0 md:flex-row">
-        <Skeleton className="h-48 w-full rounded-none md:h-auto md:w-64" />
+      <Card
+        role="status"
+        aria-label="Cargando el menú del día..."
+        className="skeleton--shimmer relative overflow-hidden p-0 md:flex-row"
+      >
+        <Hueso className="h-48 w-full rounded-none md:h-auto md:w-64" />
         <div className="flex flex-1 flex-col gap-3 p-5">
-          <Skeleton className="h-5 w-20 rounded-full" />
-          <Skeleton className="h-6 w-2/3 rounded-md" />
-          <Skeleton className="h-4 w-1/3 rounded-md" />
-          <Skeleton className="mt-4 h-4 w-full rounded-md" />
-          <Skeleton className="h-4 w-4/5 rounded-md" />
+          <Hueso className="h-5 w-20 rounded-full" />
+          <Hueso className="h-6 w-2/3 rounded-md" />
+          <Hueso className="h-4 w-1/3 rounded-md" />
+          <Hueso className="mt-4 h-4 w-full rounded-md" />
+          <Hueso className="h-4 w-4/5 rounded-md" />
           <div className="mt-6 flex items-end justify-between">
-            <Skeleton className="h-8 w-28 rounded-md" />
-            <Skeleton className="h-11 w-44 rounded-full" />
+            <Hueso className="h-8 w-28 rounded-md" />
+            <Hueso className="h-11 w-44 rounded-full" />
           </div>
         </div>
       </Card>

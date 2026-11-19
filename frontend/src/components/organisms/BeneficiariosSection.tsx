@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Award, UserCheck, Users, UserX } from 'lucide-react';
-import { Alert, Avatar, Chip, CloseButton, Table, Tabs } from '@heroui/react';
+import { Avatar, Chip, Table, Tabs, toast } from '@heroui/react';
 import {
   useEstudiantesQuery,
   useToggleBeneficiarioMutation,
@@ -25,7 +25,6 @@ export const BeneficiariosSection = () => {
 
   // Modal para confirmar revocación / quitar beneficio
   const [studentToRevoke, setStudentToRevoke] = useState<EstudianteBeneficiario | null>(null);
-  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<unknown>(null);
 
   const { data: estudiantes = [], isLoading, isError, error, refetch } = useEstudiantesQuery();
@@ -70,8 +69,7 @@ export const BeneficiariosSection = () => {
         onError: setMutationError,
         onSuccess: (res) => {
           setMutationError(null);
-          setFeedbackMessage(res.message);
-          setTimeout(() => setFeedbackMessage(null), 4000);
+          toast.success(res.message);
         },
       }
     );
@@ -90,9 +88,8 @@ export const BeneficiariosSection = () => {
         },
         onSuccess: (res) => {
           setMutationError(null);
-          setFeedbackMessage(res.message);
+          toast.success(res.message);
           setStudentToRevoke(null);
-          setTimeout(() => setFeedbackMessage(null), 4000);
         },
       }
     );
@@ -178,15 +175,6 @@ export const BeneficiariosSection = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      {feedbackMessage && (
-        <Alert status="success">
-          <Alert.Indicator />
-          <Alert.Content>
-            <Alert.Description>{feedbackMessage}</Alert.Description>
-          </Alert.Content>
-          <CloseButton aria-label="Cerrar aviso" onPress={() => setFeedbackMessage(null)} />
-        </Alert>
-      )}
 
       {mutationError !== null && (
         <ErrorAlert error={mutationError} titulo="No se pudo actualizar el beneficio" onCerrar={() => setMutationError(null)} />

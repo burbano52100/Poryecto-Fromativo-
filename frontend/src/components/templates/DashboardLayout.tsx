@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { Menu } from 'lucide-react';
-import { Avatar, Button, Chip } from '@heroui/react';
+import { LogOut, Menu, User as UserIcon } from 'lucide-react';
+import { Avatar, Badge, Breadcrumbs, Button, Chip, Dropdown, Header, Label, Separator } from '@heroui/react';
 import type { User } from '../../schemas/auth.schema';
 import { Sidebar, type SectionType, type InventarioSubSection } from '../organisms/Sidebar';
 import { StatsHeader } from '../organisms/StatsHeader';
@@ -36,6 +36,17 @@ const TITULOS: Record<SectionType, string> = {
   gestionFichas: 'Fichas de formación',
   cargas: 'Carga masiva de cuentas',
 };
+
+const SUBSECCIONES: Record<InventarioSubSection, string> = {
+  stock: 'Control de stock',
+  recetas: 'Recetas y productos',
+  kardex: 'Kardex',
+  mermas: 'Mermas',
+  configuracion: 'Configuración',
+};
+
+/** El Encargado no tiene sección de perfil; los demás roles sí. */
+const TIENE_PERFIL = (rol: User['role']) => rol !== 'encargado';
 
 export const DashboardLayout = ({
   user,
@@ -82,7 +93,14 @@ export const DashboardLayout = ({
             </Button>
             <div>
               <h2 className="text-lg font-semibold text-foreground">{TITULOS[activeSection] ?? 'GastroSENA'}</h2>
-              <p className="hidden text-xs capitalize text-muted sm:block">{fechaHoy}</p>
+              {activeSection === 'inventario' ? (
+                <Breadcrumbs className="hidden text-xs sm:flex">
+                  <Breadcrumbs.Item>Inventario</Breadcrumbs.Item>
+                  <Breadcrumbs.Item>{SUBSECCIONES[activeInventarioSubSection ?? 'stock']}</Breadcrumbs.Item>
+                </Breadcrumbs>
+              ) : (
+                <p className="hidden text-xs text-muted first-letter:uppercase sm:block">{fechaHoy}</p>
+              )}
             </div>
           </div>
 
@@ -90,9 +108,45 @@ export const DashboardLayout = ({
             <Chip size="sm" variant="soft" className="hidden md:inline-flex">
               {TITULO_ROL[user.role]}
             </Chip>
-            <Avatar size="sm" color="accent" variant="soft">
-              <Avatar.Fallback>{iniciales(user.name)}</Avatar.Fallback>
-            </Avatar>
+            <Dropdown>
+              <Button variant="ghost" className="h-auto rounded-full p-0.5" aria-label="Menú de la cuenta">
+                <Badge.Anchor>
+                  <Avatar size="sm" color="accent" variant="soft">
+                    <Avatar.Fallback>{iniciales(user.name)}</Avatar.Fallback>
+                  </Avatar>
+                  <Badge color="success" placement="bottom-right" size="sm" aria-label="Cuenta activa" />
+                </Badge.Anchor>
+              </Button>
+              <Dropdown.Popover placement="bottom end" className="min-w-56">
+                <Dropdown.Menu
+                  aria-label="Menú de la cuenta"
+                  onAction={(key) => {
+                    if (key === 'perfil') onSelectSection('perfil');
+                    if (key === 'salir') onLogout();
+                  }}
+                >
+                  <Dropdown.Section>
+                    <Header>
+                      <span className="block truncate text-sm font-medium text-foreground">{user.name}</span>
+                      <span className="block truncate text-xs font-normal text-muted">{user.email || TITULO_ROL[user.role]}</span>
+                    </Header>
+                    {TIENE_PERFIL(user.role) ? (
+                      <Dropdown.Item id="perfil" textValue="Mi perfil">
+                        <UserIcon className="size-4 shrink-0 text-muted" />
+                        <Label>Mi perfil</Label>
+                      </Dropdown.Item>
+                    ) : null}
+                  </Dropdown.Section>
+                  <Separator />
+                  <Dropdown.Section>
+                    <Dropdown.Item id="salir" textValue="Cerrar sesión" variant="danger">
+                      <LogOut className="size-4 shrink-0 text-danger" />
+                      <Label>Cerrar sesión</Label>
+                    </Dropdown.Item>
+                  </Dropdown.Section>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown>
           </div>
         </header>
 

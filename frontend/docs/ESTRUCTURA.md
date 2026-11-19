@@ -6,6 +6,7 @@ El frontend de GastroSENA está construido con **React 19**, **TypeScript estric
 - Toda la interfaz usa componentes de HeroUI: `Button`, `Card`, `Chip`, `Table`, `Select`, `Tabs`, `Modal`, `AlertDialog`, `Drawer`, `Alert`, `Skeleton`, `Avatar`, `SearchField`, `Checkbox`, `ToggleButtonGroup`, `Tooltip`, `Accordion`, `Pagination`, etc.
 - El tema está en `src/index.css`: `@import "@heroui/styles"` después de Tailwind y el acento (`--accent`) en el verde del SENA. Para colores se usan los tokens de HeroUI (`bg-surface`, `text-muted`, `bg-accent-soft`, `text-danger`…), no la paleta de Tailwind.
 - Tipografía: Inter (`@fontsource-variable/inter`, sin depender de Google Fonts).
+- Avisos de éxito con `toast.success(...)` de HeroUI (el `Toast.Provider` está en `main.tsx`); los errores siguen como `Alert` dentro de la sección. En los tests, `renderConProveedores` incluye el `Toast.Provider` y `setup.ts` simula `ResizeObserver`, que jsdom no trae.
 - La documentación de HeroUI se consulta con su servidor MCP `@heroui/react-mcp` (configurado en `.mcp.json`).
 - No usar `<ErrorMessage>` ni `<Description>` de HeroUI sueltos fuera de un campo de React Aria: dentro de un `Modal` el de error lanza "Invalid slot". Para eso está el átomo `FieldMessage`.
 
@@ -44,7 +45,7 @@ frontend/
 ### `components/atoms/`
 - `Button`: el `Button` de HeroUI con un `Spinner` mientras `isPending`.
 - `StatCard`: `Card` de métrica; con `value` indefinido muestra un `Skeleton`.
-- `LoadingSpinner`: `Spinner` de HeroUI con `role="status"`.
+- `Hueso`: pieza de `Skeleton` sin animación propia; el contenedor con `skeleton--shimmer` pone un solo brillo para todas (patrón "Single Shimmer" de HeroUI).
 - `EstadoPagoBadge`: `Chip` Pagado / Pendiente / Gratis con el mismo color en todos los paneles.
 - `FieldMessage`: texto de error o de ayuda bajo un campo, con las clases de HeroUI.
 
@@ -53,7 +54,7 @@ frontend/
 - `SelectField`: `Select` + `ListBox` de HeroUI para opciones de texto (con react-hook-form, vía `Controller`).
 - `SearchInput`: `SearchField` de HeroUI con botón para limpiar.
 - `SectionCard`: `Card` estándar de cada sección (título, descripción y acciones).
-- `ListSkeleton` y `EmptyMessage`: estado de carga (`Skeleton`) y lista vacía (`EmptyState`).
+- `ListSkeleton` (formas `lista`, `tabla` y `tarjetas`) y `EmptyMessage`: estado de carga y lista vacía (`EmptyState`).
 - `MenuCard`: menú del día con precio, disponibilidad, motivo si no se puede reservar y estado de la reserva propia.
 - `ConsumoRow`: un almuerzo del historial (Reservado/Consumido + estado de pago).
 - `ConfirmDialog` (`AlertDialog`, `role="alertdialog"`) y `FormModal` (`Modal`, `role="dialog"`).
@@ -70,7 +71,8 @@ frontend/
 
 ### `components/templates/`
 - `AuthLayout`: fondo del comedor con capa oscura para el login.
-- `DashboardLayout`: sidebar (fija en escritorio, `Drawer` en móvil), barra superior y `StatsHeader`.
+- `DashboardLayout`: sidebar (fija en escritorio, `Drawer` en móvil), barra superior con `Breadcrumbs` en Inventario y menú de la cuenta (`Dropdown` sobre el `Avatar` con `Badge` de estado), y `StatsHeader`.
+- `DashboardSkeleton`: forma del panel mientras se verifica la sesión o se descarga el panel del rol.
 
 ### `hooks/`
 | Archivo | Endpoints |

@@ -10,7 +10,7 @@ import { ConsumosSection } from '../components/organisms/ConsumosSection';
 import { BuzonSugerenciasSection } from '../components/organisms/BuzonSugerenciasSection';
 import { PerfilSection } from '../components/organisms/PerfilSection';
 import { ReservaAlmuerzoCard } from '../components/organisms/ReservaAlmuerzoCard';
-import { LoadingSpinner } from '../components/atoms/LoadingSpinner';
+import { ListSkeleton } from '../components/molecules/ListSkeleton';
 import { useMiCuenta } from '../hooks/useCartera';
 import { useMenuActivo } from '../hooks/useMenu';
 import { pesos } from '../lib/formato';
@@ -92,7 +92,9 @@ export const InstructorDashboardPage = ({ user, onLogout }: InstructorDashboardP
             nextCutoffDate={cuenta.nextCutoffDate}
           />
         ) : (
-          <LoadingSpinner label="Cargando tu cuenta mensual..." />
+          <Card>
+            <ListSkeleton label="Cargando tu cuenta mensual..." forma="tarjetas" filas={2} />
+          </Card>
         ))}
 
       {activeSection === 'consumos' && <ConsumosSection />}

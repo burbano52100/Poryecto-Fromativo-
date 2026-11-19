@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Power, Save } from 'lucide-react';
-import { Alert, Chip, Skeleton } from '@heroui/react';
+import { Chip, Label, ProgressBar, Skeleton, toast } from '@heroui/react';
 import { FormField } from '../molecules/FormField';
 import { TextAreaField } from '../molecules/TextAreaField';
 import { ErrorAlert } from '../molecules/ErrorAlert';
@@ -30,19 +30,8 @@ const menuSchema = z.object({
 
 type MenuFormData = z.infer<typeof menuSchema>;
 
-/** Aviso breve de éxito. */
-const Aviso = ({ children }: { children: string }) => (
-  <Alert status="success">
-    <Alert.Indicator />
-    <Alert.Content>
-      <Alert.Description>{children}</Alert.Description>
-    </Alert.Content>
-  </Alert>
-);
 
 export const MenuDelDiaEncargadoSection = () => {
-  const [publishSuccess, setPublishSuccess] = useState(false);
-  const [statusFeedback, setStatusFeedback] = useState<string | null>(null);
 
   // El menú más reciente en cualquier estado: así un menú "agotado" se puede reactivar
   const { data: menus, isLoading, isError, error } = useMenus();
@@ -93,8 +82,7 @@ export const MenuDelDiaEncargadoSection = () => {
       },
       {
         onSuccess: () => {
-          setPublishSuccess(true);
-          setTimeout(() => setPublishSuccess(false), 3500);
+          toast.success('¡El menú fue guardado y publicado con éxito!');
         },
       }
     );
@@ -107,8 +95,7 @@ export const MenuDelDiaEncargadoSection = () => {
       { id: activeMenu.id, estado: nextStatus },
       {
         onSuccess: () => {
-          setStatusFeedback(`Estado del menú actualizado a: ${nextStatus}`);
-          setTimeout(() => setStatusFeedback(null), 3000);
+          toast.success(`Estado del menú actualizado a: ${nextStatus}`);
         },
       }
     );
@@ -142,7 +129,6 @@ export const MenuDelDiaEncargadoSection = () => {
           </Button>
         }
       >
-        {statusFeedback && <Aviso>{statusFeedback}</Aviso>}
         {isError && <ErrorAlert error={error} titulo="No se pudo conectar con el servicio de menú" />}
         {toggleStatusMutation.isError && (
           <ErrorAlert error={toggleStatusMutation.error} titulo="No se pudo cambiar el estado del menú" />
@@ -160,6 +146,20 @@ export const MenuDelDiaEncargadoSection = () => {
             <dd className="mt-0.5 text-xl font-semibold tabular-nums text-foreground">
               {activeMenu ? `${activeMenu.cantidad_vendida} / ${activeMenu.cantidad_disponible}` : '—'}
             </dd>
+            {activeMenu && (
+              <ProgressBar
+                className="mt-2"
+                size="sm"
+                value={activeMenu.cantidad_vendida}
+                maxValue={Math.max(activeMenu.cantidad_disponible, 1)}
+                color={activeMenu.cantidad_vendida >= activeMenu.cantidad_disponible ? 'danger' : 'accent'}
+              >
+                <Label className="sr-only">Porciones vendidas</Label>
+                <ProgressBar.Track>
+                  <ProgressBar.Fill />
+                </ProgressBar.Track>
+              </ProgressBar>
+            )}
           </div>
         </dl>
       </SectionCard>
@@ -169,7 +169,6 @@ export const MenuDelDiaEncargadoSection = () => {
         descripcion="Define el plato, el precio para estudiantes y las porciones del comedor"
       >
         {publishMutation.isError && <ErrorAlert error={publishMutation.error} titulo="No se pudo publicar el menú" />}
-        {publishSuccess && <Aviso>¡El menú fue guardado y publicado con éxito!</Aviso>}
 
         <form onSubmit={handleSubmit(onPublish)} className="flex flex-col gap-4">
           <div className="grid gap-4 sm:grid-cols-2">

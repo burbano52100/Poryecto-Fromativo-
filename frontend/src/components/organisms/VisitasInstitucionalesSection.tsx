@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CalendarClock, DollarSign, Users } from 'lucide-react';
-import { Alert, Chip, Table } from '@heroui/react';
+import { Alert, Chip, Table, toast } from '@heroui/react';
 import { apiClient } from '../../lib/api';
 import { filtrarNumero } from '../../lib/numeros';
 import { fechaCorta } from '../../lib/formato';
@@ -58,7 +58,6 @@ export function VisitasInstitucionalesSection() {
   const [cantidadPersonas, setCantidadPersonas] = useState('');
   const [fechaVisita, setFechaVisita] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
-  const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
   const visitasQuery = useQuery({
     queryKey: ['visitas'],
@@ -76,13 +75,12 @@ export function VisitasInstitucionalesSection() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['visitas'] });
       queryClient.invalidateQueries({ queryKey: ['visitas', 'kpi'] });
-      setFormSuccess('¡Visita registrada correctamente!');
+      toast.success('¡Visita registrada correctamente!');
       setInstitucionNombre('');
       setResponsableNombre('');
       setErroresNombres({});
       setCantidadPersonas('');
       setFechaVisita('');
-      setTimeout(() => setFormSuccess(null), 3000);
     },
     onError: () => {
       setFormError('No fue posible registrar la visita. Intenta nuevamente.');
@@ -165,14 +163,6 @@ export function VisitasInstitucionalesSection() {
             </Alert>
           )}
 
-          {formSuccess && (
-            <Alert status="success">
-              <Alert.Indicator />
-              <Alert.Content>
-                <Alert.Description>{formSuccess}</Alert.Description>
-              </Alert.Content>
-            </Alert>
-          )}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <FormField

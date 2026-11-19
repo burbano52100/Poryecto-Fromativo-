@@ -11,5 +11,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    // Los componentes de HeroUI (React Aria) son más lentos de manejar en jsdom: con toda la suite en
+    // paralelo, algunos tests que escriben o abren menús pasan de los 5 s por defecto.
+    testTimeout: 15_000,
   },
 })

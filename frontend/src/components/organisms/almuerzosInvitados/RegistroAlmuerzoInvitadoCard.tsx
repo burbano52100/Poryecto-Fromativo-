@@ -1,8 +1,7 @@
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CheckCircle2 } from 'lucide-react';
-import { Card } from '@heroui/react';
+import { Card, toast } from '@heroui/react';
 import { Button } from '../../atoms/Button';
 import { FormField } from '../../molecules/FormField';
 import { NumberStepper } from '../../molecules/NumberStepper';
@@ -31,7 +30,6 @@ interface RegistroAlmuerzoInvitadoCardProps {
 export const RegistroAlmuerzoInvitadoCard = ({ tipo, precio, maxPersonas }: RegistroAlmuerzoInvitadoCardProps) => {
   const tituloId = useId();
   const registrar = useRegistrarAlmuerzoInvitado();
-  const [exito, setExito] = useState<string | null>(null);
   const { icono: Icono, iconoFondo } = ESTILO_TIPO_INVITADO[tipo];
 
   const schema = useMemo(() => crearRegistroInvitadoSchema(maxPersonas), [maxPersonas]);
@@ -49,14 +47,14 @@ export const RegistroAlmuerzoInvitadoCard = ({ tipo, precio, maxPersonas }: Regi
   const personas = personasEscritas(useWatch({ control, name: 'personas' }));
 
   const onSubmit = handleSubmit((data) => {
-    setExito(null);
     registrar.mutate(
       { tipo: data.tipo, cantidad: data.personas, nombre_invitado: data.nombre },
       {
         onSuccess: (registro) => {
           reset();
-          setExito(`Registrado: ${textoPersonas(registro.cantidad)} · ${pesos(registro.total)}`);
-          setTimeout(() => setExito(null), 4000);
+          toast.success(`Registrado: ${textoPersonas(registro.cantidad)} · ${pesos(registro.total)}`, {
+            description: ETIQUETA_TIPO_INVITADO[tipo].titulo,
+          });
         },
       }
     );
@@ -114,11 +112,6 @@ export const RegistroAlmuerzoInvitadoCard = ({ tipo, precio, maxPersonas }: Regi
 
         {registrar.isError && (
           <ErrorAlert error={registrar.error} titulo="No se pudo registrar" onCerrar={() => registrar.reset()} />
-        )}
-        {exito && (
-          <p role="status" className="flex items-center gap-2 text-sm font-medium text-success">
-            <CheckCircle2 className="size-4 shrink-0" /> {exito}
-          </p>
         )}
 
         <Button type="submit" fullWidth isPending={registrar.isPending} className="mt-auto">

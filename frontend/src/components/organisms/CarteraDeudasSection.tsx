@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Download, Wallet } from 'lucide-react';
-import { Alert, Chip, Table } from '@heroui/react';
+import { Chip, Table, toast } from '@heroui/react';
 import { Button } from '../atoms/Button';
 import { ConfirmDialog } from '../molecules/ConfirmDialog';
 import { EmptyMessage } from '../molecules/EmptyMessage';
@@ -23,7 +23,6 @@ export const CarteraDeudasSection = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [deudaAPagar, setDeudaAPagar] = useState<Deuda | null>(null);
   const [montoTexto, setMontoTexto] = useState('');
-  const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
 
   const { data: deudores = [], isPending, isError, error, refetch } = useCartera();
   const pagarDeuda = usePagarDeuda();
@@ -45,12 +44,11 @@ export const CarteraDeudasSection = () => {
       {
         onSuccess: (res) => {
           setDeudaAPagar(null);
-          setPaymentSuccess(
+          toast.success(
             res.saldoRestante > 0
               ? `${res.message} ${deuda.name} queda debiendo ${pesos(res.saldoRestante)}.`
               : `${res.message} La deuda de ${deuda.name} quedó saldada.`
           );
-          setTimeout(() => setPaymentSuccess(null), 5000);
         },
       }
     );
@@ -91,14 +89,6 @@ export const CarteraDeudasSection = () => {
           </>
         }
       >
-        {paymentSuccess && (
-          <Alert status="success" role="status">
-            <Alert.Indicator />
-            <Alert.Content>
-              <Alert.Description>{paymentSuccess}</Alert.Description>
-            </Alert.Content>
-          </Alert>
-        )}
 
         {isPending ? (
           <ListSkeleton label="Cargando cartera..." forma="tabla" />

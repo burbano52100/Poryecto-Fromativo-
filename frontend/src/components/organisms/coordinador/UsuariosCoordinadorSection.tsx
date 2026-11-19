@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FileSpreadsheet, FileText, KeyRound, UserCheck, UserX } from 'lucide-react';
-import { Button as HeroButton, Chip, Input, Pagination, Table, Tooltip } from '@heroui/react';
+import { Button as HeroButton, Chip, Input, Pagination, Table, Tooltip, toast } from '@heroui/react';
 import { Button } from '../../atoms/Button';
 import { ConfirmDialog } from '../../molecules/ConfirmDialog';
 import { EmptyMessage } from '../../molecules/EmptyMessage';
@@ -13,8 +13,6 @@ import { useCambiarEstadoUsuario, useRestablecerClave, useUsuariosCoordinador } 
 import { useDebounce } from '../../../hooks/useDebounce';
 import { descargarArchivo } from '../../../lib/descargas';
 import type { CuentaGestionada, EstadoCuenta, RolGestionado } from '../../../types/api';
-import { useAviso } from '../../../hooks/useAviso';
-import { AvisoExito } from './AvisoExito';
 
 const TAMANO_PAGINA = 25;
 
@@ -59,7 +57,7 @@ export const UsuariosCoordinadorSection = () => {
   const cambiarEstado = useCambiarEstadoUsuario();
   const restablecer = useRestablecerClave();
   const [accion, setAccion] = useState<Accion | null>(null);
-  const { aviso, mostrarAviso } = useAviso();
+  const mostrarAviso = (texto: string) => toast.success(texto);
   const [errorReporte, setErrorReporte] = useState<unknown>(null);
   const [descargando, setDescargando] = useState<'pdf' | 'xlsx' | null>(null);
 
@@ -161,7 +159,6 @@ export const UsuariosCoordinadorSection = () => {
           />
         </div>
 
-        <AvisoExito aviso={aviso} />
         {errorReporte !== null && (
           <ErrorAlert error={errorReporte} titulo="No se pudo descargar el reporte" onCerrar={() => setErrorReporte(null)} />
         )}

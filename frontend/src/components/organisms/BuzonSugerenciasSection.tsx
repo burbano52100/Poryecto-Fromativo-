@@ -1,9 +1,8 @@
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Send } from 'lucide-react';
-import { Alert, Card, Chip, CloseButton } from '@heroui/react';
+import { Card, Chip, toast } from '@heroui/react';
 import { FormField } from '../molecules/FormField';
 import { TextAreaField } from '../molecules/TextAreaField';
 import { ErrorAlert } from '../molecules/ErrorAlert';
@@ -28,7 +27,6 @@ type SuggestionFormData = z.infer<typeof sugestionSchema>;
 
 /** Buzón de Aprendiz e Instructor: envía al Encargado y muestra sus respuestas. */
 export const BuzonSugerenciasSection = () => {
-  const [isSuccess, setIsSuccess] = useState(false);
   const crearSugerencia = useCrearSugerencia();
   const { data: misSugerencias = [] } = useSugerencias();
 
@@ -46,7 +44,9 @@ export const BuzonSugerenciasSection = () => {
       { asunto: data.subject, mensaje: data.message },
       {
         onSuccess: () => {
-          setIsSuccess(true);
+          toast.success('¡Sugerencia enviada con éxito!', {
+            description: 'El encargado del comedor revisará tu mensaje.',
+          });
           reset();
         },
       }
@@ -59,16 +59,6 @@ export const BuzonSugerenciasSection = () => {
         titulo="Buzón de sugerencias"
         descripcion="Tu mensaje llega directo al encargado del comedor, que revisa cada sugerencia."
       >
-        {isSuccess && (
-          <Alert status="success">
-            <Alert.Indicator />
-            <Alert.Content>
-              <Alert.Title>¡Sugerencia enviada con éxito!</Alert.Title>
-              <Alert.Description>Gracias por tu aporte. El encargado del comedor revisará tu mensaje.</Alert.Description>
-            </Alert.Content>
-            <CloseButton aria-label="Cerrar aviso" onPress={() => setIsSuccess(false)} />
-          </Alert>
-        )}
 
         {crearSugerencia.isError && (
           <ErrorAlert error={crearSugerencia.error} titulo="No se pudo enviar la sugerencia" />

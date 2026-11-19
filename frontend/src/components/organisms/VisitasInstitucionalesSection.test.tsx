@@ -51,8 +51,6 @@ describe('Visitas institucionales (Encargado)', () => {
     expect(get).not.toHaveBeenCalledWith('/instructores');
   });
 
-  // Escribe ~60 teclas y cada una vuelve a pintar la sección con la Table de HeroUI: en jsdom tarda ~3,5 s
-  // y con toda la suite en paralelo pasa de los 5 s por defecto.
   it('registra la visita con los nombres sin espacios sobrantes; la cantidad solo acepta números', async () => {
     simularApi();
     const post = vi.spyOn(apiClient, 'post').mockResolvedValue(respuesta({ id: 'vis-2' }));
@@ -74,7 +72,7 @@ describe('Visitas institucionales (Encargado)', () => {
     });
     expect(await screen.findByText('¡Visita registrada correctamente!')).toBeInTheDocument();
     expect(screen.getByLabelText(/Nombre de la Institución/)).toHaveValue('');
-  }, 15_000);
+  });
 
   it('si faltan la institución o el responsable muestra el error debajo de cada campo y no envía', async () => {
     simularApi();

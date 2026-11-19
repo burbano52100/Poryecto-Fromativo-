@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle2, MessageSquareReply } from 'lucide-react';
-import { Alert, Card, Chip } from '@heroui/react';
+import { Card, Chip, toast } from '@heroui/react';
 import { Button } from '../atoms/Button';
 import { ConfirmDialog } from '../molecules/ConfirmDialog';
 import { EmptyMessage } from '../molecules/EmptyMessage';
@@ -17,7 +17,6 @@ export const BuzonSugerenciasEncargadoSection = () => {
   const responder = useResponderSugerencia();
   const [sugerenciaAResponder, setSugerenciaAResponder] = useState<Sugerencia | null>(null);
   const [respuesta, setRespuesta] = useState('');
-  const [attendedSuccess, setAttendedSuccess] = useState<string | null>(null);
 
   const abrirRespuesta = (sugerencia: Sugerencia) => {
     responder.reset();
@@ -33,8 +32,7 @@ export const BuzonSugerenciasEncargadoSection = () => {
       {
         onSuccess: () => {
           setSugerenciaAResponder(null);
-          setAttendedSuccess(`La sugerencia "${subject}" fue marcada como atendida.`);
-          setTimeout(() => setAttendedSuccess(null), 3500);
+          toast.success(`La sugerencia "${subject}" fue marcada como atendida.`);
         },
       }
     );
@@ -61,14 +59,6 @@ export const BuzonSugerenciasEncargadoSection = () => {
           </>
         }
       >
-        {attendedSuccess && (
-          <Alert status="success" role="status">
-            <Alert.Indicator />
-            <Alert.Content>
-              <Alert.Description>{attendedSuccess}</Alert.Description>
-            </Alert.Content>
-          </Alert>
-        )}
 
         {isPending ? (
           <ListSkeleton label="Cargando sugerencias..." />

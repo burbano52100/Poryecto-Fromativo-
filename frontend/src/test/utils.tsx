@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { Toast } from '@heroui/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Sidebar } from '../components/organisms/Sidebar';
 import type { User } from '../schemas/auth.schema';
@@ -16,6 +17,7 @@ export const renderConProveedores = (ui: ReactNode, { ruta = '/' }: { ruta?: str
     ...render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter initialEntries={[ruta]}>{ui}</MemoryRouter>
+        <Toast.Provider />
       </QueryClientProvider>
     ),
   };

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CheckCircle2, UserPlus, XCircle } from 'lucide-react';
-import { Avatar, Checkbox, Chip } from '@heroui/react';
+import { Avatar, Checkbox, Chip, toast } from '@heroui/react';
 import { Button } from '../../atoms/Button';
 import { ConfirmDialog } from '../../molecules/ConfirmDialog';
 import { EmptyMessage } from '../../molecules/EmptyMessage';
@@ -15,8 +15,6 @@ import { useAprobarSolicitudes, useRechazarSolicitudes, useSolicitudesCoordinado
 import { useDebounce } from '../../../hooks/useDebounce';
 import { fechaHora } from '../../../lib/formato';
 import type { CuentaGestionada } from '../../../types/api';
-import { useAviso } from '../../../hooks/useAviso';
-import { AvisoExito } from './AvisoExito';
 
 /** Las cuentas sobre las que se va a actuar: una fila o la selección completa. */
 type Objetivo = CuentaGestionada[];
@@ -33,7 +31,7 @@ export const SolicitudesCoordinadorSection = () => {
   );
   const aprobar = useAprobarSolicitudes();
   const rechazar = useRechazarSolicitudes();
-  const { aviso, mostrarAviso } = useAviso();
+  const mostrarAviso = (texto: string) => toast.success(texto);
 
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
   const [aAprobar, setAAprobar] = useState<Objetivo | null>(null);
@@ -112,7 +110,6 @@ export const SolicitudesCoordinadorSection = () => {
           />
         }
       >
-        <AvisoExito aviso={aviso} />
 
         {solicitudes.length > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-surface-secondary px-4 py-3">

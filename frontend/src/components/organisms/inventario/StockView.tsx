@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowDownCircle, ArrowUpCircle, Plus, Trash2 } from 'lucide-react';
-import { Alert, Button as HeroButton, Chip, Table, Tooltip } from '@heroui/react';
+import { Button as HeroButton, Chip, Meter, Table, Tooltip, toast } from '@heroui/react';
 import { Button } from '../../atoms/Button';
 import { EmptyMessage } from '../../molecules/EmptyMessage';
 import { FormField } from '../../molecules/FormField';
@@ -193,12 +193,8 @@ export const StockView = () => {
   const [creando, setCreando] = useState(false);
   const [movimiento, setMovimiento] = useState<Movimiento | null>(null);
   const [aEliminar, setAEliminar] = useState<Material | null>(null);
-  const [aviso, setAviso] = useState<string | null>(null);
 
-  const mostrarAviso = (texto: string) => {
-    setAviso(texto);
-    setTimeout(() => setAviso(null), 3500);
-  };
+  const mostrarAviso = (texto: string) => toast.success(texto);
 
   const categorias = [...new Set(materiales.map((m) => m.category).filter((c): c is string => !!c))].sort();
   const termino = busqueda.toLowerCase();
@@ -219,14 +215,6 @@ export const StockView = () => {
         </Button>
       }
     >
-      {aviso && (
-        <Alert status="success" role="status">
-          <Alert.Indicator />
-          <Alert.Content>
-            <Alert.Description>{aviso}</Alert.Description>
-          </Alert.Content>
-        </Alert>
-      )}
       {eliminar.isError && (
         <ErrorAlert error={eliminar.error} titulo="No se pudo eliminar el material" onCerrar={() => eliminar.reset()} />
       )}
@@ -278,8 +266,25 @@ export const StockView = () => {
                     </Table.Cell>
                     <Table.Cell>{m.category ?? '—'}</Table.Cell>
                     <Table.Cell className="text-xs">{m.expiry ?? '—'}</Table.Cell>
-                    <Table.Cell className="whitespace-nowrap text-right font-medium tabular-nums text-foreground">
-                      {m.stock} {m.unit}
+                    <Table.Cell>
+                      <div className="ml-auto flex w-28 flex-col items-end gap-1">
+                        <span className="whitespace-nowrap font-medium tabular-nums text-foreground">
+                          {m.stock} {m.unit}
+                        </span>
+                        {/* Nivel frente al mínimo: lleno al doble del stock mínimo */}
+                        <Meter
+                          aria-label={`Nivel de stock de ${m.name}`}
+                          size="sm"
+                          className="w-full"
+                          value={Number(m.stock)}
+                          maxValue={Math.max(Number(m.stock_minimo) * 2, Number(m.stock), 1)}
+                          color={COLOR_ESTADO[m.estado]}
+                        >
+                          <Meter.Track>
+                            <Meter.Fill />
+                          </Meter.Track>
+                        </Meter>
+                      </div>
                     </Table.Cell>
                     <Table.Cell>
                       <Chip size="sm" variant="soft" color={COLOR_ESTADO[m.estado]}>
