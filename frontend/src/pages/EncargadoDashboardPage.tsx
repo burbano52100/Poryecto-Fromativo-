@@ -4,12 +4,12 @@ import { DashboardLayout } from '../components/templates/DashboardLayout';
 import type { SectionType, InventarioSubSection } from '../components/organisms/Sidebar';
 import { VentasSection } from '../components/organisms/VentasSection';
 import { MenuDelDiaEncargadoSection } from '../components/organisms/MenuDelDiaEncargadoSection';
+import { AlmuerzosInvitadosSection } from '../components/organisms/AlmuerzosInvitadosSection';
 import { BeneficiariosSection } from '../components/organisms/BeneficiariosSection';
 import { CarteraDeudasSection } from '../components/organisms/CarteraDeudasSection';
 import { InventarioSection } from '../components/organisms/InventarioSection';
 import { GruposSection } from '../components/organisms/GruposSection';
 import { BuzonSugerenciasEncargadoSection } from '../components/organisms/BuzonSugerenciasEncargadoSection';
-import { SolicitudesCuentaSection } from '../components/organisms/SolicitudesCuentaSection';
 import { VisitasInstitucionalesSection } from '../components/organisms/VisitasInstitucionalesSection';
 
 interface EncargadoDashboardPageProps {
@@ -51,6 +51,9 @@ export const EncargadoDashboardPage = ({
       {/* 2. MENÚ DEL DÍA SECTION */}
       {activeSection === 'menu' && <MenuDelDiaEncargadoSection />}
 
+      {/* 2b. ALMUERZOS INVITADOS (INSTRUCTORES, APRENDICES, CORRIENTES) */}
+      {activeSection === 'almuerzosInvitados' && <AlmuerzosInvitadosSection />}
+
       {/* 3. BENEFICIARIOS SECTION */}
       {activeSection === 'beneficiarios' && <BeneficiariosSection />}
 
@@ -70,9 +73,6 @@ export const EncargadoDashboardPage = ({
 
       {/* 8. VISITAS INSTITUCIONALES */}
       {activeSection === 'visitas' && <VisitasInstitucionalesSection />}
-
-      {/* 9. SOLICITUDES DE CUENTA (INSTRUCTOR / ENCARGADO) */}
-      {activeSection === 'solicitudes' && <SolicitudesCuentaSection />}
     </DashboardLayout>
   );
 };

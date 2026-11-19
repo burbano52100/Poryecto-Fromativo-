@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { loginWithPassword, registerUser, fetchCurrentUser } from '../lib/authService';
+import { apiClient } from '../lib/api';
 import { actualizarUsuarioGuardado, getToken, guardarSesion, limpiarSesion } from '../lib/session';
 import { esSolicitud, type LoginInput, type RegisterInput, type AuthResponse, type User } from '../schemas/auth.schema';
 
@@ -47,7 +48,7 @@ export const useLoginMutation = () => {
 };
 
 /**
- * POST /api/auth/register: aprendiz e invitado crean la cuenta e inician sesión con ella;
+ * POST /api/auth/register: el aprendiz crea la cuenta e inicia sesión con ella;
  * instructor y encargado solo envían una solicitud, así que no hay sesión que iniciar.
  */
 export const useRegisterMutation = () => {
@@ -70,6 +71,19 @@ export const useActualizarUsuarioSesion = () => {
     },
     [queryClient]
   );
+};
+
+/**
+ * POST /api/auth/cambiar-clave: obligatorio cuando la cuenta viene de una carga masiva o el
+ * Coordinador restableció la contraseña (debe_cambiar_clave). Actualiza el usuario en sesión.
+ */
+export const useCambiarClave = () => {
+  const actualizarSesion = useActualizarUsuarioSesion();
+  return useMutation({
+    mutationFn: async (datos: { actual: string; nueva: string }) =>
+      (await apiClient.post<{ message: string; user: User }>('/auth/cambiar-clave', datos)).data,
+    onSuccess: (data) => actualizarSesion(data.user),
+  });
 };
 
 /**

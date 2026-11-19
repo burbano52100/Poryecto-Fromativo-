@@ -1,4 +1,5 @@
-import { CheckCircle2, Clock, Calendar } from 'lucide-react';
+import { Chip } from '@heroui/react';
+import { CheckCircle2, Clock } from 'lucide-react';
 import { EstadoPagoBadge } from '../atoms/EstadoPagoBadge';
 import type { Consumo } from '../../types/api';
 
@@ -10,37 +11,29 @@ export const ConsumoRow = ({ consumo }: { consumo: Consumo }) => {
   const reservado = consumo.status === 'RESERVED';
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-gray-50/70 hover:bg-emerald-50/40 border border-gray-200/70 hover:border-emerald-200 transition duration-200">
-      <div className="flex items-center gap-4 min-w-0">
+    <div className="flex flex-wrap items-center justify-between gap-3 py-3">
+      <div className="flex min-w-0 items-center gap-3">
         <div
-          className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 border ${
-            reservado ? 'bg-blue-100 border-blue-300 text-blue-600' : 'bg-emerald-100 border-emerald-300 text-emerald-600'
+          className={`flex size-10 shrink-0 items-center justify-center rounded-full ${
+            reservado ? 'bg-accent-soft text-accent-soft-foreground' : 'bg-success-soft text-success-soft-foreground'
           }`}
         >
-          {reservado ? <Clock className="w-6 h-6" /> : <CheckCircle2 className="w-6 h-6" />}
+          {reservado ? <Clock className="size-5" /> : <CheckCircle2 className="size-5" />}
         </div>
 
         <div className="min-w-0">
-          <div className="flex items-center gap-2 text-xs font-semibold text-gray-400">
-            <Calendar className="w-3.5 h-3.5" />
+          <p className="truncate font-medium text-foreground">{consumo.title}</p>
+          <div className="mt-0.5 flex items-center gap-2 text-xs text-muted">
             <span>{consumo.date}</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                reservado ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-600'
-              }`}
-            >
+            <Chip size="sm" variant="soft" color={reservado ? 'accent' : 'default'}>
               {reservado ? 'Reservado' : 'Consumido'}
-            </span>
+            </Chip>
           </div>
-          <h3 className="text-base font-bold text-gray-800 mt-0.5 truncate">{consumo.title}</h3>
         </div>
       </div>
 
-      <div className="flex items-center gap-4 text-right">
-        <div>
-          <p className="text-xs uppercase font-semibold text-gray-400">Valor</p>
-          <p className="text-lg font-extrabold text-emerald-600 tracking-tight">{consumo.price}</p>
-        </div>
+      <div className="flex items-center gap-4">
+        <p className="font-semibold tabular-nums text-foreground">{consumo.price}</p>
         <EstadoPagoBadge estado={consumo.estado_pago} />
       </div>
     </div>

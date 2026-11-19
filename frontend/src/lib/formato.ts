@@ -19,3 +19,16 @@ export const fechaHora = (iso: string): string =>
 
 /** Fecha de hoy en Colombia como YYYY-MM-DD (para inputs type="date"). */
 export const hoyBogota = (): string => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+
+/** Primer día del mes en curso en Colombia, YYYY-MM-DD. */
+export const inicioMesBogota = (): string => `${hoyBogota().slice(0, 8)}01`;
+
+/** Fecha y hora actuales en Colombia como YYYY-MM-DDTHH:mm (para inputs type="datetime-local"). */
+export const ahoraBogotaLocal = (): string =>
+  new Date().toLocaleString('sv-SE', { timeZone: 'America/Bogota' }).slice(0, 16).replace(' ', 'T');
+
+/** "YYYY-MM-DD" → "DD/MM/YYYY". */
+export const fechaCorta = (fecha: string): string => {
+  const [anio, mes, dia] = fecha.split('-');
+  return dia ? `${dia}/${mes}/${anio}` : fecha;
+};

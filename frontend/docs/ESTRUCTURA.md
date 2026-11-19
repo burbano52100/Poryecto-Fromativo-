@@ -1,6 +1,13 @@
 # Arquitectura y Estructura del Frontend - GastroSENA
 
-El frontend de GastroSENA está construido con **React 19**, **TypeScript estricto**, **Vite** y **Tailwind CSS v4**, siguiendo **Atomic Design**. Los datos vienen siempre de la API del backend mediante **TanStack React Query v5** y **Axios**; no hay datos simulados en los componentes.
+El frontend de GastroSENA está construido con **React 19**, **TypeScript estricto**, **Vite**, **Tailwind CSS v4** y **HeroUI v3** (`@heroui/react` + `@heroui/styles`), siguiendo **Atomic Design**. Los datos vienen siempre de la API del backend mediante **TanStack React Query v5** y **Axios**; no hay datos simulados en los componentes.
+
+### Sistema de diseño (HeroUI v3)
+- Toda la interfaz usa componentes de HeroUI: `Button`, `Card`, `Chip`, `Table`, `Select`, `Tabs`, `Modal`, `AlertDialog`, `Drawer`, `Alert`, `Skeleton`, `Avatar`, `SearchField`, `Checkbox`, `ToggleButtonGroup`, `Tooltip`, `Accordion`, `Pagination`, etc.
+- El tema está en `src/index.css`: `@import "@heroui/styles"` después de Tailwind y el acento (`--accent`) en el verde del SENA. Para colores se usan los tokens de HeroUI (`bg-surface`, `text-muted`, `bg-accent-soft`, `text-danger`…), no la paleta de Tailwind.
+- Tipografía: Inter (`@fontsource-variable/inter`, sin depender de Google Fonts).
+- La documentación de HeroUI se consulta con su servidor MCP `@heroui/react-mcp` (configurado en `.mcp.json`).
+- No usar `<ErrorMessage>` ni `<Description>` de HeroUI sueltos fuera de un campo de React Aria: dentro de un `Modal` el de error lanza "Invalid slot". Para eso está el átomo `FieldMessage`.
 
 ---
 
@@ -35,29 +42,35 @@ frontend/
 ## 🧩 Capas
 
 ### `components/atoms/`
-- `Button`, `Input`, `Label`, `Badge`, `StatCard`, `LoadingSpinner`.
-- `EstadoPagoBadge`: Pagado / Pendiente / Gratis con el mismo color en todos los paneles.
-- `AccountTypeButton`: botón de tipo de cuenta del **registro** (el login ya no pide tipo de cuenta).
+- `Button`: el `Button` de HeroUI con un `Spinner` mientras `isPending`.
+- `StatCard`: `Card` de métrica; con `value` indefinido muestra un `Skeleton`.
+- `LoadingSpinner`: `Spinner` de HeroUI con `role="status"`.
+- `EstadoPagoBadge`: `Chip` Pagado / Pendiente / Gratis con el mismo color en todos los paneles.
+- `FieldMessage`: texto de error o de ayuda bajo un campo, con las clases de HeroUI.
 
 ### `components/molecules/`
-- `FormField`: `Label` + `Input` asociados (`htmlFor`/`id`) + mensaje de error.
+- `FormField` / `TextAreaField`: `Label` + `Input`/`InputGroup`/`TextArea` de HeroUI sin controlar (funcionan con `register` de react-hook-form).
+- `SelectField`: `Select` + `ListBox` de HeroUI para opciones de texto (con react-hook-form, vía `Controller`).
+- `SearchInput`: `SearchField` de HeroUI con botón para limpiar.
+- `SectionCard`: `Card` estándar de cada sección (título, descripción y acciones).
+- `ListSkeleton` y `EmptyMessage`: estado de carga (`Skeleton`) y lista vacía (`EmptyState`).
 - `MenuCard`: menú del día con precio, disponibilidad, motivo si no se puede reservar y estado de la reserva propia.
 - `ConsumoRow`: un almuerzo del historial (Reservado/Consumido + estado de pago).
-- `ConfirmDialog` y `FormModal`: modales accesibles (Escape cierra, `role="dialog"`).
-- `ErrorAlert`: muestra el `message` que envía el backend, con "Reintentar" opcional.
-- `AccountTypeSelector` (solo Aprendiz/Invitado), `CuentaMensualCard`, `SidebarNavItem`, `SidebarUserProfile`, `ScheduleCard`, `ProgressCard`, `YamboroInfoCard`.
+- `ConfirmDialog` (`AlertDialog`, `role="alertdialog"`) y `FormModal` (`Modal`, `role="dialog"`).
+- `ErrorAlert`: `Alert` con el `message` que envía el backend y "Reintentar" opcional.
+- `NumberStepper`: entero con botones − y + en un `InputGroup` (número de personas de Almuerzos Invitados).
+- `AccountTypeSelector` (`ToggleButtonGroup` Aprendiz / Instructor), `CuentaMensualCard`, `SidebarNavItem`, `SidebarUserProfile`, `ScheduleCard`, `ProgressCard`.
 
 ### `components/organisms/`
 - **Login:** `LoginForm`, `RegisterModal`, `Header`, `HelpModal`.
-- **Compartidos:** `Sidebar`, `StatsHeader` (indicadores reales por rol), `ReservaAlmuerzoCard` (flujo de reserva de Aprendiz, Instructor e Invitado), `BuzonSugerenciasSection`, `PerfilSection`.
+- **Compartidos:** `Sidebar`, `StatsHeader` (indicadores reales por rol), `ReservaAlmuerzoCard` (flujo de reserva de Aprendiz e Instructor), `BuzonSugerenciasSection`, `PerfilSection`.
 - **Aprendiz:** `InicioSection`, `MisFichasSection`.
 - **Instructor:** `MiCuentaSection`, `ConsumosSection`.
-- **Invitado:** `InicioInvitadoSection`.
-- **Encargado:** `VentasSection`, `MenuDelDiaEncargadoSection`, `BeneficiariosSection`, `CarteraDeudasSection`, `GruposSection`, `BuzonSugerenciasEncargadoSection`, `InventarioSection` → `inventario/StockView`, `RecetasView`, `KardexView`, `MermasView`, `ConfiguracionView`.
+- **Encargado:** `VentasSection`, `MenuDelDiaEncargadoSection`, `AlmuerzosInvitadosSection` → `almuerzosInvitados/RegistroAlmuerzoInvitadoCard`, `ResumenAlmuerzosInvitados`, `HistorialAlmuerzosInvitados`, `EditarAlmuerzoInvitadoModal`, `BeneficiariosSection`, `CarteraDeudasSection`, `GruposSection`, `BuzonSugerenciasEncargadoSection`, `InventarioSection` → `inventario/StockView`, `RecetasView`, `KardexView`, `MermasView`, `ConfiguracionView`.
 
 ### `components/templates/`
 - `AuthLayout`: fondo del comedor con capa oscura para el login.
-- `DashboardLayout`: sidebar, barra superior y `StatsHeader`.
+- `DashboardLayout`: sidebar (fija en escritorio, `Drawer` en móvil), barra superior y `StatsHeader`.
 
 ### `hooks/`
 | Archivo | Endpoints |

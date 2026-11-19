@@ -1,12 +1,17 @@
 import { useState } from 'react';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ChefHat, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Button as HeroButton, Card, Input, ListBox, Table } from '@heroui/react';
 import { Button } from '../../atoms/Button';
-import { LoadingSpinner } from '../../atoms/LoadingSpinner';
+import { FieldMessage } from '../../atoms/FieldMessage';
+import { EmptyMessage } from '../../molecules/EmptyMessage';
+import { ErrorAlert } from '../../molecules/ErrorAlert';
 import { FormField } from '../../molecules/FormField';
 import { FormModal } from '../../molecules/FormModal';
-import { ErrorAlert } from '../../molecules/ErrorAlert';
+import { ListSkeleton } from '../../molecules/ListSkeleton';
+import { SectionCard } from '../../molecules/SectionCard';
+import { SelectField } from '../../molecules/SelectField';
 import { useActualizarReceta, useCrearReceta, useMateriales, useRecetas } from '../../../hooks/useInventario';
 import { recetaSchema, type RecetaData, type RecetaForm } from '../../../schemas/inventario.schema';
 import { pesos } from '../../../lib/formato';
@@ -44,82 +49,76 @@ const FormularioReceta = ({ receta, onListo }: { receta: Receta | null; onListo:
   });
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-4">
+    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
       {mutacion.isError && <ErrorAlert error={mutacion.error} titulo="No se pudo guardar la receta" />}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         <FormField label="Nombre del plato" required className="sm:col-span-2" error={errors.name?.message} {...register('name')} />
         <FormField label="Código" placeholder="REC-003" error={errors.code?.message} {...register('code')} />
         <FormField label="Precio de venta" required error={errors.price?.message} {...soloNumeros(register('price'), 'entero')} />
       </div>
 
-      <div className="space-y-2">
-        <p className="text-sm font-bold text-gray-800">Ingredientes por porción</p>
-        {fields.map((field, index) => (
-          <div key={field.id} className="flex items-start gap-2">
-            <div className="flex-1">
-              <label htmlFor={`ing-material-${index}`} className="sr-only">
-                Material del ingrediente {index + 1}
-              </label>
-              <select
-                id={`ing-material-${index}`}
-                {...register(`ingredients.${index}.material_id`)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm"
-              >
-                <option value="">Selecciona material…</option>
-                {materiales.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name} ({m.unit})
-                  </option>
-                ))}
-              </select>
-              {errors.ingredients?.[index]?.material_id && (
-                <p className="text-xs text-red-500 font-medium pl-1">{errors.ingredients[index]?.material_id?.message}</p>
-              )}
-            </div>
-            <div className="w-28">
-              <label htmlFor={`ing-cantidad-${index}`} className="sr-only">
-                Cantidad del ingrediente {index + 1}
-              </label>
-              <input
-                id={`ing-cantidad-${index}`}
-                placeholder="0.250"
-                {...soloNumeros(register(`ingredients.${index}.cantidad`))}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm"
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-medium text-foreground">Ingredientes por porción</legend>
+        {fields.map((field, index) => {
+          const errorCantidad = errors.ingredients?.[index]?.cantidad?.message;
+          return (
+            <div key={field.id} className="flex items-start gap-2">
+              <Controller
+                name={`ingredients.${index}.material_id`}
+                control={control}
+                render={({ field: campo }) => (
+                  <SelectField
+                    label={`Material del ingrediente ${index + 1}`}
+                    ocultarLabel
+                    placeholder="Selecciona material…"
+                    className="flex-1"
+                    name={campo.name}
+                    value={campo.value}
+                    onChange={campo.onChange}
+                    onBlur={campo.onBlur}
+                    error={errors.ingredients?.[index]?.material_id?.message}
+                    opciones={materiales.map((m) => ({ id: m.id, label: `${m.name} (${m.unit})` }))}
+                  />
+                )}
               />
-              {errors.ingredients?.[index]?.cantidad && (
-                <p className="text-xs text-red-500 font-medium pl-1">{errors.ingredients[index]?.cantidad?.message}</p>
-              )}
+              <div className="flex w-28 flex-col gap-1">
+                <Input
+                  id={`ing-cantidad-${index}`}
+                  aria-label={`Cantidad del ingrediente ${index + 1}`}
+                  placeholder="0.250"
+                  fullWidth
+                  aria-invalid={errorCantidad ? true : undefined}
+                  aria-describedby={errorCantidad ? `ing-cantidad-${index}-error` : undefined}
+                  {...soloNumeros(register(`ingredients.${index}.cantidad`))}
+                />
+                {errorCantidad && <FieldMessage id={`ing-cantidad-${index}-error`}>{errorCantidad}</FieldMessage>}
+              </div>
+              <HeroButton
+                isIconOnly
+                variant="ghost"
+                className="text-danger"
+                onPress={() => remove(index)}
+                isDisabled={fields.length === 1}
+                aria-label={`Quitar ingrediente ${index + 1}`}
+              >
+                <Trash2 />
+              </HeroButton>
             </div>
-            <button
-              type="button"
-              onClick={() => remove(index)}
-              disabled={fields.length === 1}
-              aria-label={`Quitar ingrediente ${index + 1}`}
-              className="p-2.5 rounded-xl text-red-500 hover:bg-red-50 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
-        {errors.ingredients?.root?.message && <p className="text-xs text-red-500 font-medium">{errors.ingredients.root.message}</p>}
-        {errors.ingredients?.message && <p className="text-xs text-red-500 font-medium">{errors.ingredients.message}</p>}
-        <Button
-          variant="emerald"
-          onClick={() => append({ material_id: '', cantidad: '' })}
-          className="text-xs py-1.5 px-3 font-bold"
-          icon={<Plus className="w-3.5 h-3.5" />}
-        >
+          );
+        })}
+        {errors.ingredients?.root?.message && <FieldMessage>{errors.ingredients.root.message}</FieldMessage>}
+        {errors.ingredients?.message && <FieldMessage>{errors.ingredients.message}</FieldMessage>}
+        <Button size="sm" variant="secondary" className="self-start" onPress={() => append({ material_id: '', cantidad: '' })}>
+          <Plus />
           Agregar Ingrediente
         </Button>
-      </div>
+      </fieldset>
 
-      <p className="text-xs text-gray-500">El costo de producción se calcula en el servidor con el costo actual de cada material.</p>
+      <p className="text-xs text-muted">El costo de producción se calcula en el servidor con el costo actual de cada material.</p>
 
-      <div className="pt-2 flex justify-end">
-        <Button type="submit" variant="primary" isLoading={mutacion.isPending} className="font-bold">
-          {receta ? 'Guardar cambios' : 'Crear receta'}
-        </Button>
-      </div>
+      <Button type="submit" isPending={mutacion.isPending} className="self-end">
+        {receta ? 'Guardar cambios' : 'Crear receta'}
+      </Button>
     </form>
   );
 };
@@ -132,107 +131,98 @@ export const RecetasView = () => {
   const seleccionada = recetas.find((r) => r.id === seleccionadaId) ?? recetas[0];
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200/80 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-gray-100">
-        <div>
-          <h2 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-            <ChefHat className="w-6 h-6 text-green-600" />
-            Recetas & Productos del Menú
-          </h2>
-          <p className="text-sm text-gray-500 font-medium mt-1">Escandallo de recetas, costos de producción y fórmula de ingredientes</p>
-        </div>
-        <Button variant="primary" onClick={() => setEditor({ receta: null })} icon={<Plus className="w-4 h-4" />} className="font-bold">
+    <SectionCard
+      titulo="Recetas y productos del menú"
+      descripcion="Escandallo de recetas, costos de producción e ingredientes"
+      acciones={
+        <Button onPress={() => setEditor({ receta: null })}>
+          <Plus />
           Nueva Receta
         </Button>
-      </div>
-
+      }
+    >
       {isPending ? (
-        <LoadingSpinner label="Cargando recetas..." />
+        <ListSkeleton label="Cargando recetas..." />
       ) : isError ? (
         <ErrorAlert error={error} titulo="No se pudieron cargar las recetas" onReintentar={() => refetch()} />
       ) : !seleccionada ? (
-        <p className="py-10 text-center text-sm text-gray-500">Aún no hay recetas. Crea la primera con "Nueva Receta".</p>
+        <EmptyMessage>Aún no hay recetas. Crea la primera con "Nueva Receta".</EmptyMessage>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="space-y-3">
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Platos del Menú</h3>
+        <div className="grid gap-6 md:grid-cols-3">
+          <ListBox
+            aria-label="Platos del menú"
+            selectionMode="single"
+            disallowEmptySelection
+            selectedKeys={[seleccionada.id]}
+            onSelectionChange={(keys) => {
+              const [id] = keys === 'all' ? [] : [...keys];
+              if (id) setSeleccionadaId(String(id));
+            }}
+            className="h-fit"
+          >
             {recetas.map((rec) => (
-              <button
-                key={rec.id}
-                type="button"
-                aria-pressed={seleccionada.id === rec.id}
-                onClick={() => setSeleccionadaId(rec.id)}
-                className={`w-full text-left p-4 rounded-2xl border transition duration-200 cursor-pointer ${
-                  seleccionada.id === rec.id ? 'bg-emerald-50/90 border-emerald-300 shadow-sm' : 'bg-gray-50/70 border-gray-200 hover:bg-gray-100'
-                }`}
-              >
-                {rec.code && <span className="text-xs font-mono text-emerald-700 font-bold">{rec.code}</span>}
-                <h4 className="text-base font-bold text-gray-900 mt-0.5">{rec.name}</h4>
-                <p className="text-xs text-gray-500 mt-1 font-medium">
-                  Costo: {pesos(rec.cost)} | Precio: {pesos(rec.price)}
-                </p>
-              </button>
-            ))}
-          </div>
-
-          <div className="md:col-span-2 space-y-5 bg-gray-50/70 p-6 rounded-3xl border border-gray-200">
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-200">
-              <div>
-                {seleccionada.code && <span className="text-xs font-mono font-bold text-emerald-600">{seleccionada.code}</span>}
-                <h3 className="text-xl font-extrabold text-gray-900">{seleccionada.name}</h3>
-              </div>
-
-              <div className="flex items-center gap-4 text-sm font-bold">
-                <div>
-                  <span className="text-xs text-gray-400 block font-normal">Costo Producción</span>
-                  <span className="text-gray-900">{pesos(seleccionada.cost)}</span>
-                </div>
-                <div>
-                  <span className="text-xs text-gray-400 block font-normal">Precio Venta</span>
-                  <span className="text-emerald-600">{pesos(seleccionada.price)}</span>
-                </div>
-                <div>
-                  <span className="text-xs text-gray-400 block font-normal">Margen</span>
-                  <span className={seleccionada.margen < 0 ? 'text-red-600' : 'text-blue-600'}>
-                    {seleccionada.margen_pct === null ? '—' : `${seleccionada.margen_pct}%`}
+              <ListBox.Item key={rec.id} id={rec.id} textValue={rec.name}>
+                <div className="flex flex-col">
+                  <span className="font-medium text-foreground">{rec.name}</span>
+                  <span className="text-xs text-muted">
+                    {rec.code ? `${rec.code} · ` : ''}Costo {pesos(rec.cost)} · Precio {pesos(rec.price)}
                   </span>
                 </div>
-              </div>
-            </div>
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+            ))}
+          </ListBox>
 
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-bold text-gray-800">Fórmula de la Receta</h4>
-                <Button
-                  variant="emerald"
-                  onClick={() => setEditor({ receta: seleccionada })}
-                  className="text-xs py-1.5 px-3 font-bold"
-                  icon={<Pencil className="w-3.5 h-3.5" />}
-                >
-                  Editar receta
-                </Button>
+          <Card variant="secondary" className="gap-4 md:col-span-2">
+            <Card.Header className="flex-row flex-wrap items-start justify-between gap-3">
+              <div>
+                {seleccionada.code && <span className="font-mono text-xs text-muted">{seleccionada.code}</span>}
+                <Card.Title className="text-lg">{seleccionada.name}</Card.Title>
               </div>
+              <Button size="sm" variant="secondary" onPress={() => setEditor({ receta: seleccionada })}>
+                <Pencil />
+                Editar receta
+              </Button>
+            </Card.Header>
 
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="text-xs font-bold text-gray-400 border-b border-gray-200">
-                    <th className="py-2">Ingrediente / Material</th>
-                    <th className="py-2">Cantidad por Porción</th>
-                    <th className="py-2 text-right">Costo</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200/60 font-medium">
-                  {seleccionada.ingredients.map((ing) => (
-                    <tr key={ing.material_id}>
-                      <td className="py-2.5 font-semibold text-gray-800">{ing.item}</td>
-                      <td className="py-2.5 text-gray-600">{ing.quantity}</td>
-                      <td className="py-2.5 text-right font-bold text-gray-900">{pesos(ing.cost)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+            <dl className="grid grid-cols-3 gap-3 text-sm">
+              <div>
+                <dt className="text-xs text-muted">Costo de producción</dt>
+                <dd className="font-medium tabular-nums text-foreground">{pesos(seleccionada.cost)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted">Precio de venta</dt>
+                <dd className="font-medium tabular-nums text-foreground">{pesos(seleccionada.price)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted">Margen</dt>
+                <dd className={`font-medium tabular-nums ${seleccionada.margen < 0 ? 'text-danger' : 'text-success'}`}>
+                  {seleccionada.margen_pct === null ? '—' : `${seleccionada.margen_pct}%`}
+                </dd>
+              </div>
+            </dl>
+
+            <Table variant="secondary">
+              <Table.ScrollContainer>
+                <Table.Content aria-label={`Ingredientes de ${seleccionada.name}`}>
+                  <Table.Header>
+                    <Table.Column isRowHeader>Ingrediente</Table.Column>
+                    <Table.Column>Cantidad por porción</Table.Column>
+                    <Table.Column className="text-right">Costo</Table.Column>
+                  </Table.Header>
+                  <Table.Body>
+                    {seleccionada.ingredients.map((ing) => (
+                      <Table.Row key={ing.material_id} id={ing.material_id}>
+                        <Table.Cell className="font-medium text-foreground">{ing.item}</Table.Cell>
+                        <Table.Cell>{ing.quantity}</Table.Cell>
+                        <Table.Cell className="text-right tabular-nums">{pesos(ing.cost)}</Table.Cell>
+                      </Table.Row>
+                    ))}
+                  </Table.Body>
+                </Table.Content>
+              </Table.ScrollContainer>
+            </Table>
+          </Card>
         </div>
       )}
 
@@ -244,6 +234,6 @@ export const RecetasView = () => {
       >
         {editor && <FormularioReceta receta={editor.receta} onListo={() => setEditor(null)} />}
       </FormModal>
-    </div>
+    </SectionCard>
   );
 };

@@ -9,7 +9,7 @@ import { LOGOUT_EVENT, rutaInicio } from './lib/session';
 import { AUTH_QUERY_KEY } from './hooks/useAuth';
 import { queryKeys } from './hooks/queryKeys';
 import { renderConProveedores, respuesta, usuarioDePrueba } from './test/utils';
-import type { AccountType } from './schemas/auth.schema';
+import type { AccountType, User } from './schemas/auth.schema';
 
 // Los paneles se reemplazan por su título y el Sidebar real: aquí solo se prueban las rutas y la sesión
 vi.mock('./pages/AprendizDashboardPage', async () => {
@@ -24,26 +24,26 @@ vi.mock('./pages/EncargadoDashboardPage', async () => {
   const { panelDePrueba } = await import('./test/utils');
   return { EncargadoDashboardPage: panelDePrueba('Panel Encargado') };
 });
-vi.mock('./pages/InvitadoDashboardPage', async () => {
+vi.mock('./pages/CoordinadorDashboardPage', async () => {
   const { panelDePrueba } = await import('./test/utils');
-  return { InvitadoDashboardPage: panelDePrueba('Panel Invitado') };
+  return { CoordinadorDashboardPage: panelDePrueba('Panel Coordinador') };
 });
 
 const PANELES: Record<AccountType, string> = {
   aprendiz: 'Panel Aprendiz',
   instructor: 'Panel Instructor',
   encargado: 'Panel Encargado',
-  invitado: 'Panel Invitado',
+  coordinador: 'Panel Coordinador',
 };
 
 /** Simula una sesión guardada que el backend reconoce en GET /auth/me; sin token responde 401. */
-const conSesion = (role: AccountType) => {
+const conSesion = (role: AccountType, extra: Partial<User> = {}) => {
   localStorage.setItem('gastrosena_token', 'token-valido');
   vi.spyOn(apiClient, 'get').mockImplementation(async () => {
     if (!localStorage.getItem('gastrosena_token')) {
       throw Object.assign(new Error('Request failed'), { isAxiosError: true, response: { status: 401 } });
     }
-    return respuesta({ user: usuarioDePrueba({ role }), activeSession: true });
+    return respuesta({ user: usuarioDePrueba({ role, ...extra }), activeSession: true });
   });
 };
 
@@ -57,7 +57,7 @@ describe('Formulario de login', () => {
     expect(screen.getByRole('button', { name: 'Registrarse' })).toBeInTheDocument();
 
     expect(screen.queryByText(/Tipo de Cuenta/i)).not.toBeInTheDocument();
-    for (const tipo of ['Aprendiz', 'Instructor', 'Encargado', 'Invitado']) {
+    for (const tipo of ['Aprendiz', 'Instructor', 'Encargado']) {
       expect(screen.queryByRole('button', { name: new RegExp(tipo, 'i') })).not.toBeInTheDocument();
     }
     expect(screen.queryByRole('button', { name: /Reconocimiento Facial/i })).not.toBeInTheDocument();
@@ -93,12 +93,12 @@ describe('Formulario de login', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Credenciales inválidas');
   });
 
-  it('avisa si la cuenta de instructor sigue pendiente de aprobación (403)', async () => {
-    const aviso = 'Tu solicitud de cuenta de instructor está pendiente. Podrás ingresar cuando un encargado la apruebe.';
+  it('avisa si la cuenta sigue pendiente de aprobación del Coordinador (403)', async () => {
+    const aviso = 'Tu cuenta está pendiente de aprobación del Coordinador.';
     vi.spyOn(apiClient, 'post').mockRejectedValue(
       Object.assign(new Error('Request failed'), {
         isAxiosError: true,
-        response: { status: 403, data: { message: aviso, estado_solicitud: 'pendiente' } },
+        response: { status: 403, data: { message: aviso, estado_cuenta: 'pendiente' } },
       })
     );
     renderConProveedores(<AppRoutes />, { ruta: '/login' });
@@ -156,9 +156,55 @@ describe('Rutas protegidas', () => {
   });
 
   it('una ruta desconocida con sesión termina en el panel del rol', async () => {
-    conSesion('invitado');
+    conSesion('encargado');
     renderConProveedores(<AppRoutes />, { ruta: '/no-existe' });
-    expect(await screen.findByRole('heading', { name: 'Panel Invitado' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Panel Encargado' })).toBeInTheDocument();
+  });
+
+  it('el Coordinador entra a su propio panel y no al del Encargado', async () => {
+    conSesion('coordinador');
+    renderConProveedores(<AppRoutes />, { ruta: '/encargado/inicio' });
+    expect(await screen.findByRole('heading', { name: 'Panel Coordinador' })).toBeInTheDocument();
+    expect(screen.queryByText('Panel Encargado')).not.toBeInTheDocument();
+  });
+
+  it('una cuenta que debe cambiar su contraseña ve el formulario de cambio sobre el panel', async () => {
+    conSesion('aprendiz', { debe_cambiar_clave: true });
+    const post = vi.spyOn(apiClient, 'post').mockResolvedValue(
+      respuesta({ message: 'Contraseña actualizada.', user: usuarioDePrueba({ debe_cambiar_clave: false }) })
+    );
+    renderConProveedores(<AppRoutes />, { ruta: '/aprendiz/inicio' });
+
+    expect(await screen.findByRole('dialog', { name: 'Cambia tu contraseña' })).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/Contraseña actual/), '1005678901');
+    await userEvent.type(screen.getByLabelText('Nueva contraseña'), '1005678901');
+    await userEvent.type(screen.getByLabelText(/Repite la nueva/), '1005678901');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar contraseña' }));
+    // No puede ser la cédula ni la misma contraseña
+    expect(await screen.findByText(/distinta de la actual/)).toBeInTheDocument();
+    expect(post).not.toHaveBeenCalled();
+
+    await userEvent.clear(screen.getByLabelText('Nueva contraseña'));
+    await userEvent.type(screen.getByLabelText('Nueva contraseña'), 'ClaveNueva2026');
+    await userEvent.clear(screen.getByLabelText(/Repite la nueva/));
+    await userEvent.type(screen.getByLabelText(/Repite la nueva/), 'ClaveNueva2026');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar contraseña' }));
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith('/auth/cambiar-clave', { actual: '1005678901', nueva: 'ClaveNueva2026' })
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Cambia tu contraseña' })).not.toBeInTheDocument());
+    expect(screen.getByRole('heading', { name: 'Panel Aprendiz' })).toBeInTheDocument();
+  });
+
+  it('el panel de invitado ya no existe: su ruta lleva al login o al panel del rol', async () => {
+    const { unmount } = renderConProveedores(<AppRoutes />, { ruta: '/invitado/inicio' });
+    expect(await screen.findByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
+    unmount();
+
+    conSesion('aprendiz');
+    renderConProveedores(<AppRoutes />, { ruta: '/invitado/inicio' });
+    expect(await screen.findByRole('heading', { name: 'Panel Aprendiz' })).toBeInTheDocument();
   });
 });
 

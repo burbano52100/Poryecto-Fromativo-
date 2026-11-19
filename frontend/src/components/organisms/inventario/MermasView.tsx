@@ -1,15 +1,17 @@
-import { useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { Fragment, useState } from 'react';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Alert, Card, Separator } from '@heroui/react';
 import { Button } from '../../atoms/Button';
-import { LoadingSpinner } from '../../atoms/LoadingSpinner';
+import { EmptyMessage } from '../../molecules/EmptyMessage';
 import { ErrorAlert } from '../../molecules/ErrorAlert';
+import { FormField } from '../../molecules/FormField';
+import { ListSkeleton } from '../../molecules/ListSkeleton';
+import { SectionCard } from '../../molecules/SectionCard';
+import { SelectField } from '../../molecules/SelectField';
 import { useMateriales, useMermas, useRegistrarMerma } from '../../../hooks/useInventario';
 import { mermaSchema, type MermaData, type MermaForm } from '../../../schemas/inventario.schema';
 import { soloNumeros } from '../../../lib/numeros';
-
-const CAMPO = 'w-full bg-white border border-amber-300 rounded-xl p-2.5 text-sm font-medium focus:outline-none focus:border-amber-500';
 
 export const MermasView = () => {
   const { data: materiales = [] } = useMateriales();
@@ -42,92 +44,90 @@ export const MermasView = () => {
   );
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200/80 space-y-6">
-      <div className="pb-4 border-b border-gray-100">
-        <h2 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-          <AlertTriangle className="w-6 h-6 text-amber-500" />
-          Gestión de Mermas y Pérdidas
-        </h2>
-        <p className="text-sm text-gray-500 font-medium mt-1">Registro de desperdicios, alimentos vencidos o deterioro</p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <SectionCard titulo="Registrar merma" descripcion="Desperdicios, alimentos vencidos o deterioro">
+        {mermaSuccess && (
+          <Alert status="success" role="status">
+            <Alert.Indicator />
+            <Alert.Content>
+              <Alert.Description>Merma registrada. Se descontó del stock y quedó en el Kardex.</Alert.Description>
+            </Alert.Content>
+          </Alert>
+        )}
 
-      {mermaSuccess && (
-        <div role="status" className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center gap-3 text-emerald-800 text-sm font-semibold">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          <span>Merma registrada correctamente. Se descontó del stock y quedó en el Kardex.</span>
-        </div>
-      )}
+        <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+          {registrar.isError && <ErrorAlert error={registrar.error} titulo="No se pudo registrar la merma" />}
 
-      <form onSubmit={onSubmit} noValidate className="bg-amber-50/50 p-6 rounded-3xl border border-amber-200 space-y-4">
-        <h3 className="text-base font-extrabold text-amber-950">Registrar Nueva Merma</h3>
-        {registrar.isError && <ErrorAlert error={registrar.error} titulo="No se pudo registrar la merma" />}
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label htmlFor="merma-material" className="block text-xs font-bold text-amber-900 uppercase mb-1">
-              Material Afectado
-            </label>
-            <select id="merma-material" {...register('material_id')} className={CAMPO}>
-              <option value="">Selecciona…</option>
-              {materiales.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name} ({m.stock} {m.unit})
-                </option>
-              ))}
-            </select>
-            {errors.material_id && <p className="text-xs text-red-600 font-semibold mt-1">{errors.material_id.message}</p>}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Controller
+              name="material_id"
+              control={control}
+              render={({ field }) => (
+                <SelectField
+                  label="Material afectado"
+                  placeholder="Selecciona…"
+                  name={field.name}
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  error={errors.material_id?.message}
+                  opciones={materiales.map((m) => ({ id: m.id, label: `${m.name} (${m.stock} ${m.unit})` }))}
+                />
+              )}
+            />
+            <FormField
+              id="merma-cantidad"
+              label={`Cantidad perdida ${materialElegido ? `(${materialElegido.unit})` : ''}`.trim()}
+              placeholder="Ej: 2.5"
+              error={errors.quantity?.message}
+              {...soloNumeros(register('quantity'))}
+            />
+            <FormField
+              id="merma-razon"
+              label="Razón detallada"
+              placeholder="Ej: Vencimiento / Daño por empaque"
+              error={errors.reason?.message}
+              {...register('reason')}
+            />
           </div>
 
-          <div>
-            <label htmlFor="merma-cantidad" className="block text-xs font-bold text-amber-900 uppercase mb-1">
-              Cantidad Perdida {materialElegido ? `(${materialElegido.unit})` : ''}
-            </label>
-            <input id="merma-cantidad" placeholder="Ej: 2.5" {...soloNumeros(register('quantity'))} className={CAMPO} />
-            {errors.quantity && <p className="text-xs text-red-600 font-semibold mt-1">{errors.quantity.message}</p>}
+          <div className="flex justify-end gap-2">
+            <Button variant="tertiary" onPress={() => reset()}>
+              Limpiar
+            </Button>
+            <Button type="submit" isPending={registrar.isPending}>
+              Registrar Merma
+            </Button>
           </div>
+        </form>
+      </SectionCard>
 
-          <div>
-            <label htmlFor="merma-razon" className="block text-xs font-bold text-amber-900 uppercase mb-1">
-              Razón Detallada
-            </label>
-            <input id="merma-razon" placeholder="Ej: Vencimiento / Daño por empaque" {...register('reason')} className={CAMPO} />
-            {errors.reason && <p className="text-xs text-red-600 font-semibold mt-1">{errors.reason.message}</p>}
-          </div>
-        </div>
-
-        <div className="pt-2 flex justify-end gap-3">
-          <Button type="button" variant="outline" onClick={() => reset()}>
-            Limpiar
-          </Button>
-          <Button type="submit" variant="primary" isLoading={registrar.isPending} className="bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-amber-600/30">
-            Registrar Merma
-          </Button>
-        </div>
-      </form>
-
-      <div className="space-y-3">
-        <h3 className="text-sm font-bold text-gray-700">Mermas Registradas Recientemente</h3>
+      <SectionCard titulo="Mermas registradas recientemente">
         {isPending ? (
-          <LoadingSpinner label="Cargando mermas..." />
+          <ListSkeleton label="Cargando mermas..." filas={3} />
         ) : isError ? (
           <ErrorAlert error={error} titulo="No se pudieron cargar las mermas" onReintentar={() => refetch()} />
         ) : mermas.length === 0 ? (
-          <p className="text-sm text-gray-500">No hay mermas registradas.</p>
+          <EmptyMessage>No hay mermas registradas.</EmptyMessage>
         ) : (
-          <div className="space-y-2">
-            {mermas.map((m) => (
-              <div key={m.id} className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex justify-between items-center gap-3 text-sm">
-                <div>
-                  <span className="text-xs text-gray-400 font-mono">{m.date}</span>
-                  <h4 className="font-bold text-gray-900">{m.material}</h4>
-                  <p className="text-xs text-gray-600 mt-0.5">{m.reason}</p>
+          <Card variant="secondary" className="gap-0 p-0">
+            {mermas.map((m, i) => (
+              <Fragment key={m.id}>
+                {i > 0 && <Separator />}
+                <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="font-medium text-foreground">{m.material}</p>
+                    <p className="text-xs text-muted">
+                      {m.date} · {m.reason}
+                    </p>
+                  </div>
+                  <span className="whitespace-nowrap font-medium tabular-nums text-danger">-{m.quantity}</span>
                 </div>
-                <span className="font-extrabold text-red-600 text-base whitespace-nowrap">-{m.quantity}</span>
-              </div>
+              </Fragment>
             ))}
-          </div>
+          </Card>
         )}
-      </div>
+      </SectionCard>
     </div>
   );
 };

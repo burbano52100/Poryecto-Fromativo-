@@ -1,4 +1,5 @@
-import { CreditCard, ArrowRight } from 'lucide-react';
+import { Button, Card } from '@heroui/react';
+import { ArrowRight, CreditCard } from 'lucide-react';
 import { pesos } from '../../lib/formato';
 
 export interface CuentaMensualCardProps {
@@ -6,38 +7,26 @@ export interface CuentaMensualCardProps {
   onViewAccount?: () => void;
 }
 
-export const CuentaMensualCard = ({ pendingBalance, onViewAccount }: CuentaMensualCardProps) => {
-  const formattedBalance = pesos(pendingBalance);
-
-  return (
-    <div className="bg-amber-50/70 border border-amber-100 rounded-3xl p-5 sm:p-6 flex items-start justify-between gap-4 shadow-xs">
-      <div className="flex items-start gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200">
-          <CreditCard className="w-6 h-6" />
-        </div>
-
-        <div>
-          <h3 className="text-base sm:text-lg font-bold text-amber-950 tracking-tight">
-            Cuenta Mensual
-          </h3>
-          <p className="text-sm text-amber-900/80 mt-1 font-medium leading-relaxed">
-            Como instructor, puedes consumir almuerzos y pagar mensualmente.
-          </p>
-          <p className="text-sm font-bold text-amber-800 mt-2">
-            Saldo actual: <span className="text-base font-extrabold text-amber-700">{formattedBalance}</span>
-          </p>
-        </div>
+export const CuentaMensualCard = ({ pendingBalance, onViewAccount }: CuentaMensualCardProps) => (
+  <Card>
+    <Card.Header className="flex-row items-start gap-3">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-warning-soft text-warning-soft-foreground">
+        <CreditCard className="size-5" />
       </div>
-
+      <div>
+        <Card.Title>Cuenta mensual</Card.Title>
+        <Card.Description>Como instructor, consumes almuerzos y pagas a fin de mes.</Card.Description>
+      </div>
+    </Card.Header>
+    <Card.Footer className="justify-between">
+      <p className="text-sm text-muted">
+        Saldo actual: <span className="font-semibold tabular-nums text-foreground">{pesos(pendingBalance)}</span>
+      </p>
       {onViewAccount && (
-        <button
-          onClick={onViewAccount}
-          className="self-center p-2.5 rounded-xl bg-amber-100 text-amber-800 hover:bg-amber-200 transition font-bold text-xs flex items-center gap-1 shrink-0 cursor-pointer"
-        >
-          <span className="hidden sm:inline">Ver Cuenta</span>
-          <ArrowRight className="w-4 h-4" />
-        </button>
+        <Button size="sm" variant="secondary" onPress={onViewAccount}>
+          Ver cuenta <ArrowRight />
+        </Button>
       )}
-    </div>
-  );
-};
+    </Card.Footer>
+  </Card>
+);

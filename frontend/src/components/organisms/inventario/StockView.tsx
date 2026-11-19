@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Package, Search, Plus, ArrowDownCircle, ArrowUpCircle, Trash2, CheckCircle2 } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, Plus, Trash2 } from 'lucide-react';
+import { Alert, Button as HeroButton, Chip, Table, Tooltip } from '@heroui/react';
 import { Button } from '../../atoms/Button';
-import { Badge } from '../../atoms/Badge';
-import { LoadingSpinner } from '../../atoms/LoadingSpinner';
+import { EmptyMessage } from '../../molecules/EmptyMessage';
 import { FormField } from '../../molecules/FormField';
+import { ListSkeleton } from '../../molecules/ListSkeleton';
+import { SearchInput } from '../../molecules/SearchInput';
+import { SectionCard } from '../../molecules/SectionCard';
+import { SelectField } from '../../molecules/SelectField';
 import { FormModal } from '../../molecules/FormModal';
 import { ConfirmDialog } from '../../molecules/ConfirmDialog';
 import { ErrorAlert } from '../../molecules/ErrorAlert';
@@ -31,12 +35,36 @@ import { pesos } from '../../../lib/formato';
 import { soloNumeros } from '../../../lib/numeros';
 import type { EstadoMaterial, Material } from '../../../types/api';
 
-const COLOR_ESTADO: Record<EstadoMaterial, 'green' | 'amber' | 'red' | 'blue'> = {
-  Bueno: 'green',
-  Bajo: 'amber',
-  Crítico: 'red',
-  Venciendo: 'red',
+const COLOR_ESTADO: Record<EstadoMaterial, 'success' | 'warning' | 'danger'> = {
+  Bueno: 'success',
+  Bajo: 'warning',
+  Crítico: 'danger',
+  Venciendo: 'danger',
 };
+
+const ESTADOS: EstadoMaterial[] = ['Bueno', 'Bajo', 'Crítico', 'Venciendo'];
+
+/** Botón de icono con tooltip para las acciones de cada fila. */
+const Accion = ({
+  etiqueta,
+  ayuda,
+  onPress,
+  className,
+  children,
+}: {
+  etiqueta: string;
+  ayuda: string;
+  onPress: () => void;
+  className?: string;
+  children: React.ReactNode;
+}) => (
+  <Tooltip delay={400}>
+    <HeroButton isIconOnly size="sm" variant="ghost" aria-label={etiqueta} onPress={onPress} className={className}>
+      {children}
+    </HeroButton>
+    <Tooltip.Content>{ayuda}</Tooltip.Content>
+  </Tooltip>
+);
 
 const FormularioMaterial = ({ categorias, onListo }: { categorias: string[]; onListo: (nombre: string) => void }) => {
   const crear = useCrearMaterial();
@@ -57,10 +85,10 @@ const FormularioMaterial = ({ categorias, onListo }: { categorias: string[]; onL
   );
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-4">
+    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
       {crear.isError && <ErrorAlert error={crear.error} titulo="No se pudo crear el material" />}
       <FormField label="Nombre del Material" required placeholder="Ej: Harina de Trigo 1kg" error={errors.name?.message} {...register('name')} />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <FormField label="Código de barras" placeholder="Opcional" error={errors.code?.message} {...register('code')} />
         <FormField
           label="Categoría"
@@ -81,11 +109,9 @@ const FormularioMaterial = ({ categorias, onListo }: { categorias: string[]; onL
         <FormField label="Stock mínimo" required error={errors.stock_minimo?.message} {...soloNumeros(register('stock_minimo'))} />
         <FormField label="Costo unitario" required error={errors.costo_unitario?.message} {...soloNumeros(register('costo_unitario'))} />
       </div>
-      <div className="pt-2 flex justify-end">
-        <Button type="submit" variant="primary" isLoading={crear.isPending} className="font-bold">
-          Guardar Material
-        </Button>
-      </div>
+      <Button type="submit" isPending={crear.isPending} className="self-end">
+        Guardar Material
+      </Button>
     </form>
   );
 };
@@ -104,24 +130,24 @@ const FormularioEntrada = ({ material, onListo }: { material: Material; onListo:
   const onSubmit = handleSubmit((data) => entrada.mutate({ id: material.id, ...data }, { onSuccess: onListo }));
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-4">
-      <p className="text-sm text-gray-600">
-        Stock actual: <span className="font-bold">{material.stock} {material.unit}</span>
+    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+      <p className="text-sm text-muted">
+        Stock actual:{' '}
+        <span className="font-medium text-foreground">
+          {material.stock} {material.unit}
+        </span>
       </p>
       {entrada.isError && <ErrorAlert error={entrada.error} titulo="No se pudo registrar la entrada" />}
       <FormField label={`Cantidad (${material.unit})`} required error={errors.cantidad?.message} {...soloNumeros(register('cantidad'))} />
       <FormField
         label="Nuevo costo unitario"
-       
         placeholder={`Actual: ${pesos(material.costo)}`}
         error={errors.costo_unitario?.message}
         {...soloNumeros(register('costo_unitario'))}
       />
-      <div className="pt-2 flex justify-end">
-        <Button type="submit" variant="primary" isLoading={entrada.isPending} className="font-bold">
-          Registrar Entrada
-        </Button>
-      </div>
+      <Button type="submit" isPending={entrada.isPending} className="self-end">
+        Registrar Entrada
+      </Button>
     </form>
   );
 };
@@ -140,18 +166,19 @@ const FormularioSalida = ({ material, onListo }: { material: Material; onListo: 
   const onSubmit = handleSubmit((data) => salida.mutate({ id: material.id, ...data }, { onSuccess: onListo }));
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-4">
-      <p className="text-sm text-gray-600">
-        Stock actual: <span className="font-bold">{material.stock} {material.unit}</span>
+    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+      <p className="text-sm text-muted">
+        Stock actual:{' '}
+        <span className="font-medium text-foreground">
+          {material.stock} {material.unit}
+        </span>
       </p>
       {salida.isError && <ErrorAlert error={salida.error} titulo="No se pudo registrar la salida" />}
       <FormField label={`Cantidad (${material.unit})`} required error={errors.cantidad?.message} {...soloNumeros(register('cantidad'))} />
       <FormField label="Concepto" required error={errors.concepto?.message} {...register('concepto')} />
-      <div className="pt-2 flex justify-end">
-        <Button type="submit" variant="primary" isLoading={salida.isPending} className="font-bold bg-red-600 hover:bg-red-700 shadow-red-600/30">
-          Registrar Salida
-        </Button>
-      </div>
+      <Button type="submit" variant="danger" isPending={salida.isPending} className="self-end">
+        Registrar Salida
+      </Button>
     </form>
   );
 };
@@ -182,140 +209,120 @@ export const StockView = () => {
   );
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200/80 space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-gray-100">
-        <div>
-          <h2 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-            <Package className="w-6 h-6 text-green-600" />
-            Control de Stock e Inventario
-          </h2>
-          <p className="text-sm text-gray-500 font-medium mt-1">Monitoreo de materias primas e insumos del comedor escolar</p>
-        </div>
-
-        <Button variant="primary" onClick={() => setCreando(true)} icon={<Plus className="w-4 h-4" />} className="font-bold">
+    <SectionCard
+      titulo="Control de stock"
+      descripcion="Materias primas e insumos del comedor"
+      acciones={
+        <Button onPress={() => setCreando(true)}>
+          <Plus />
           Agregar Material
         </Button>
-      </div>
-
+      }
+    >
       {aviso && (
-        <div role="status" className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center gap-3 text-emerald-800 text-sm font-semibold">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          <span>{aviso}</span>
-        </div>
+        <Alert status="success" role="status">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Description>{aviso}</Alert.Description>
+          </Alert.Content>
+        </Alert>
       )}
       {eliminar.isError && (
         <ErrorAlert error={eliminar.error} titulo="No se pudo eliminar el material" onCerrar={() => eliminar.reset()} />
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
-          <input
-            type="search"
-            aria-label="Buscar material"
-            placeholder="Buscar artículo o código..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full bg-gray-50 border border-gray-200 rounded-2xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500 focus:bg-white transition"
-          />
-        </div>
-        <select
-          aria-label="Filtrar por estado"
+        <SearchInput
+          label="Buscar material"
+          placeholder="Buscar artículo o código..."
+          value={busqueda}
+          onChange={setBusqueda}
+          className="min-w-[200px] flex-1"
+        />
+        <SelectField
+          label="Filtrar por estado"
+          ocultarLabel
+          className="w-48"
           value={filtroEstado}
-          onChange={(e) => setFiltroEstado(e.target.value as EstadoMaterial | 'todos')}
-          className="bg-white border border-gray-300 rounded-2xl px-3 py-2.5 text-sm font-medium"
-        >
-          <option value="todos">Todos los estados</option>
-          <option value="Bueno">Bueno</option>
-          <option value="Bajo">Bajo</option>
-          <option value="Crítico">Crítico</option>
-          <option value="Venciendo">Venciendo</option>
-        </select>
+          onChange={(v) => setFiltroEstado((v || 'todos') as EstadoMaterial | 'todos')}
+          opciones={[{ id: 'todos', label: 'Todos los estados' }, ...ESTADOS.map((e) => ({ id: e, label: e }))]}
+        />
       </div>
 
       {isPending ? (
-        <LoadingSpinner label="Cargando inventario..." />
+        <ListSkeleton label="Cargando inventario..." forma="tabla" />
       ) : isError ? (
         <ErrorAlert error={error} titulo="No se pudo cargar el inventario" onReintentar={() => refetch()} />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-gray-200 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                <th className="py-3 px-4">Código</th>
-                <th className="py-3 px-4">Artículo</th>
-                <th className="py-3 px-4">Categoría</th>
-                <th className="py-3 px-4">Vencimiento</th>
-                <th className="py-3 px-4 text-right">Stock</th>
-                <th className="py-3 px-4">Estado</th>
-                <th className="py-3 px-4 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 text-sm font-medium">
-              {filtrados.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center text-gray-500">
-                    No hay materiales que coincidan.
-                  </td>
-                </tr>
-              ) : (
-                filtrados.map((m) => (
-                  <tr key={m.id} className="hover:bg-gray-50/70 transition">
-                    <td className="py-3.5 px-4 font-mono text-xs text-gray-500">{m.code}</td>
-                    <td className="py-3.5 px-4 font-bold text-gray-900">
-                      {m.name}
-                      <span className="block text-xs font-normal text-gray-400">
+        <Table variant="secondary">
+          <Table.ScrollContainer>
+            <Table.Content aria-label="Materiales del inventario" className="min-w-[820px]">
+              <Table.Header>
+                <Table.Column>Código</Table.Column>
+                <Table.Column isRowHeader>Artículo</Table.Column>
+                <Table.Column>Categoría</Table.Column>
+                <Table.Column>Vencimiento</Table.Column>
+                <Table.Column className="text-right">Stock</Table.Column>
+                <Table.Column>Estado</Table.Column>
+                <Table.Column className="text-right">Acciones</Table.Column>
+              </Table.Header>
+              <Table.Body renderEmptyState={() => <EmptyMessage>No hay materiales que coincidan.</EmptyMessage>}>
+                {filtrados.map((m) => (
+                  <Table.Row key={m.id} id={m.id}>
+                    <Table.Cell className="font-mono text-xs text-muted">{m.code}</Table.Cell>
+                    <Table.Cell>
+                      <span className="font-medium text-foreground">{m.name}</span>
+                      <span className="block text-xs text-muted">
                         Mín. {m.stock_minimo} {m.unit} · {pesos(m.costo)}/{m.unit}
                       </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-gray-600">{m.category ?? '—'}</td>
-                    <td className="py-3.5 px-4 text-gray-500 text-xs">{m.expiry ?? '—'}</td>
-                    <td className="py-3.5 px-4 text-right font-black text-emerald-700 whitespace-nowrap">
+                    </Table.Cell>
+                    <Table.Cell>{m.category ?? '—'}</Table.Cell>
+                    <Table.Cell className="text-xs">{m.expiry ?? '—'}</Table.Cell>
+                    <Table.Cell className="whitespace-nowrap text-right font-medium tabular-nums text-foreground">
                       {m.stock} {m.unit}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <Badge variant={COLOR_ESTADO[m.estado]}>{m.estado}</Badge>
-                    </td>
-                    <td className="py-3.5 px-4">
+                    </Table.Cell>
+                    <Table.Cell>
+                      <Chip size="sm" variant="soft" color={COLOR_ESTADO[m.estado]}>
+                        {m.estado}
+                      </Chip>
+                    </Table.Cell>
+                    <Table.Cell>
                       <div className="flex justify-end gap-1">
-                        <button
-                          type="button"
-                          title="Registrar entrada"
-                          aria-label={`Registrar entrada de ${m.name}`}
-                          onClick={() => setMovimiento({ tipo: 'entrada', material: m })}
-                          className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 cursor-pointer"
+                        <Accion
+                          etiqueta={`Registrar entrada de ${m.name}`}
+                          ayuda="Registrar entrada"
+                          className="text-success"
+                          onPress={() => setMovimiento({ tipo: 'entrada', material: m })}
                         >
-                          <ArrowDownCircle className="w-5 h-5" />
-                        </button>
-                        <button
-                          type="button"
-                          title="Registrar salida"
-                          aria-label={`Registrar salida de ${m.name}`}
-                          onClick={() => setMovimiento({ tipo: 'salida', material: m })}
-                          className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 cursor-pointer"
+                          <ArrowDownCircle />
+                        </Accion>
+                        <Accion
+                          etiqueta={`Registrar salida de ${m.name}`}
+                          ayuda="Registrar salida"
+                          className="text-warning"
+                          onPress={() => setMovimiento({ tipo: 'salida', material: m })}
                         >
-                          <ArrowUpCircle className="w-5 h-5" />
-                        </button>
-                        <button
-                          type="button"
-                          title="Eliminar material"
-                          aria-label={`Eliminar ${m.name}`}
-                          onClick={() => setAEliminar(m)}
-                          className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 cursor-pointer"
+                          <ArrowUpCircle />
+                        </Accion>
+                        <Accion
+                          etiqueta={`Eliminar ${m.name}`}
+                          ayuda="Eliminar material"
+                          className="text-danger"
+                          onPress={() => setAEliminar(m)}
                         >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+                          <Trash2 />
+                        </Accion>
                       </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                    </Table.Cell>
+                  </Table.Row>
+                ))}
+              </Table.Body>
+            </Table.Content>
+          </Table.ScrollContainer>
+        </Table>
       )}
 
-      <FormModal abierto={creando} titulo="Agregar Nuevo Material al Stock" onCerrar={() => setCreando(false)} ancho="lg">
+      <FormModal abierto={creando} titulo="Agregar nuevo material" onCerrar={() => setCreando(false)} ancho="lg">
         <FormularioMaterial
           categorias={categorias}
           onListo={(nombre) => {
@@ -353,8 +360,8 @@ export const StockView = () => {
       <ConfirmDialog
         abierto={aEliminar !== null}
         titulo="Eliminar material"
-        icono={<Trash2 className="w-8 h-8" />}
-        variante="red"
+        icono={<Trash2 className="size-5" />}
+        variante="danger"
         textoConfirmar="Sí, eliminar"
         cargando={eliminar.isPending}
         onCancelar={() => setAEliminar(null)}
@@ -366,11 +373,11 @@ export const StockView = () => {
           })
         }
       >
-        <p className="text-center">
-          ¿Eliminar <span className="font-bold text-gray-900">{aEliminar?.name}</span>? Su historial del Kardex se conserva. No se
-          puede eliminar si lo usa una receta activa.
+        <p>
+          ¿Eliminar <span className="font-medium text-foreground">{aEliminar?.name}</span>? Su historial del Kardex se
+          conserva. No se puede eliminar si lo usa una receta activa.
         </p>
       </ConfirmDialog>
-    </div>
+    </SectionCard>
   );
 };

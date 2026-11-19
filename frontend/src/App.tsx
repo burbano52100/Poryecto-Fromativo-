@@ -16,8 +16,8 @@ const InstructorDashboardPage = lazy(() =>
 const EncargadoDashboardPage = lazy(() =>
   import('./pages/EncargadoDashboardPage').then((m) => ({ default: m.EncargadoDashboardPage }))
 );
-const InvitadoDashboardPage = lazy(() =>
-  import('./pages/InvitadoDashboardPage').then((m) => ({ default: m.InvitadoDashboardPage }))
+const CoordinadorDashboardPage = lazy(() =>
+  import('./pages/CoordinadorDashboardPage').then((m) => ({ default: m.CoordinadorDashboardPage }))
 );
 
 /**
@@ -62,10 +62,10 @@ export const AppRoutes = () => {
           }
         />
         <Route
-          path="/invitado/inicio"
+          path="/coordinador/inicio"
           element={
-            <ProtectedRoute role="invitado">
-              {(user) => <InvitadoDashboardPage user={user} onLogout={logout} />}
+            <ProtectedRoute role="coordinador">
+              {(user) => <CoordinadorDashboardPage user={user} onLogout={logout} />}
             </ProtectedRoute>
           }
         />

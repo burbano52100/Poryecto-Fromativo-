@@ -1,14 +1,11 @@
 import { z } from 'zod';
 
 // 1. Roles del sistema. El rol de la sesión lo decide el backend (usuarios.rol).
-export const accountTypeSchema = z.enum(['aprendiz', 'instructor', 'encargado', 'invitado']);
+export const accountTypeSchema = z.enum(['aprendiz', 'instructor', 'encargado', 'coordinador']);
 
-// El registro ofrece los 4 tipos. Aprendiz e invitado crean la cuenta al instante; instructor y
-// encargado envían una solicitud que un encargado debe aprobar (ADR 015).
-export const registrableAccountTypeSchema = accountTypeSchema;
-
-/** Tipos de cuenta que quedan pendientes hasta que un encargado los apruebe. */
-export const requiereAprobacion = (tipo: AccountType): boolean => tipo === 'instructor' || tipo === 'encargado';
+// El registro público solo ofrece aprendiz e instructor, y ambos quedan pendientes hasta que el
+// Coordinador los apruebe (ADR 018). Encargados y coordinadores los crea el equipo.
+export const registrableAccountTypeSchema = z.enum(['aprendiz', 'instructor']);
 
 const documentoSchema = z
   .string()
@@ -56,6 +53,8 @@ export const userSchema = z.object({
   email: z.string(),
   status: z.string().default('ACTIVE'),
   es_beneficiario: z.boolean().optional(),
+  /** Cuenta creada por carga masiva o con la clave restablecida: debe cambiarla al ingresar. */
+  debe_cambiar_clave: z.boolean().optional(),
 });
 
 // 5. Respuesta de autenticación
@@ -65,10 +64,13 @@ export const authResponseSchema = z.object({
   message: z.string(),
 });
 
-/** Respuesta 202 del registro de instructor o encargado: la cuenta queda pendiente, sin token. */
+/**
+ * Respuesta 202 del registro: la cuenta queda pendiente del Coordinador, sin token. Si la cédula
+ * ya estaba en una carga masiva, el backend responde 201 con la sesión (AuthResponse).
+ */
 export interface SolicitudResponse {
   message: string;
-  solicitud: { id: string; rol: 'instructor' | 'encargado'; estado: 'pendiente' };
+  solicitud: { id: string; rol: RegistrableAccountType; estado: 'pendiente' };
 }
 
 export type RegisterResponse = AuthResponse | SolicitudResponse;

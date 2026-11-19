@@ -1,4 +1,4 @@
-import type { FiltroSolicitudes, FiltrosKardex, PeriodoVentas } from '../types/api';
+import type { FiltrosAlmuerzosInvitados, FiltrosKardex, FiltrosUsuarios, PeriodoVentas } from '../types/api';
 
 /**
  * Claves de React Query centralizadas. Invalidar una clave invalida también las que
@@ -24,8 +24,17 @@ export const queryKeys = {
   recetas: ['inventario', 'recetas'] as const,
   kardex: (filtros: FiltrosKardex) => ['inventario', 'kardex', filtros] as const,
   mermas: ['inventario', 'mermas'] as const,
-  solicitudes: ['solicitudes-cuenta'] as const,
-  solicitudesPorEstado: (estado: FiltroSolicitudes) => ['solicitudes-cuenta', estado] as const,
+  almuerzosInvitados: ['almuerzos-invitados'] as const,
+  tarifasAlmuerzosInvitados: ['almuerzos-invitados', 'tarifas'] as const,
+  historialAlmuerzosInvitados: (filtros: FiltrosAlmuerzosInvitados) => ['almuerzos-invitados', 'historial', filtros] as const,
+  resumenAlmuerzosInvitados: (filtros: FiltrosAlmuerzosInvitados) => ['almuerzos-invitados', 'resumen', filtros] as const,
+  // Coordinador (ADR 018): invalidar ['coordinador'] refresca resumen, solicitudes, usuarios y fichas
+  coordinador: ['coordinador'] as const,
+  resumenCoordinador: ['coordinador', 'resumen'] as const,
+  solicitudesCoordinador: (q: string) => ['coordinador', 'solicitudes', q] as const,
+  usuariosCoordinador: (filtros: FiltrosUsuarios) => ['coordinador', 'usuarios', filtros] as const,
+  fichasCoordinador: ['coordinador', 'fichas'] as const,
+  cargasMasivas: ['coordinador', 'cargas'] as const,
 };
 
 /** Datos que el Encargado sigue en vivo: se refrescan solos mientras el panel está abierto. */

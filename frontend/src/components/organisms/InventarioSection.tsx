@@ -11,7 +11,7 @@ export interface InventarioSectionProps {
 
 /** Inventario del Encargado: cinco sub-vistas conectadas a /api/inventario. */
 export const InventarioSection = ({ activeSubSection = 'stock' }: InventarioSectionProps) => (
-  <div className="space-y-6">
+  <div className="flex flex-col gap-6">
     {activeSubSection === 'stock' && <StockView />}
     {activeSubSection === 'recetas' && <RecetasView />}
     {activeSubSection === 'kardex' && <KardexView />}

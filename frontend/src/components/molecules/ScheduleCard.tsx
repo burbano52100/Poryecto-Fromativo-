@@ -1,26 +1,20 @@
+import { Card } from '@heroui/react';
 import { Clock } from 'lucide-react';
 
 export interface ScheduleCardProps {
   scheduleText?: string;
 }
 
-export const ScheduleCard = ({
-  scheduleText = 'Lunes a Viernes: 7:00 AM - 6:00 PM',
-}: ScheduleCardProps) => {
-  return (
-    <div className="bg-blue-50/70 border border-blue-100 rounded-3xl p-5 sm:p-6 flex items-start gap-4 shadow-xs">
-      <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 border border-blue-200">
-        <Clock className="w-6 h-6" />
+export const ScheduleCard = ({ scheduleText = 'Lunes a viernes: 7:00 a. m. – 6:00 p. m.' }: ScheduleCardProps) => (
+  <Card>
+    <Card.Header className="flex-row items-start gap-3">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent-soft-foreground">
+        <Clock className="size-5" />
       </div>
-
       <div>
-        <h3 className="text-base sm:text-lg font-bold text-blue-950 tracking-tight">
-          Horario de Atención
-        </h3>
-        <p className="text-sm text-blue-800/80 mt-1 font-medium">
-          {scheduleText}
-        </p>
+        <Card.Title>Horario de atención</Card.Title>
+        <Card.Description>{scheduleText}</Card.Description>
       </div>
-    </div>
-  );
-};
+    </Card.Header>
+  </Card>
+);

@@ -1,85 +1,45 @@
+import { Card, Chip, Skeleton } from '@heroui/react';
 import type { ReactNode } from 'react';
+
+type Tono = 'accent' | 'success' | 'warning' | 'danger' | 'default';
 
 export interface StatCardProps {
   title: string;
-  value: string | number;
+  /** `undefined` mientras carga: se muestra un Skeleton. */
+  value: string | number | undefined;
   subtitle?: string;
   icon: ReactNode;
-  variant?: 'green' | 'emerald' | 'amber' | 'blue' | 'purple' | 'teal';
+  tone?: Tono;
   badgeText?: string;
 }
 
-export const StatCard = ({
-  title,
-  value,
-  subtitle,
-  icon,
-  variant = 'green',
-  badgeText,
-}: StatCardProps) => {
-  const variantStyles = {
-    green: {
-      bgIcon: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
-      textValue: 'text-emerald-700',
-      badgeBg: 'bg-emerald-100 text-emerald-800',
-      borderAccent: 'border-l-4 border-l-emerald-600',
-    },
-    emerald: {
-      bgIcon: 'bg-green-500/10 text-green-600 border-green-500/20',
-      textValue: 'text-green-700',
-      badgeBg: 'bg-green-100 text-green-800',
-      borderAccent: 'border-l-4 border-l-green-600',
-    },
-    amber: {
-      bgIcon: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
-      textValue: 'text-amber-700',
-      badgeBg: 'bg-amber-100 text-amber-800',
-      borderAccent: 'border-l-4 border-l-amber-500',
-    },
-    blue: {
-      bgIcon: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
-      textValue: 'text-blue-700',
-      badgeBg: 'bg-blue-100 text-blue-800',
-      borderAccent: 'border-l-4 border-l-blue-600',
-    },
-    purple: {
-      bgIcon: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
-      textValue: 'text-purple-700',
-      badgeBg: 'bg-purple-100 text-purple-800',
-      borderAccent: 'border-l-4 border-l-purple-600',
-    },
-    teal: {
-      bgIcon: 'bg-teal-500/10 text-teal-600 border-teal-500/20',
-      textValue: 'text-teal-700',
-      badgeBg: 'bg-teal-100 text-teal-800',
-      borderAccent: 'border-l-4 border-l-teal-600',
-    },
-  };
+const ICONO: Record<Tono, string> = {
+  accent: 'bg-accent-soft text-accent-soft-foreground',
+  success: 'bg-success-soft text-success-soft-foreground',
+  warning: 'bg-warning-soft text-warning-soft-foreground',
+  danger: 'bg-danger-soft text-danger-soft-foreground',
+  default: 'bg-default text-default-foreground',
+};
 
-  const style = variantStyles[variant];
-
-  return (
-    <div className={`bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100/80 hover:shadow-md transition-all duration-200 flex items-center justify-between ${style.borderAccent}`}>
-      <div className="flex-1 pr-3">
-        <div className="flex items-center gap-2">
-          <p className="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider">{title}</p>
-          {badgeText && (
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${style.badgeBg}`}>
-              {badgeText}
-            </span>
-          )}
-        </div>
-        <p className={`text-xl sm:text-2xl font-extrabold mt-1 tracking-tight ${style.textValue}`}>
-          {value}
-        </p>
-        {subtitle && (
-          <p className="text-xs text-gray-400 mt-0.5 font-medium truncate">{subtitle}</p>
+/** Métrica del encabezado del panel: título, valor y un icono a la derecha. */
+export const StatCard = ({ title, value, subtitle, icon, tone = 'accent', badgeText }: StatCardProps) => (
+  <Card className="flex-row items-center justify-between gap-3">
+    <div className="min-w-0 flex-1">
+      <div className="flex items-center gap-2">
+        <p className="text-sm text-muted">{title}</p>
+        {badgeText && (
+          <Chip size="sm" variant="soft" color={tone === 'default' ? 'default' : tone}>
+            {badgeText}
+          </Chip>
         )}
       </div>
-
-      <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 border ${style.bgIcon}`}>
-        {icon}
-      </div>
+      {value === undefined ? (
+        <Skeleton className="mt-2 h-7 w-24 rounded-md" />
+      ) : (
+        <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{value}</p>
+      )}
+      {subtitle && <p className="mt-0.5 truncate text-xs text-muted">{subtitle}</p>}
     </div>
-  );
-};
+    <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${ICONO[tone]}`}>{icon}</div>
+  </Card>
+);

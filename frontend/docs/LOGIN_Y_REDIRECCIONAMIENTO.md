@@ -6,7 +6,7 @@ Cómo funciona el inicio de sesión de GastroSENA, cómo se protegen las rutas d
 
 ## 1. Inicio de sesión
 
-El formulario (`components/organisms/LoginForm.tsx`) pide **solo documento y contraseña**. Ya no hay botones de tipo de cuenta, ni "Modo Invitado", ni reconocimiento facial, ni accesos rápidos de desarrollo.
+El formulario (`components/organisms/LoginForm.tsx`) pide **solo documento y contraseña**. Ya no hay botones de tipo de cuenta, ni reconocimiento facial, ni accesos rápidos de desarrollo.
 
 1. El formulario valida con Zod (`schemas/auth.schema.ts` → `loginSchema`): documento de 6 a 12 números y contraseña obligatoria.
 2. `useLoginMutation` (`hooks/useAuth.ts`) envía `POST /api/auth/login` con `{ document, password }`.
@@ -14,7 +14,7 @@ El formulario (`components/organisms/LoginForm.tsx`) pide **solo documento y con
 4. Si las credenciales fallan, el backend responde siempre `401 "Credenciales inválidas"`, sin decir si falló el documento o la contraseña. El formulario muestra ese mensaje.
 5. Si el login es correcto, se guarda la sesión (`lib/session.ts`) y se publica el usuario en la caché de React Query (`AUTH_QUERY_KEY`). La página de login ve al usuario y redirige sola a `/{rol}/inicio`.
 
-El enlace **"Registrarse"** abre `RegisterModal`. El registro sí pide tipo de cuenta, pero solo ofrece **Aprendiz** (con su número de Ficha) e **Invitado**. Instructores y encargados no se registran solos. Al registrarse, el usuario queda con la sesión iniciada y entra a su panel.
+El enlace **"Registrarse"** abre `RegisterModal`. El registro sí pide tipo de cuenta: **Aprendiz** (con su número de Ficha) crea la cuenta y entra a su panel; **Instructor** y **Encargado** envían una solicitud que un encargado aprueba (ADR 015). No existe perfil de invitado (ADR 016).
 
 ---
 
@@ -28,7 +28,6 @@ El enlace **"Registrarse"** abre `RegisterModal`. El registro sí pide tipo de c
 | `#/aprendiz/inicio` | Solo `aprendiz` |
 | `#/instructor/inicio` | Solo `instructor` |
 | `#/encargado/inicio` | Solo `encargado` |
-| `#/invitado/inicio` | Solo `invitado` |
 | Cualquier otra | Redirige a `#/login` (y de ahí al panel si hay sesión). |
 
 `routes/ProtectedRoute.tsx` aplica las reglas:

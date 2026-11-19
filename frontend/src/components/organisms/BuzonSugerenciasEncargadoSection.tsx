@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { Mail, CheckCircle2, Clock, MessageSquare, User, Calendar, MessageSquareReply } from 'lucide-react';
+import { CheckCircle2, MessageSquareReply } from 'lucide-react';
+import { Alert, Card, Chip } from '@heroui/react';
 import { Button } from '../atoms/Button';
-import { Badge } from '../atoms/Badge';
-import { LoadingSpinner } from '../atoms/LoadingSpinner';
 import { ConfirmDialog } from '../molecules/ConfirmDialog';
+import { EmptyMessage } from '../molecules/EmptyMessage';
 import { ErrorAlert } from '../molecules/ErrorAlert';
+import { ListSkeleton } from '../molecules/ListSkeleton';
+import { SectionCard } from '../molecules/SectionCard';
+import { TextAreaField } from '../molecules/TextAreaField';
 import { useResponderSugerencia, useSugerencias } from '../../hooks/useSugerencias';
 import type { Sugerencia } from '../../types/api';
 
-/** Buzón de gestión: recibe las sugerencias de aprendices, instructores e invitados. */
+/** Buzón de gestión: recibe las sugerencias de aprendices e instructores. */
 export const BuzonSugerenciasEncargadoSection = () => {
   const { data: sugerencias = [], isPending, isError, error, refetch } = useSugerencias();
   const responder = useResponderSugerencia();
@@ -42,162 +45,100 @@ export const BuzonSugerenciasEncargadoSection = () => {
   const pendingCount = totalCount - attendedCount;
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200/80 space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-gray-100">
-          <div>
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-              <Mail className="w-6 h-6 text-green-600" />
-              Gestión de Sugerencias y Comentarios
-            </h2>
-            <p className="text-sm text-gray-500 font-medium mt-1">
-              Revisión y atención de mensajes enviados por la comunidad SENA
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs font-bold">
-            <span className="bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-full">{attendedCount} Atendidas</span>
-            <span className="bg-amber-100 text-amber-800 px-3 py-1.5 rounded-full">{pendingCount} Pendientes</span>
-          </div>
-        </div>
-
+    <div className="flex flex-col gap-6">
+      <SectionCard
+        titulo="Sugerencias y comentarios"
+        descripcion="Mensajes enviados por aprendices e instructores"
+        acciones={
+          <>
+            <Chip variant="soft">{totalCount} recibidas</Chip>
+            <Chip variant="soft" color="success">
+              {attendedCount} Atendidas
+            </Chip>
+            <Chip variant="soft" color="warning">
+              {pendingCount} Pendientes
+            </Chip>
+          </>
+        }
+      >
         {attendedSuccess && (
-          <div role="status" className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center gap-3 text-emerald-800 text-sm font-semibold">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-            <span>{attendedSuccess}</span>
-          </div>
+          <Alert status="success" role="status">
+            <Alert.Indicator />
+            <Alert.Content>
+              <Alert.Description>{attendedSuccess}</Alert.Description>
+            </Alert.Content>
+          </Alert>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-blue-50/70 border border-blue-200/80 rounded-2xl p-5 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-              <MessageSquare className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-blue-800 uppercase tracking-wider">Total Recibidas</p>
-              <p className="text-2xl font-black text-blue-950 mt-0.5">{totalCount}</p>
-            </div>
-          </div>
-          <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-5 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Atendidas</p>
-              <p className="text-2xl font-black text-emerald-950 mt-0.5">{attendedCount}</p>
-            </div>
-          </div>
-          <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-5 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-              <Clock className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-amber-800 uppercase tracking-wider">Pendientes</p>
-              <p className="text-2xl font-black text-amber-950 mt-0.5">{pendingCount}</p>
-            </div>
-          </div>
-        </div>
-
         {isPending ? (
-          <LoadingSpinner label="Cargando sugerencias..." />
+          <ListSkeleton label="Cargando sugerencias..." />
         ) : isError ? (
           <ErrorAlert error={error} titulo="No se pudieron cargar las sugerencias" onReintentar={() => refetch()} />
         ) : sugerencias.length === 0 ? (
-          <p className="py-10 text-center text-sm text-gray-500">Aún no hay sugerencias en el buzón.</p>
+          <EmptyMessage>Aún no hay sugerencias en el buzón.</EmptyMessage>
         ) : (
-          <div className="space-y-4 pt-2">
+          <div className="flex flex-col gap-3">
             {sugerencias.map((item) => {
-              const isPending = item.status === 'PENDIENTE';
+              const pendiente = item.status === 'PENDIENTE';
               return (
-                <article
-                  key={item.id}
-                  className={`p-6 rounded-3xl border transition duration-200 space-y-3 ${
-                    isPending
-                      ? 'bg-amber-50/40 border-amber-200/80 hover:border-amber-300'
-                      : 'bg-gray-50/70 border-gray-200 hover:border-emerald-200'
-                  }`}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200/60 pb-3">
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`text-xs font-bold px-3 py-1 rounded-full border ${
-                          isPending
-                            ? 'bg-amber-100 text-amber-800 border-amber-300'
-                            : 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                        }`}
-                      >
-                        {isPending ? 'Pendiente' : 'Atendida'}
-                      </span>
-                      <h3 className="text-base font-extrabold text-gray-900">{item.subject}</h3>
+                <Card key={item.id} variant="secondary">
+                  <Card.Header className="flex-row flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Chip size="sm" variant="soft" color={pendiente ? 'warning' : 'success'}>
+                        {pendiente ? 'Pendiente' : 'Atendida'}
+                      </Chip>
+                      <Card.Title>{item.subject}</Card.Title>
                     </div>
-                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-400">
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span>{item.date}</span>
-                    </div>
-                  </div>
+                    <span className="text-xs text-muted">{item.date}</span>
+                  </Card.Header>
 
-                  <p className="text-sm text-gray-700 leading-relaxed">"{item.message}"</p>
+                  <Card.Content className="gap-2">
+                    <p className="text-sm text-foreground">{item.message}</p>
+                    {item.respuesta && (
+                      <p className="rounded-lg border-l-2 border-accent bg-surface p-3 text-sm text-muted">
+                        {item.respuesta}
+                      </p>
+                    )}
+                  </Card.Content>
 
-                  {item.respuesta && (
-                    <p className="text-sm text-emerald-900 bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex gap-2">
-                      <MessageSquareReply className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                      <span>{item.respuesta}</span>
-                    </p>
-                  )}
-
-                  <div className="pt-2 flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-gray-500">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <User className="w-4 h-4 text-gray-400" />
-                      <span className="font-bold text-gray-800">{item.author}</span>
-                      <span className="text-gray-400">&middot;</span>
-                      <Badge variant={item.role === 'Instructor' ? 'blue' : item.role === 'Invitado' ? 'amber' : 'green'} className="text-[11px] py-0 px-2">
-                        {item.role}
-                      </Badge>
-                      <span className="text-gray-400">&middot;</span>
-                      <span>{item.fichaOrDoc}</span>
-                    </div>
-
-                    {isPending && (
-                      <Button
-                        variant="primary"
-                        onClick={() => abrirRespuesta(item)}
-                        icon={<CheckCircle2 className="w-4 h-4" />}
-                        className="bg-green-600 hover:bg-green-700 text-xs py-1.5 px-3.5 font-bold"
-                      >
+                  <Card.Footer className="flex-wrap justify-between gap-3 text-xs text-muted">
+                    <span>
+                      <span className="font-medium text-foreground">{item.author}</span> · {item.role} · {item.fichaOrDoc}
+                    </span>
+                    {pendiente && (
+                      <Button size="sm" onPress={() => abrirRespuesta(item)}>
+                        <CheckCircle2 />
                         Responder y marcar atendida
                       </Button>
                     )}
-                  </div>
-                </article>
+                  </Card.Footer>
+                </Card>
               );
             })}
           </div>
         )}
-      </div>
+      </SectionCard>
 
       <ConfirmDialog
         abierto={sugerenciaAResponder !== null}
         titulo="Responder sugerencia"
-        icono={<MessageSquareReply className="w-8 h-8" />}
+        icono={<MessageSquareReply className="size-5" />}
         textoConfirmar="Marcar como atendida"
         onConfirmar={confirmarRespuesta}
         onCancelar={() => setSugerenciaAResponder(null)}
         cargando={responder.isPending}
       >
         {sugerenciaAResponder && (
-          <div className="space-y-3">
-            <p className="font-bold text-gray-900">{sugerenciaAResponder.subject}</p>
-            <label htmlFor="respuesta-sugerencia" className="block text-xs font-semibold text-gray-700">
-              Respuesta para {sugerenciaAResponder.author} (opcional)
-            </label>
-            <textarea
+          <div className="flex flex-col gap-3">
+            <p className="font-medium text-foreground">{sugerenciaAResponder.subject}</p>
+            <TextAreaField
               id="respuesta-sugerencia"
+              label={`Respuesta para ${sugerenciaAResponder.author} (opcional)`}
               rows={4}
               maxLength={1000}
               value={respuesta}
               onChange={(e) => setRespuesta(e.target.value)}
               placeholder="Gracias por tu sugerencia. Ya lo revisamos con el equipo de cocina."
-              className="w-full rounded-xl p-3 text-sm bg-gray-50 border border-gray-200 focus:outline-none focus:border-emerald-500"
             />
             {responder.isError && <ErrorAlert error={responder.error} titulo="No se pudo guardar la respuesta" />}
           </div>

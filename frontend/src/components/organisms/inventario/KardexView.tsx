@@ -1,19 +1,23 @@
 import { useState } from 'react';
-import { History } from 'lucide-react';
-import { Badge } from '../../atoms/Badge';
-import { LoadingSpinner } from '../../atoms/LoadingSpinner';
+import { Chip, Table } from '@heroui/react';
+import { Button } from '../../atoms/Button';
+import { EmptyMessage } from '../../molecules/EmptyMessage';
 import { ErrorAlert } from '../../molecules/ErrorAlert';
+import { FormField } from '../../molecules/FormField';
+import { ListSkeleton } from '../../molecules/ListSkeleton';
+import { SectionCard } from '../../molecules/SectionCard';
+import { SelectField } from '../../molecules/SelectField';
 import { useKardex, useMateriales } from '../../../hooks/useInventario';
 import type { FiltrosKardex, TipoKardex } from '../../../types/api';
 
-const COLOR_TIPO: Record<TipoKardex, 'green' | 'amber' | 'red' | 'blue'> = {
-  entrada: 'green',
-  salida: 'amber',
-  merma: 'red',
-  ajuste: 'blue',
+const COLOR_TIPO: Record<TipoKardex, 'success' | 'warning' | 'danger' | 'accent'> = {
+  entrada: 'success',
+  salida: 'warning',
+  merma: 'danger',
+  ajuste: 'accent',
 };
 
-const CAMPO = 'bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-medium';
+const TODOS = 'todos';
 
 export const KardexView = () => {
   const [filtros, setFiltros] = useState<FiltrosKardex>({});
@@ -24,114 +28,87 @@ export const KardexView = () => {
   const cambiar = <K extends keyof FiltrosKardex>(campo: K, valor: string) =>
     setFiltros((prev) => {
       const siguiente = { ...prev };
-      if (valor === '') delete siguiente[campo];
+      if (valor === '' || valor === TODOS) delete siguiente[campo];
       else siguiente[campo] = valor as FiltrosKardex[K];
       return siguiente;
     });
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200/80 space-y-5">
-      <div className="pb-4 border-b border-gray-100">
-        <h2 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-          <History className="w-6 h-6 text-green-600" />
-          Kardex de Movimientos
-        </h2>
-        <p className="text-sm text-gray-500 font-medium mt-1">Registro histórico de entradas, salidas y mermas de inventario</p>
-      </div>
-
-      <div className="flex flex-wrap items-end gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-200 text-sm">
-        <label className="flex flex-col gap-1 text-xs font-semibold text-gray-600">
-          Desde
-          <input type="date" value={filtros.desde ?? ''} onChange={(e) => cambiar('desde', e.target.value)} className={CAMPO} />
-        </label>
-        <label className="flex flex-col gap-1 text-xs font-semibold text-gray-600">
-          Hasta
-          <input type="date" value={filtros.hasta ?? ''} onChange={(e) => cambiar('hasta', e.target.value)} className={CAMPO} />
-        </label>
-        <label className="flex flex-col gap-1 text-xs font-semibold text-gray-600">
-          Material
-          <select value={filtros.material_id ?? ''} onChange={(e) => cambiar('material_id', e.target.value)} className={CAMPO}>
-            <option value="">Todos los materiales</option>
-            {materiales.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs font-semibold text-gray-600">
-          Movimiento
-          <select value={filtros.tipo ?? ''} onChange={(e) => cambiar('tipo', e.target.value)} className={CAMPO}>
-            <option value="">Todos los movimientos</option>
-            <option value="entrada">Entrada</option>
-            <option value="salida">Salida</option>
-            <option value="merma">Merma</option>
-            <option value="ajuste">Ajuste</option>
-          </select>
-        </label>
-        {Object.keys(filtros).length > 0 && (
-          <button type="button" onClick={() => setFiltros({})} className="text-xs font-bold text-emerald-700 hover:underline cursor-pointer pb-2">
-            Limpiar filtros
-          </button>
-        )}
+    <SectionCard titulo="Kardex de movimientos" descripcion="Historial de entradas, salidas y mermas del inventario">
+      <div className="grid items-end gap-3 rounded-xl bg-surface-secondary p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.5fr_1.5fr_auto]">
+        <FormField label="Desde" type="date" value={filtros.desde ?? ''} onChange={(e) => cambiar('desde', e.target.value)} />
+        <FormField label="Hasta" type="date" value={filtros.hasta ?? ''} onChange={(e) => cambiar('hasta', e.target.value)} />
+        <SelectField
+          label="Material"
+          value={filtros.material_id ?? TODOS}
+          onChange={(v) => cambiar('material_id', v)}
+          opciones={[{ id: TODOS, label: 'Todos los materiales' }, ...materiales.map((m) => ({ id: m.id, label: m.name }))]}
+        />
+        <SelectField
+          label="Movimiento"
+          value={filtros.tipo ?? TODOS}
+          onChange={(v) => cambiar('tipo', v)}
+          opciones={[
+            { id: TODOS, label: 'Todos los movimientos' },
+            { id: 'entrada', label: 'Entrada' },
+            { id: 'salida', label: 'Salida' },
+            { id: 'merma', label: 'Merma' },
+            { id: 'ajuste', label: 'Ajuste' },
+          ]}
+        />
+        <Button variant="ghost" onPress={() => setFiltros({})} isDisabled={Object.keys(filtros).length === 0}>
+          Limpiar filtros
+        </Button>
       </div>
 
       {isPending ? (
-        <LoadingSpinner label="Cargando movimientos..." />
+        <ListSkeleton label="Cargando movimientos..." forma="tabla" />
       ) : isError ? (
         <ErrorAlert error={error} titulo="No se pudo cargar el Kardex" onReintentar={() => refetch()} />
       ) : (
         <>
-          <p className="text-xs text-gray-500 font-medium">
+          <p className="text-xs text-muted">
             {data.total} movimiento{data.total === 1 ? '' : 's'}
             {data.total > data.items.length ? ` (se muestran los ${data.items.length} más recientes)` : ''}
           </p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  <th className="py-3 px-4">Fecha & Hora</th>
-                  <th className="py-3 px-4">Material</th>
-                  <th className="py-3 px-4">Tipo</th>
-                  <th className="py-3 px-4">Concepto</th>
-                  <th className="py-3 px-4">Responsable</th>
-                  <th className="py-3 px-4 text-emerald-700">Entrada</th>
-                  <th className="py-3 px-4 text-red-600">Salida</th>
-                  <th className="py-3 px-4 text-right">Saldo</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 font-medium">
-                {data.items.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-8 text-center text-gray-500">
-                      No hay movimientos con estos filtros.
-                    </td>
-                  </tr>
-                ) : (
-                  data.items.map((mov) => (
-                    <tr key={mov.id}>
-                      <td className="py-3.5 px-4 text-xs text-gray-500 whitespace-nowrap">{mov.date}</td>
-                      <td className="py-3.5 px-4 font-bold text-gray-900">{mov.material}</td>
-                      <td className="py-3.5 px-4">
-                        <Badge variant={COLOR_TIPO[mov.tipo]} className="capitalize">
+          <Table variant="secondary">
+            <Table.ScrollContainer>
+              <Table.Content aria-label="Movimientos del Kardex" className="min-w-[900px]">
+                <Table.Header>
+                  <Table.Column>Fecha y hora</Table.Column>
+                  <Table.Column isRowHeader>Material</Table.Column>
+                  <Table.Column>Tipo</Table.Column>
+                  <Table.Column>Concepto</Table.Column>
+                  <Table.Column>Responsable</Table.Column>
+                  <Table.Column>Entrada</Table.Column>
+                  <Table.Column>Salida</Table.Column>
+                  <Table.Column className="text-right">Saldo</Table.Column>
+                </Table.Header>
+                <Table.Body renderEmptyState={() => <EmptyMessage>No hay movimientos con estos filtros.</EmptyMessage>}>
+                  {data.items.map((mov) => (
+                    <Table.Row key={mov.id} id={mov.id}>
+                      <Table.Cell className="whitespace-nowrap text-xs text-muted">{mov.date}</Table.Cell>
+                      <Table.Cell className="font-medium text-foreground">{mov.material}</Table.Cell>
+                      <Table.Cell>
+                        <Chip size="sm" variant="soft" color={COLOR_TIPO[mov.tipo]} className="capitalize">
                           {mov.tipo}
-                        </Badge>
-                      </td>
-                      <td className="py-3.5 px-4 text-gray-600">{mov.concepto}</td>
-                      <td className="py-3.5 px-4 text-gray-600">{mov.responsible}</td>
-                      <td className="py-3.5 px-4 font-extrabold text-emerald-700 whitespace-nowrap">{mov.entry}</td>
-                      <td className="py-3.5 px-4 font-extrabold text-red-600 whitespace-nowrap">{mov.exit}</td>
-                      <td className="py-3.5 px-4 text-right font-bold text-gray-900 whitespace-nowrap">
+                        </Chip>
+                      </Table.Cell>
+                      <Table.Cell>{mov.concepto}</Table.Cell>
+                      <Table.Cell>{mov.responsible}</Table.Cell>
+                      <Table.Cell className="whitespace-nowrap font-medium tabular-nums text-success">{mov.entry}</Table.Cell>
+                      <Table.Cell className="whitespace-nowrap font-medium tabular-nums text-danger">{mov.exit}</Table.Cell>
+                      <Table.Cell className="whitespace-nowrap text-right font-medium tabular-nums text-foreground">
                         {mov.saldo} {mov.unidad}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                      </Table.Cell>
+                    </Table.Row>
+                  ))}
+                </Table.Body>
+              </Table.Content>
+            </Table.ScrollContainer>
+          </Table>
         </>
       )}
-    </div>
+    </SectionCard>
   );
 };

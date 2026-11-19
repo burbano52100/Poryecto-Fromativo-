@@ -22,7 +22,7 @@ export async function loginWithPassword(input: LoginInput): Promise<AuthResponse
   }
 }
 
-/** Aprendiz e invitado reciben la sesión; instructor y encargado, una solicitud pendiente (202). */
+/** El aprendiz recibe la sesión; instructor y encargado, una solicitud pendiente (202). */
 export async function registerUser(input: RegisterInput): Promise<RegisterResponse> {
   try {
     const { data } = await apiClient.post<RegisterResponse>('/auth/register', input);

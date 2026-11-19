@@ -1,4 +1,5 @@
-import { GraduationCap, Sparkles, Award } from 'lucide-react';
+import { Card, Chip } from '@heroui/react';
+import { Award } from 'lucide-react';
 import type { User } from '../../schemas/auth.schema';
 import { ScheduleCard } from '../molecules/ScheduleCard';
 import { ProgressCard } from '../molecules/ProgressCard';
@@ -16,86 +17,70 @@ export const InicioSection = ({ user }: InicioSectionProps) => {
   // El estado de beneficiario vigente lo reporta el menú (se lee de la BD en cada consulta)
   const esBeneficiario = menu?.es_beneficiario ?? user.es_beneficiario ?? false;
   const almuerzosMes = resumen?.almuerzosMes ?? 0;
+  const primerNombre = user.name.split(' ')[0];
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Banner Card */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-800 via-green-700 to-emerald-600 rounded-3xl p-6 sm:p-8 text-white shadow-lg border border-emerald-500/20">
-        <div className="absolute right-[-20px] top-[-20px] opacity-10 pointer-events-none">
-          <GraduationCap className="w-64 h-64 text-white" />
-        </div>
-
-        <div className="relative z-10 max-w-2xl">
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold tracking-wide text-emerald-100 border border-white/20">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>Sistema Web de Reserva GastroSENA</span>
-            </div>
-
+    <div className="flex flex-col gap-6">
+      <Card>
+        <Card.Header className="gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Card.Title className="text-xl">Hola, {primerNombre}</Card.Title>
             {esBeneficiario && (
-              <div className="inline-flex items-center gap-1.5 bg-amber-400 text-gray-950 font-black px-3 py-1 rounded-full text-xs shadow-md border border-amber-300">
-                <Award className="w-3.5 h-3.5 text-gray-950" />
-                <span>Beneficiario ($0 Gratis)</span>
-              </div>
+              <Chip size="sm" variant="soft" color="warning">
+                <Award className="size-3.5" />
+                <Chip.Label>Beneficiario · almuerzo sin costo</Chip.Label>
+              </Chip>
             )}
           </div>
-
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">¡Hola, {user.name}!</h2>
-
-          <p className="text-sm sm:text-base text-emerald-100 mt-2 leading-relaxed">
+          <Card.Description>
             {esBeneficiario
-              ? 'Cuentas con el beneficio de alimentación 100% subsidiada por el SENA. Puedes reservar tu almuerzo del día gratis con un solo clic.'
-              : 'Reserva tu almuerzo del día con anticipación en la cafetería escolar SENA. Recuerda presentar tu documento o ficha al ingresar.'}
-          </p>
+              ? 'Tienes alimentación 100 % subsidiada por el SENA: reserva el almuerzo del día con un clic.'
+              : 'Reserva el almuerzo del día con anticipación y presenta tu documento o ficha al ingresar.'}
+          </Card.Description>
+        </Card.Header>
+        <Card.Footer className="flex-wrap gap-2">
+          <Chip size="sm" variant="secondary">
+            Ficha {user.ficha || 'sin asignar'}
+          </Chip>
+          <Chip size="sm" variant="secondary">
+            {almuerzosMes} almuerzos este mes
+          </Chip>
+        </Card.Footer>
+      </Card>
 
-          <div className="mt-4 flex flex-wrap items-center gap-4 text-xs font-semibold text-emerald-200">
-            <div className="bg-emerald-950/40 px-3 py-1.5 rounded-xl border border-white/10">
-              Ficha: <span className="text-white font-bold">{user.ficha || 'Sin ficha'}</span>
-            </div>
-            <div className="bg-emerald-950/40 px-3 py-1.5 rounded-xl border border-white/10">
-              Reservados este mes: <span className="text-white font-bold">{almuerzosMes} almuerzos</span>
-            </div>
-            {esBeneficiario && (
-              <div className="bg-amber-400/20 text-amber-200 px-3 py-1.5 rounded-xl border border-amber-400/40 font-bold">
-                Tarifa actual: $0 COP
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Menú del Día con reserva real */}
       <ReservaAlmuerzoCard
         user={user}
         tituloConfirmacion="Confirmar Reserva de Almuerzo"
         detalleConfirmacion={(precio) => (
-          <>
-            <p className="text-center">
-              ¿Deseas reservar el <span className="font-bold text-gray-900">Menú del Día</span> por un valor de{' '}
-              <span className="font-bold text-emerald-600">{precio} COP</span>? Lo pagas en la ventanilla del comedor.
+          <div className="flex flex-col gap-3">
+            <p>
+              ¿Reservas el menú del día por <span className="font-medium text-foreground">{precio} COP</span>? Lo
+              pagas en la ventanilla del comedor.
             </p>
-            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mt-4 space-y-1 text-xs text-gray-600">
-              <p><span className="font-bold">Aprendiz:</span> {user.name}</p>
-              <p><span className="font-bold">Cédula:</span> {user.document}</p>
-              <p><span className="font-bold">Ficha:</span> {user.ficha || 'Sin ficha'}</p>
-            </div>
-          </>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-lg bg-surface-secondary p-3 text-xs">
+              <dt>Aprendiz</dt>
+              <dd className="text-foreground">{user.name}</dd>
+              <dt>Cédula</dt>
+              <dd className="text-foreground">{user.document}</dd>
+              <dt>Ficha</dt>
+              <dd className="text-foreground">{user.ficha || 'Sin ficha'}</dd>
+            </dl>
+          </div>
         )}
         mensajeExito={(reserva) =>
           reserva.estado_pago === 'gratis'
-            ? 'Tarifa: $0 COP (Beneficio 100% Subsidiado). Presenta tu documento o ficha en el comedor.'
+            ? 'Tarifa: $0 COP (beneficio 100 % subsidiado). Presenta tu documento o ficha en el comedor.'
             : `Tarifa: ${reserva.price} COP. Queda pendiente de pago hasta que la canceles en la ventanilla.`
         }
       />
 
-      {/* Bottom Grid: Horario de reservas y progreso */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="grid gap-4 md:grid-cols-2">
         <ScheduleCard
           scheduleText={
             menu ? `Reservas: ${menu.horario.abre} a ${menu.horario.cierra} (hora de Colombia)` : 'Reservas: 07:00 a 21:00'
           }
         />
-        <ProgressCard consumedLunches={almuerzosMes} message="¡Mantén una alimentación balanceada!" />
+        <ProgressCard consumedLunches={almuerzosMes} />
       </div>
     </div>
   );

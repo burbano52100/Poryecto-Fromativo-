@@ -4,50 +4,62 @@ import userEvent from '@testing-library/user-event';
 import { VisitasInstitucionalesSection } from './VisitasInstitucionalesSection';
 import { apiClient } from '../../lib/api';
 import { renderConProveedores, respuesta } from '../../test/utils';
+import { nombresVisitaSchema } from '../../schemas/visitas.schema';
 
 const DATOS: Record<string, unknown> = {
-  '/instituciones': [{ id: 'inst-1', nombre: 'Colegio San José', tipo: 'colegio', ciudad: 'Pitalito', activo: true }],
-  '/instructores': [{ id: 'ins-1', document: '1098765432', name: 'María Gómez', email: 'mgomez@sena.edu.co' }],
   '/visitas': [
     {
       id: 'vis-1',
-      institucion_id: 'inst-1',
       institucion_nombre: 'Colegio San José',
-      instructor_id: 'ins-1',
-      instructor_nombre: 'María Gómez',
-      nombre_instructor_ext: null,
+      responsable_nombre: 'María Gómez',
       cantidad_personas: 25,
       fecha_visita: '2026-11-20',
-      precio_unitario: 8000,
-      total_a_cobrar: 200000,
+      precio_unitario: 11000,
+      total_a_cobrar: 275000,
       estado: 'programada',
       metodo_pago: 'efectivo',
       estado_pago: 'pendiente',
       created_at: '2026-11-04T15:00:00.000Z',
     },
   ],
-  '/visitas/kpi': { totalVisitasMes: 1, totalPersonasAtendidas: 25, ingresosVisitas: 200000 },
+  '/visitas/kpi': { totalVisitasMes: 1, totalPersonasAtendidas: 25, ingresosVisitas: 275000 },
 };
 
+const simularApi = () => vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => respuesta(DATOS[url]));
+
 describe('Visitas institucionales (Encargado)', () => {
-  it('muestra el nombre del instructor y la fecha legible, no el id', async () => {
-    vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => respuesta(DATOS[url]));
+  it('la tabla muestra la institución y el responsable tal como se escribieron, y la fecha legible', async () => {
+    simularApi();
     renderConProveedores(<VisitasInstitucionalesSection />);
 
     const fila = (await screen.findByText('Colegio San José', { selector: 'td' })).closest('tr');
     expect(fila).toHaveTextContent('María Gómez');
     expect(fila).toHaveTextContent('20/11/2026');
-    expect(fila).not.toHaveTextContent('ins-1');
+    expect(fila).not.toHaveTextContent('Instructor SENA');
   });
 
-  it('registra una visita y la cantidad de personas solo acepta números', async () => {
-    vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => respuesta(DATOS[url]));
+  it('la institución y el responsable se escriben a mano: no hay listas ni botones para elegir', async () => {
+    const get = simularApi();
+    renderConProveedores(<VisitasInstitucionalesSection />);
+
+    expect(await screen.findByLabelText(/Nombre de la Institución/)).toHaveAttribute('placeholder', 'Ej: Colegio San José');
+    expect(screen.getByLabelText(/Nombre del Responsable/)).toHaveAttribute('placeholder', 'Ej: María Fernanda Gómez');
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Instructor SENA' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Nombre Externo' })).not.toBeInTheDocument();
+    expect(get).not.toHaveBeenCalledWith('/instituciones');
+    expect(get).not.toHaveBeenCalledWith('/instructores');
+  });
+
+  // Escribe ~60 teclas y cada una vuelve a pintar la sección con la Table de HeroUI: en jsdom tarda ~3,5 s
+  // y con toda la suite en paralelo pasa de los 5 s por defecto.
+  it('registra la visita con los nombres sin espacios sobrantes; la cantidad solo acepta números', async () => {
+    simularApi();
     const post = vi.spyOn(apiClient, 'post').mockResolvedValue(respuesta({ id: 'vis-2' }));
     renderConProveedores(<VisitasInstitucionalesSection />);
 
-    await screen.findByRole('option', { name: 'María Gómez' });
-    await userEvent.selectOptions(screen.getByLabelText(/Institución/), 'inst-1');
-    await userEvent.selectOptions(screen.getByLabelText(/Instructor Responsable/), 'ins-1');
+    await userEvent.type(await screen.findByLabelText(/Nombre de la Institución/), '  Universidad Surcolombiana ');
+    await userEvent.type(screen.getByLabelText(/Nombre del Responsable/), ' Pedro Pérez  ');
     const cantidad = screen.getByLabelText(/Cantidad de Personas/);
     await userEvent.type(cantidad, '3a0');
     expect(cantidad).toHaveValue('30');
@@ -55,12 +67,47 @@ describe('Visitas institucionales (Encargado)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Registrar Visita' }));
 
     expect(post).toHaveBeenCalledWith('/visitas', {
-      institucion_id: 'inst-1',
-      instructor_id: 'ins-1',
-      nombre_instructor_ext: undefined,
+      institucionNombre: 'Universidad Surcolombiana',
+      responsableNombre: 'Pedro Pérez',
       cantidad_personas: 30,
       fecha_visita: '2026-11-25',
     });
     expect(await screen.findByText('¡Visita registrada correctamente!')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Nombre de la Institución/)).toHaveValue('');
+  }, 15_000);
+
+  it('si faltan la institución o el responsable muestra el error debajo de cada campo y no envía', async () => {
+    simularApi();
+    const post = vi.spyOn(apiClient, 'post');
+    renderConProveedores(<VisitasInstitucionalesSection />);
+
+    await userEvent.type(await screen.findByLabelText(/Nombre del Responsable/), '    ');
+    await userEvent.type(screen.getByLabelText(/Cantidad de Personas/), '10');
+    await userEvent.type(screen.getByLabelText(/Fecha de la Visita/), '2026-11-25');
+    await userEvent.click(screen.getByRole('button', { name: 'Registrar Visita' }));
+
+    const institucion = screen.getByLabelText(/Nombre de la Institución/);
+    const responsable = screen.getByLabelText(/Nombre del Responsable/);
+    expect(institucion).toHaveAccessibleDescription('El nombre de la institución es obligatorio.');
+    expect(responsable).toHaveAccessibleDescription('El nombre del responsable es obligatorio.');
+    expect(institucion).toHaveAttribute('aria-invalid', 'true');
+    expect(post).not.toHaveBeenCalled();
+
+    // Al escribir, el error de ese campo desaparece
+    await userEvent.type(institucion, 'Colegio');
+    expect(screen.queryByText('El nombre de la institución es obligatorio.')).not.toBeInTheDocument();
+    expect(screen.getByText('El nombre del responsable es obligatorio.')).toBeInTheDocument();
+  });
+
+  it('los nombres admiten como máximo 150 caracteres', async () => {
+    simularApi();
+    renderConProveedores(<VisitasInstitucionalesSection />);
+
+    expect(await screen.findByLabelText(/Nombre de la Institución/)).toHaveAttribute('maxLength', '150');
+    expect(screen.getByLabelText(/Nombre del Responsable/)).toHaveAttribute('maxLength', '150');
+
+    const largo = nombresVisitaSchema.safeParse({ institucionNombre: 'a'.repeat(151), responsableNombre: 'b'.repeat(150) });
+    expect(largo.success).toBe(false);
+    expect(largo.error?.issues.map((i) => i.message)).toEqual(['El nombre de la institución no puede superar 150 caracteres.']);
   });
 });

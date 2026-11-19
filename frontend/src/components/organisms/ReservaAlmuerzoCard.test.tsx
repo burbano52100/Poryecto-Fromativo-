@@ -14,7 +14,6 @@ const menu = (overrides: Partial<MenuActivo> = {}): MenuActivo => ({
   nombre: 'Bandeja Huilense',
   descripcion: 'Sopa, arroz, proteína y jugo',
   precio_aprendiz: 5000,
-  precio_invitado: 8000,
   cantidad_disponible: 100,
   cantidad_vendida: 10,
   imagen_url: '/cafeteria-bg.jpg',
@@ -60,7 +59,7 @@ describe('Reserva de almuerzo del aprendiz', () => {
     expect(await screen.findByText('$0')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /Reservar Almuerzo \(Gratis\)/ }));
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(post).toHaveBeenCalledWith('/consumos/reservar', { menu_id: MENU_ID });
     expect(await screen.findByText('¡Almuerzo reservado con éxito!')).toBeInTheDocument();
   });
@@ -71,7 +70,7 @@ describe('Reserva de almuerzo del aprendiz', () => {
     renderTarjeta(false);
 
     await userEvent.click(await screen.findByRole('button', { name: 'Solicitar Almuerzo' }));
-    const dialogo = screen.getByRole('dialog', { name: 'Confirmar Reserva de Almuerzo' });
+    const dialogo = screen.getByRole('alertdialog', { name: 'Confirmar Reserva de Almuerzo' });
     expect(within(dialogo).getByText('Valor $5.000')).toBeInTheDocument();
     expect(post).not.toHaveBeenCalled();
 

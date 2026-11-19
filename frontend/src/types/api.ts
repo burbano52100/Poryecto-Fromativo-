@@ -13,7 +13,6 @@ export interface MenuActivo {
   nombre: string;
   descripcion: string | null;
   precio_aprendiz: number;
-  precio_invitado: number;
   cantidad_disponible: number;
   cantidad_vendida: number;
   imagen_url: string | null;
@@ -33,7 +32,6 @@ export interface MenuDia {
   nombre: string;
   descripcion: string | null;
   precio_aprendiz: number;
-  precio_invitado: number;
   cantidad_disponible: number;
   cantidad_vendida: number;
   imagen_url: string | null;
@@ -46,7 +44,6 @@ export interface NuevoMenu {
   fecha: string;
   descripcion?: string;
   precio_aprendiz: number;
-  precio_invitado: number;
   cantidad_disponible: number;
   imagen_url?: string;
   estado: EstadoMenu;
@@ -86,52 +83,221 @@ export interface ReporteVentas {
   desde: string;
   agrupacion: 'dia' | 'mes';
   totales: {
+    /** Reservas + personas de Almuerzos Invitados. */
     almuerzosServidos: number;
     almuerzosGratis: number;
+    /** Reservas pagadas + Almuerzos Invitados (se pagan al registrarlos). */
     ingresosCobrados: number;
     porCobrar: number;
+    almuerzosInvitados: number;
+    ingresosInvitados: number;
+    invitadosPorTipo: Record<TipoAlmuerzoInvitado, { personas: number; ingresos: number }>;
   };
-  breakdown: { fecha: string; label: string; count: number; ingresos: number; percent: number }[];
+  breakdown: {
+    fecha: string;
+    label: string;
+    count: number;
+    ingresos: number;
+    /** Personas de Almuerzos Invitados incluidas en `count`. */
+    invitados: number;
+    percent: number;
+  }[];
   transacciones: {
     id: string;
     fecha: string;
     cliente: string;
     cedula: string;
+    /** Rol del usuario; en un Almuerzo Invitado, su tipo. */
     rol: string;
     ficha: string;
     menu: string;
     precio: number;
     estado_pago: EstadoPago;
     beneficiario: boolean;
+    origen: 'reserva' | 'invitado';
+    personas: number;
   }[];
 }
 
 export interface ResumenEncargado {
+  /** Reservas + personas de Almuerzos Invitados de hoy. */
   ventasHoy: number;
   ingresosHoy: number;
+  invitadosHoy: number;
+  ingresosInvitadosHoy: number;
   porCobrarHoy: number;
   deudasPendientes: { monto: number; cantidad: number };
   sugerenciasPendientes: number;
   beneficiariosActivos: number;
-  solicitudesPendientes: number;
+  alertasPendientes?: number;
+  cajaCerradaHoy?: boolean;
 }
 
-// ---------------------------------------------------------------- Solicitudes de cuenta (ADR 015)
-export type EstadoSolicitud = 'pendiente' | 'aprobada' | 'rechazada';
-export type FiltroSolicitudes = EstadoSolicitud | 'todas';
+// ---------------------------------------------------------------- Almuerzos Invitados (ADR 016)
+export type TipoAlmuerzoInvitado = 'instructor' | 'aprendiz' | 'corriente';
 
-export interface SolicitudCuenta {
+/** GET /api/almuerzos-invitados/tarifas: las tarifas viven solo en el backend. */
+export interface TarifasAlmuerzosInvitados {
+  tarifas: { tipo: TipoAlmuerzoInvitado; precio: number }[];
+  maxPersonas: number;
+}
+
+export interface AlmuerzoInvitado {
+  id: string;
+  tipo: TipoAlmuerzoInvitado;
+  /** Número de personas. */
+  cantidad: number;
+  /** Precio por persona con el que se registró (no cambia si cambia la tarifa). */
+  precio_unitario: number;
+  total: number;
+  nombre_invitado: string | null;
+  registrado_por: { id: string; nombre: string | null };
+  /** ISO 8601 */
+  fecha_hora: string;
+  /** 'YYYY-MM-DDTHH:mm' en hora de Colombia (valor de un input datetime-local). */
+  fecha_local: string;
+}
+
+export interface NuevoAlmuerzoInvitado {
+  tipo: TipoAlmuerzoInvitado;
+  cantidad: number;
+  nombre_invitado: string | null;
+}
+
+export interface CambiosAlmuerzoInvitado {
+  cantidad: number;
+  nombre_invitado: string | null;
+  /** 'YYYY-MM-DDTHH:mm' en hora de Colombia. */
+  fecha_hora: string;
+}
+
+export interface FiltrosAlmuerzosInvitados {
+  /** YYYY-MM-DD */
+  desde: string;
+  /** YYYY-MM-DD */
+  hasta: string;
+  tipo?: TipoAlmuerzoInvitado;
+}
+
+export interface TotalesAlmuerzosInvitados {
+  personas: number;
+  total: number;
+  registros: number;
+}
+
+export interface ResumenAlmuerzosInvitados {
+  hoy: string;
+  desde: string;
+  hasta: string;
+  dia: TotalesAlmuerzosInvitados & { porTipo: Record<TipoAlmuerzoInvitado, TotalesAlmuerzosInvitados> };
+  periodo: TotalesAlmuerzosInvitados & { porTipo: Record<TipoAlmuerzoInvitado, TotalesAlmuerzosInvitados> };
+}
+
+// ---------------------------------------------------------------- Coordinador (ADR 018)
+export type RolGestionado = 'instructor' | 'aprendiz';
+export type EstadoCuenta = 'pendiente' | 'activo' | 'inactivo' | 'rechazado';
+
+/** GET /api/coordinador/resumen */
+export interface ResumenCoordinador {
+  activos: number;
+  pendientes: number;
+  instructores: number;
+  aprendices: number;
+}
+
+/** Cuenta de instructor o aprendiz (solicitudes y lista de usuarios). */
+export interface CuentaGestionada {
   id: string;
   nombre: string;
-  documento: string;
-  email: string;
-  rol: 'instructor' | 'encargado';
-  estado: EstadoSolicitud;
+  cedula: string;
+  email: string | null;
+  telefono: string | null;
+  rol: RolGestionado;
+  estado: EstadoCuenta;
+  origen: 'registro' | 'carga_masiva';
+  debe_cambiar_clave: boolean;
   motivo_rechazo: string | null;
   /** ISO 8601 */
-  fecha: string;
-  revisado_por: string | null;
-  revisado_en: string | null;
+  fecha_aprobacion: string | null;
+  /** ISO 8601 */
+  created_at: string;
+  ficha: string | null;
+  programa: string | null;
+}
+
+export interface FiltrosUsuarios {
+  rol?: RolGestionado;
+  estado?: EstadoCuenta;
+  ficha?: string;
+  q?: string;
+  pagina: number;
+  tamano: number;
+}
+
+/** GET /api/coordinador/usuarios */
+export interface PaginaUsuarios {
+  total: number;
+  pagina: number;
+  tamano: number;
+  items: CuentaGestionada[];
+}
+
+/** GET /api/coordinador/fichas */
+export interface FichaCoordinador {
+  id: string;
+  codigo_ficha: string;
+  programa: string;
+  jornada: string | null;
+  estado: 'activa' | 'finalizada';
+  aprendices: number;
+}
+
+export type TipoCarga = 'instructores' | 'aprendices';
+
+/** POST /api/coordinador/cargas/:tipo/previsualizar */
+export interface PrevisualizacionCarga {
+  tipo: TipoCarga;
+  archivo: string;
+  resumen: { total: number; validas: number; omitidas: number; errores: number };
+  filas: {
+    fila: number;
+    datos: Partial<Record<'nombre' | 'cedula' | 'correo' | 'telefono' | 'ficha' | 'programa' | 'jornada', string>>;
+    estado: 'valida' | 'omitida' | 'error';
+    mensajes: string[];
+  }[];
+}
+
+/** POST /api/coordinador/cargas/:tipo/confirmar (201) */
+export interface ResultadoCarga {
+  id: string;
+  tipo: TipoCarga;
+  archivo: string;
+  /** ISO 8601 */
+  fecha_hora: string;
+  resumen: { total_filas: number; creados: number; omitidos: number; con_error: number };
+  detalle: {
+    fila: number;
+    nombre: string;
+    cedula: string;
+    correo: string;
+    ficha?: string;
+    estado: 'creado' | 'omitido' | 'error';
+    mensaje: string;
+  }[];
+}
+
+/** GET /api/coordinador/cargas */
+export interface CargaMasiva {
+  id: string;
+  tipo: TipoCarga;
+  archivo: string;
+  total_filas: number;
+  creados: number;
+  omitidos: number;
+  con_error: number;
+  /** ISO 8601 */
+  fecha_hora: string;
+  coordinador: string | null;
 }
 
 // ---------------------------------------------------------------- Deudas

@@ -1,17 +1,16 @@
 import { useState, type ReactNode } from 'react';
-import { CheckCircle2, X } from 'lucide-react';
+import { Alert, Card, CloseButton, Skeleton } from '@heroui/react';
+import { CheckCircle2 } from 'lucide-react';
 import type { User } from '../../schemas/auth.schema';
 import type { ReservaCreada } from '../../types/api';
 import { esMenuPublicado, useMenuActivo, useReservarAlmuerzo } from '../../hooks/useMenu';
 import { MenuCard } from '../molecules/MenuCard';
 import { ConfirmDialog } from '../molecules/ConfirmDialog';
 import { ErrorAlert } from '../molecules/ErrorAlert';
-import { LoadingSpinner } from '../atoms/LoadingSpinner';
 import { fechaLarga, pesos } from '../../lib/formato';
 
 interface ReservaAlmuerzoCardProps {
   user: User;
-  ctaLabel?: string;
   note?: string;
   tituloConfirmacion: string;
   /** Contenido del modal de confirmación; recibe el precio que fijó el backend. */
@@ -25,7 +24,6 @@ interface ReservaAlmuerzoCardProps {
  */
 export const ReservaAlmuerzoCard = ({
   user,
-  ctaLabel,
   note,
   tituloConfirmacion,
   detalleConfirmacion,
@@ -38,9 +36,20 @@ export const ReservaAlmuerzoCard = ({
 
   if (isPending) {
     return (
-      <div className="bg-white rounded-3xl border border-gray-200/80">
-        <LoadingSpinner label="Cargando el menú del día..." />
-      </div>
+      <Card role="status" aria-label="Cargando el menú del día..." className="overflow-hidden p-0 md:flex-row">
+        <Skeleton className="h-48 w-full rounded-none md:h-auto md:w-64" />
+        <div className="flex flex-1 flex-col gap-3 p-5">
+          <Skeleton className="h-5 w-20 rounded-full" />
+          <Skeleton className="h-6 w-2/3 rounded-md" />
+          <Skeleton className="h-4 w-1/3 rounded-md" />
+          <Skeleton className="mt-4 h-4 w-full rounded-md" />
+          <Skeleton className="h-4 w-4/5 rounded-md" />
+          <div className="mt-6 flex items-end justify-between">
+            <Skeleton className="h-8 w-28 rounded-md" />
+            <Skeleton className="h-11 w-44 rounded-full" />
+          </div>
+        </div>
+      </Card>
     );
   }
 
@@ -69,24 +78,16 @@ export const ReservaAlmuerzoCard = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       {reservaHecha && (
-        <div role="status" className="bg-emerald-600 text-white rounded-2xl p-4 shadow-xl flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-6 h-6 text-emerald-200 shrink-0" />
-            <div>
-              <p className="font-extrabold text-sm sm:text-base">¡Almuerzo reservado con éxito!</p>
-              <p className="text-xs text-emerald-100">{mensajeExito(reservaHecha)}</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setReservaHecha(null)}
-            aria-label="Cerrar aviso"
-            className="p-1 hover:bg-emerald-700 rounded-lg text-emerald-200 hover:text-white cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        <Alert status="success" role="status">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>¡Almuerzo reservado con éxito!</Alert.Title>
+            <Alert.Description>{mensajeExito(reservaHecha)}</Alert.Description>
+          </Alert.Content>
+          <CloseButton aria-label="Cerrar aviso" onPress={() => setReservaHecha(null)} />
+        </Alert>
       )}
 
       {reservar.isError && (
@@ -104,7 +105,6 @@ export const ReservaAlmuerzoCard = ({
         canReserve={menu.reservable}
         unavailableReason={menu.motivo_no_reservable}
         reservation={menu.mi_reserva}
-        ctaLabel={ctaLabel}
         onRequestLunch={solicitar}
         isLoading={reservar.isPending && !confirmando}
         isBeneficiario={esBeneficiario}
@@ -113,7 +113,7 @@ export const ReservaAlmuerzoCard = ({
       <ConfirmDialog
         abierto={confirmando}
         titulo={tituloConfirmacion}
-        icono={<CheckCircle2 className="w-8 h-8" />}
+        icono={<CheckCircle2 className="size-5" />}
         textoConfirmar={`Confirmar (${precio})`}
         onConfirmar={ejecutarReserva}
         onCancelar={() => setConfirmando(false)}

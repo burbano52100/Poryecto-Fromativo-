@@ -1,45 +1,11 @@
-import { Receipt } from 'lucide-react';
-import { Badge } from '../atoms/Badge';
-import { LoadingSpinner } from '../atoms/LoadingSpinner';
-import { ConsumoRow } from '../molecules/ConsumoRow';
-import { ErrorAlert } from '../molecules/ErrorAlert';
-import { useConsumos } from '../../hooks/useConsumos';
+import { HistorialConsumos } from './MisFichasSection';
 
 /** Historial de consumos del instructor, con el estado de pago de cada almuerzo. */
-export const ConsumosSection = () => {
-  const { data: consumos = [], isPending, isError, error, refetch } = useConsumos();
-
-  return (
-    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200/80 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-gray-100">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-            <Receipt className="w-6 h-6 text-green-600" />
-            Historial de Consumos
-          </h2>
-          <p className="text-sm text-gray-500 mt-0.5 font-medium">
-            Registro oficial de almuerzos y estado de pago en el comedor
-          </p>
-        </div>
-
-        <Badge variant="blue" className="text-sm py-1.5 px-3.5 font-extrabold">
-          {consumos.length} consumos
-        </Badge>
-      </div>
-
-      {isPending ? (
-        <LoadingSpinner label="Cargando historial de consumos..." />
-      ) : isError ? (
-        <ErrorAlert error={error} titulo="No se pudo cargar el historial" onReintentar={() => refetch()} />
-      ) : consumos.length === 0 ? (
-        <p className="py-12 text-center text-gray-400 text-sm">Aún no tienes almuerzos registrados.</p>
-      ) : (
-        <div className="space-y-3">
-          {consumos.map((consumo) => (
-            <ConsumoRow key={consumo.id} consumo={consumo} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+export const ConsumosSection = () => (
+  <HistorialConsumos
+    titulo="Historial de consumos"
+    descripcion="Almuerzos registrados en el comedor y su estado de pago"
+    unidad="consumos"
+    vacio="Aún no tienes almuerzos registrados."
+  />
+);

@@ -1,12 +1,20 @@
 import { useState } from 'react';
-import { TrendingUp, ShoppingCart, DollarSign, Clock, Download, Award } from 'lucide-react';
-import { LoadingSpinner } from '../atoms/LoadingSpinner';
+import { Award, Clock, DollarSign, Download, ShoppingCart } from 'lucide-react';
+import { Card, Chip, Table } from '@heroui/react';
+import { Button } from '../atoms/Button';
 import { EstadoPagoBadge } from '../atoms/EstadoPagoBadge';
+import { StatCard } from '../atoms/StatCard';
+import { EmptyMessage } from '../molecules/EmptyMessage';
 import { ErrorAlert } from '../molecules/ErrorAlert';
+import { ListSkeleton } from '../molecules/ListSkeleton';
+import { SectionCard } from '../molecules/SectionCard';
+import { SelectField } from '../molecules/SelectField';
 import { useReporteVentas } from '../../hooks/useVentas';
 import { fechaHora, pesos } from '../../lib/formato';
 import { descargarCsv } from '../../lib/csv';
-import type { PeriodoVentas } from '../../types/api';
+import { ETIQUETA_TIPO_INVITADO, TIPOS_ALMUERZO_INVITADO, textoPersonas } from '../../schemas/almuerzosInvitados.schema';
+import type { PeriodoVentas, ReporteVentas, TipoAlmuerzoInvitado } from '../../types/api';
+import { ESTILO_TIPO_INVITADO } from './almuerzosInvitados/estiloTipo';
 
 const PERIODOS: PeriodoVentas[] = ['Día', 'Semana', 'Mes', 'Trimestre', 'Semestre', 'Año'];
 
@@ -19,6 +27,16 @@ const DESCRIPCION_PERIODO: Record<PeriodoVentas, string> = {
   Año: 'este año',
 };
 
+type Transaccion = ReporteVentas['transacciones'][number];
+
+const esInvitado = (t: Transaccion) => t.origen === 'invitado';
+
+/** "Aprendiz" para una reserva; "Invitado · Corrientes" para un Almuerzo Invitado. */
+const rolDeTransaccion = (t: Transaccion): string =>
+  esInvitado(t)
+    ? `Invitado · ${ETIQUETA_TIPO_INVITADO[t.rol as TipoAlmuerzoInvitado]?.corto ?? t.rol}`
+    : t.rol.charAt(0).toUpperCase() + t.rol.slice(1);
+
 export const VentasSection = () => {
   const [period, setPeriod] = useState<PeriodoVentas>('Semana');
   const { data, isPending, isError, error, refetch, isFetching } = useReporteVentas(period);
@@ -27,168 +45,197 @@ export const VentasSection = () => {
     if (!data) return;
     descargarCsv(
       `ventas-${data.period}-${data.desde}.csv`,
-      ['Fecha', 'Cliente', 'Cédula', 'Rol', 'Ficha', 'Menú', 'Estado de pago', 'Valor'],
-      data.transacciones.map((t) => [fechaHora(t.fecha), t.cliente, t.cedula, t.rol, t.ficha, t.menu, t.estado_pago, t.precio])
+      ['Fecha', 'Origen', 'Cliente', 'Cédula', 'Rol / Tipo', 'Ficha', 'Menú', 'Personas', 'Estado de pago', 'Valor'],
+      data.transacciones.map((t) => [
+        fechaHora(t.fecha),
+        esInvitado(t) ? 'Almuerzo invitado' : 'Reserva',
+        t.cliente,
+        t.cedula,
+        rolDeTransaccion(t),
+        t.ficha,
+        t.menu,
+        t.personas,
+        t.estado_pago,
+        t.precio,
+      ])
     );
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-2">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-            <TrendingUp className="w-6 h-6 text-green-600" />
-            Historial de Ventas
-          </h2>
-          <p className="text-sm text-gray-500 font-medium">
-            Reservas {DESCRIPCION_PERIODO[period]}, en hora de Colombia
+          <h3 className="text-base font-semibold text-foreground">Historial de ventas</h3>
+          <p className="text-sm text-muted">
+            Reservas y almuerzos invitados {DESCRIPCION_PERIODO[period]}, en hora de Colombia
             {isFetching && !isPending ? ' · actualizando…' : ''}
           </p>
         </div>
-
         <div className="flex items-center gap-2">
-          <label htmlFor="periodo-ventas" className="sr-only">
-            Período
-          </label>
-          <select
-            id="periodo-ventas"
+          <SelectField
+            label="Período"
+            ocultarLabel
+            className="w-40"
             value={period}
-            onChange={(e) => setPeriod(e.target.value as PeriodoVentas)}
-            className="bg-white border border-gray-300 px-4 py-2 rounded-2xl shadow-xs text-sm font-semibold text-gray-700 cursor-pointer focus:outline-none focus:border-emerald-500"
-          >
-            {PERIODOS.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={exportar}
-            disabled={!data || data.transacciones.length === 0}
-            className="inline-flex items-center gap-1.5 bg-white border border-gray-300 px-3 py-2 rounded-2xl text-sm font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Download className="w-4 h-4" /> CSV
-          </button>
+            onChange={(v) => setPeriod(v as PeriodoVentas)}
+            opciones={PERIODOS.map((p) => ({ id: p, label: p }))}
+          />
+          <Button variant="outline" onPress={exportar} isDisabled={!data || data.transacciones.length === 0}>
+            <Download /> CSV
+          </Button>
         </div>
       </div>
 
       {isError && <ErrorAlert error={error} titulo="No se pudo consultar el reporte de ventas" onReintentar={() => refetch()} />}
 
       {isPending ? (
-        <LoadingSpinner label="Cargando métricas de ventas..." />
+        <Card>
+          <ListSkeleton label="Cargando métricas de ventas..." forma="tabla" filas={6} />
+        </Card>
       ) : data ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="bg-emerald-600 rounded-3xl p-6 text-white shadow-lg flex items-center justify-between">
-              <div>
-                <p className="text-sm font-bold text-emerald-100 uppercase tracking-wider">Almuerzos servidos</p>
-                <p className="text-4xl font-black mt-3 tracking-tight">{data.totales.almuerzosServidos}</p>
-                <p className="text-xs text-emerald-100 mt-1 font-medium">
-                  Incluye {data.totales.almuerzosGratis} gratis de beneficiarios
-                </p>
-              </div>
-              <ShoppingCart className="w-10 h-10 text-white/40 shrink-0" />
-            </div>
-
-            <div className="bg-blue-600 rounded-3xl p-6 text-white shadow-lg flex items-center justify-between">
-              <div>
-                <p className="text-sm font-bold text-blue-100 uppercase tracking-wider">Ingresos cobrados</p>
-                <p className="text-4xl font-black mt-3 tracking-tight">{pesos(data.totales.ingresosCobrados)}</p>
-                <p className="text-xs text-blue-100 mt-1 font-medium">Solo almuerzos marcados como pagados</p>
-              </div>
-              <DollarSign className="w-10 h-10 text-white/40 shrink-0" />
-            </div>
-
-            <div className="bg-amber-500 rounded-3xl p-6 text-white shadow-lg flex items-center justify-between">
-              <div>
-                <p className="text-sm font-bold text-amber-50 uppercase tracking-wider">Por cobrar</p>
-                <p className="text-4xl font-black mt-3 tracking-tight">{pesos(data.totales.porCobrar)}</p>
-                <p className="text-xs text-amber-50 mt-1 font-medium">Reservas pendientes de pago</p>
-              </div>
-              <Clock className="w-10 h-10 text-white/40 shrink-0" />
-            </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <StatCard
+              title="Almuerzos servidos"
+              value={data.totales.almuerzosServidos}
+              subtitle={`Incluye ${data.totales.almuerzosGratis} gratis de beneficiarios y ${data.totales.almuerzosInvitados} de almuerzos invitados`}
+              icon={<ShoppingCart className="size-5" />}
+              tone="accent"
+            />
+            <StatCard
+              title="Ingresos cobrados"
+              value={pesos(data.totales.ingresosCobrados)}
+              subtitle={`Reservas pagadas + ${pesos(data.totales.ingresosInvitados)} de almuerzos invitados`}
+              icon={<DollarSign className="size-5" />}
+              tone="success"
+            />
+            <StatCard
+              title="Por cobrar"
+              value={pesos(data.totales.porCobrar)}
+              subtitle="Reservas pendientes de pago"
+              icon={<Clock className="size-5" />}
+              tone="warning"
+            />
           </div>
 
-          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200/80">
-            <h3 className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight">Distribución de Ventas</h3>
-            <p className="text-xs text-gray-500 font-medium mb-6">
-              Almuerzos por {data.agrupacion === 'mes' ? 'mes' : 'día'} desde el {data.desde}
-            </p>
+          <section aria-label="Almuerzos Invitados del período">
+            <SectionCard
+              titulo="Almuerzos invitados del período"
+              acciones={
+                <Chip variant="soft" color="warning">
+                  {textoPersonas(data.totales.almuerzosInvitados)} · {pesos(data.totales.ingresosInvitados)}
+                </Chip>
+              }
+            >
+              <div className="grid gap-3 sm:grid-cols-3">
+                {TIPOS_ALMUERZO_INVITADO.map((tipo) => {
+                  const { icono: Icono, iconoFondo } = ESTILO_TIPO_INVITADO[tipo];
+                  const totales = data.totales.invitadosPorTipo[tipo];
+                  return (
+                    <div key={tipo} className="flex items-center gap-3 rounded-xl bg-surface-secondary p-3">
+                      <div className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${iconoFondo}`}>
+                        <Icono className="size-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted">{ETIQUETA_TIPO_INVITADO[tipo].corto}</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {textoPersonas(totales.personas)} · {pesos(totales.ingresos)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </SectionCard>
+          </section>
 
+          <SectionCard
+            titulo="Distribución de ventas"
+            descripcion={`Almuerzos por ${data.agrupacion === 'mes' ? 'mes' : 'día'} desde el ${data.desde}`}
+            acciones={
+              <div className="flex items-center gap-3 text-xs text-muted">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-full bg-accent" /> Reservas
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-full bg-warning" /> Almuerzos invitados
+                </span>
+              </div>
+            }
+          >
             {data.totales.almuerzosServidos === 0 ? (
-              <p className="py-10 text-center text-gray-400 text-sm">No hay ventas registradas en el período seleccionado.</p>
+              <EmptyMessage>No hay ventas registradas en el período seleccionado.</EmptyMessage>
             ) : (
-              <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
+              <div className="flex max-h-96 flex-col gap-4 overflow-y-auto pr-1">
                 {data.breakdown.map((item) => (
-                  <div key={item.fecha} className="space-y-1.5">
-                    <div className="flex justify-between text-xs font-bold text-gray-700">
-                      <span className="capitalize">{item.label}</span>
-                      <span className="text-emerald-700">
-                        {item.count} almuerzos · {pesos(item.ingresos)} cobrados
+                  <div key={item.fecha} className="flex flex-col gap-1.5">
+                    <div className="flex justify-between gap-3 text-xs">
+                      <span className="capitalize text-foreground">{item.label}</span>
+                      <span className="text-right text-muted">
+                        {item.count} almuerzos{item.invitados > 0 ? ` (${item.invitados} invitados)` : ''} ·{' '}
+                        {pesos(item.ingresos)} cobrados
                       </span>
                     </div>
-                    <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                      <div
-                        className="bg-emerald-500 h-3 rounded-full transition-all duration-500"
-                        style={{ width: `${item.percent}%` }}
-                      />
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-default">
+                      <div className="flex h-2 overflow-hidden rounded-full" style={{ width: `${item.percent}%` }}>
+                        <div className="h-2 bg-accent" style={{ flexGrow: item.count - item.invitados }} />
+                        <div className="h-2 bg-warning" style={{ flexGrow: item.invitados }} />
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-          </div>
+          </SectionCard>
 
-          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200/80">
-            <h3 className="text-lg font-extrabold text-gray-900 tracking-tight mb-4">Transacciones del período</h3>
-
-            {data.transacciones.length === 0 ? (
-              <p className="text-sm text-gray-500 py-4">No hay reservas en este período.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                      <th className="py-3 px-4">Fecha & Hora</th>
-                      <th className="py-3 px-4">Cliente</th>
-                      <th className="py-3 px-4">Rol</th>
-                      <th className="py-3 px-4">Menú</th>
-                      <th className="py-3 px-4">Pago</th>
-                      <th className="py-3 px-4 text-right">Valor</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 font-medium">
+          <SectionCard titulo="Transacciones del período">
+            <Table variant="secondary">
+              <Table.ScrollContainer>
+                <Table.Content aria-label="Transacciones del período" className="min-w-[760px]">
+                  <Table.Header>
+                    <Table.Column>Fecha y hora</Table.Column>
+                    <Table.Column isRowHeader>Cliente</Table.Column>
+                    <Table.Column>Rol / Tipo</Table.Column>
+                    <Table.Column>Menú</Table.Column>
+                    <Table.Column>Pago</Table.Column>
+                    <Table.Column className="text-right">Valor</Table.Column>
+                  </Table.Header>
+                  <Table.Body renderEmptyState={() => <EmptyMessage>No hay ventas en este período.</EmptyMessage>}>
                     {data.transacciones.map((t) => (
-                      <tr key={t.id} className="hover:bg-gray-50/70 transition">
-                        <td className="py-3 px-4 text-xs text-gray-500 whitespace-nowrap">{fechaHora(t.fecha)}</td>
-                        <td className="py-3 px-4 font-bold text-gray-900">
-                          {t.cliente}
-                          <span className="block text-xs text-gray-400 font-normal">C.C. {t.cedula}</span>
-                        </td>
-                        <td className="py-3 px-4 text-gray-600">
-                          <span className="capitalize">{t.rol}</span>
-                          {t.ficha && <span className="block text-xs text-gray-400">Ficha {t.ficha}</span>}
-                        </td>
-                        <td className="py-3 px-4 text-gray-600">{t.menu}</td>
-                        <td className="py-3 px-4">
+                      <Table.Row key={t.id} id={t.id}>
+                        <Table.Cell className="whitespace-nowrap text-xs text-muted">{fechaHora(t.fecha)}</Table.Cell>
+                        <Table.Cell>
+                          <span className="font-medium text-foreground">
+                            {esInvitado(t) ? t.cliente || 'Almuerzo invitado' : t.cliente}
+                          </span>
+                          <span className="block text-xs text-muted">
+                            {esInvitado(t) ? textoPersonas(t.personas) : `C.C. ${t.cedula}`}
+                          </span>
+                        </Table.Cell>
+                        <Table.Cell>
+                          {rolDeTransaccion(t)}
+                          {t.ficha && <span className="block text-xs text-muted">Ficha {t.ficha}</span>}
+                        </Table.Cell>
+                        <Table.Cell>{t.menu}</Table.Cell>
+                        <Table.Cell>
                           <div className="flex flex-wrap items-center gap-1.5">
                             <EstadoPagoBadge estado={t.estado_pago} />
                             {t.beneficiario && (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700">
-                                <Award className="w-3 h-3" /> Beneficiario
-                              </span>
+                              <Chip size="sm" variant="soft" color="warning">
+                                <Award className="size-3" />
+                                <Chip.Label>Beneficiario</Chip.Label>
+                              </Chip>
                             )}
                           </div>
-                        </td>
-                        <td className="py-3 px-4 text-right font-extrabold text-emerald-700">{pesos(t.precio)}</td>
-                      </tr>
+                        </Table.Cell>
+                        <Table.Cell className="text-right font-medium tabular-nums">{pesos(t.precio)}</Table.Cell>
+                      </Table.Row>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                  </Table.Body>
+                </Table.Content>
+              </Table.ScrollContainer>
+            </Table>
+          </SectionCard>
         </>
       ) : null}
     </div>

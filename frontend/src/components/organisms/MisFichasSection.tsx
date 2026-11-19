@@ -1,47 +1,61 @@
-import { Receipt } from 'lucide-react';
-import { Badge } from '../atoms/Badge';
-import { LoadingSpinner } from '../atoms/LoadingSpinner';
+import { Chip, Separator } from '@heroui/react';
+import { Fragment } from 'react';
 import { ConsumoRow } from '../molecules/ConsumoRow';
+import { EmptyMessage } from '../molecules/EmptyMessage';
 import { ErrorAlert } from '../molecules/ErrorAlert';
+import { ListSkeleton } from '../molecules/ListSkeleton';
+import { SectionCard } from '../molecules/SectionCard';
 import { useConsumos } from '../../hooks/useConsumos';
 
-/** Mis Fichas / Consumos del aprendiz: cada reserva con su estado y si ya está pagada. */
-export const MisFichasSection = () => {
+interface HistorialConsumosProps {
+  titulo: string;
+  descripcion: string;
+  unidad: string;
+  vacio: string;
+}
+
+/** Lista de almuerzos del usuario con su estado de pago (aprendiz e instructor). */
+export const HistorialConsumos = ({ titulo, descripcion, unidad, vacio }: HistorialConsumosProps) => {
   const { data: consumos = [], isPending, isError, error, refetch } = useConsumos();
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200/80">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6 pb-4 border-b border-gray-100">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-            <Receipt className="w-6 h-6 text-green-600" />
-            Mis Fichas y Consumos
-          </h2>
-          <p className="text-sm text-gray-500 mt-0.5 font-medium">
-            Tus reservas de almuerzo y su estado de pago
-          </p>
-        </div>
-
-        <Badge variant="green" className="text-sm py-1.5 px-3.5 font-extrabold">
-          {consumos.length} fichas
-        </Badge>
-      </div>
-
+    <SectionCard
+      titulo={titulo}
+      descripcion={descripcion}
+      acciones={
+        !isPending && (
+          <Chip variant="soft" color="accent">
+            {consumos.length} {unidad}
+          </Chip>
+        )
+      }
+    >
       {isPending ? (
-        <LoadingSpinner label="Cargando tus fichas..." />
+        <ListSkeleton label="Cargando historial..." />
       ) : isError ? (
-        <ErrorAlert error={error} titulo="No se pudo cargar tu historial" onReintentar={() => refetch()} />
+        <ErrorAlert error={error} titulo="No se pudo cargar el historial" onReintentar={() => refetch()} />
       ) : consumos.length === 0 ? (
-        <p className="py-12 text-center text-gray-400 text-sm">
-          Aún no has reservado almuerzos. Hazlo desde Inicio.
-        </p>
+        <EmptyMessage>{vacio}</EmptyMessage>
       ) : (
-        <div className="space-y-3">
-          {consumos.map((consumo) => (
-            <ConsumoRow key={consumo.id} consumo={consumo} />
+        <div>
+          {consumos.map((consumo, i) => (
+            <Fragment key={consumo.id}>
+              {i > 0 && <Separator />}
+              <ConsumoRow consumo={consumo} />
+            </Fragment>
           ))}
         </div>
       )}
-    </div>
+    </SectionCard>
   );
 };
+
+/** Mis Fichas del aprendiz: cada reserva con su estado y si ya está pagada. */
+export const MisFichasSection = () => (
+  <HistorialConsumos
+    titulo="Mis fichas y consumos"
+    descripcion="Tus reservas de almuerzo y su estado de pago"
+    unidad="fichas"
+    vacio="Aún no has reservado almuerzos. Hazlo desde Inicio."
+  />
+);

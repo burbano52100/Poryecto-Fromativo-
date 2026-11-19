@@ -4,6 +4,38 @@ Registro cronológico detallado de arquitectura, características, refactorizaci
 
 ---
 
+## [2026-11-16] - Visitas Institucionales: institución y responsable escritos a mano
+
+### Rama: `integracion/pendientes`
+
+- **Motivo:** El encargado debe escribir la institución y el responsable de la visita en lugar de elegirlos de una lista.
+- **Cambios realizados:**
+  - `VisitasInstitucionalesSection.tsx`: los campos de texto obligatorios "Nombre de la Institución" y "Nombre del Responsable" reemplazan el select de instituciones, los botones "Instructor SENA" / "Nombre Externo" y el select de instructores. Ya no se piden `/instituciones` ni `/instructores`.
+  - Validación con Zod (`schemas/visitas.schema.ts`): sin espacios sobrantes, no vacío y máximo 150 caracteres; el error se muestra debajo de cada campo (`FormField`).
+  - La tabla muestra `institucion_nombre` y `responsable_nombre` tal como se escribieron.
+- **Backend:** `POST /api/visitas` recibe `institucionNombre` y `responsableNombre`; migración 008 con columnas de texto que copia los nombres de las visitas existentes.
+- **Tests:** `VisitasInstitucionalesSection.test.tsx`; backend `visitas.integration.test.ts` y `migration008.integration.test.ts`.
+
+---
+
+## [2026-11-16] - Sin perfil Invitado y nuevo módulo "Almuerzos Invitados" (ADR 016)
+
+### Rama: `integracion/pendientes`
+
+- **Motivo:** Los almuerzos de personas externas los cobra el encargado en la ventanilla, por grupos y con tarifas por tipo. El perfil Invitado (cuenta propia, compra a precio fijo) no servía para eso.
+- **Eliminado:**
+  - `pages/InvitadoDashboardPage.tsx`, `organisms/InicioInvitadoSection.tsx` y `molecules/YamboroInfoCard.tsx`; la ruta `#/invitado/inicio`.
+  - El rol en `schemas/auth.schema.ts`, `types/database.ts`, el registro (`AccountTypeSelector` queda con 3 tipos), `Sidebar`, `SidebarNavItem`, `SidebarUserProfile`, `DashboardLayout`, `StatsHeader` y `PerfilSection`; la variante `teal` de `StatCard`.
+  - El precio para invitados del Menú del Día (formulario, tarjeta y tipos) y la prop `ctaLabel` de `ReservaAlmuerzoCard`/`MenuCard`, que solo usaba la compra del invitado.
+- **Nuevo:**
+  - Sección **Almuerzos Invitados** del Encargado (`AlmuerzosInvitadosSection`): tres tarjetas (Instructores $10.000, Aprendices $5.000, Corrientes $11.000; las tarifas llegan del backend) con número de personas, botones − y + (`molecules/NumberStepper`), total en vivo y botón Registrar. Resumen de hoy y del período por tipo, historial filtrado por fechas y tipo, edición en modal y eliminación con confirmación.
+  - Validación con React Hook Form + Zod (`schemas/almuerzosInvitados.schema.ts`) y hooks de React Query (`hooks/useAlmuerzosInvitados.ts`), que al cambiar algo refrescan también Ventas y el encabezado.
+  - Ventas suma los almuerzos invitados en las tarjetas, con un panel por tipo, el gráfico apilado (reservas e invitados) y las transacciones y el CSV con origen y personas.
+  - Variante `amber` de `Button` (acento del Encargado).
+- **Tests:** `AlmuerzosInvitadosSection.test.tsx`, `VentasSection.test.tsx`; actualizados `App.test.tsx`, `RegisterModal.test.tsx`, `Sidebar.test.tsx` y `ReservaAlmuerzoCard.test.tsx`.
+
+---
+
 ## [2026-11-04] - Visitas institucionales en el panel del Encargado y limpieza
 
 ### Rama: `integracion/pendientes`

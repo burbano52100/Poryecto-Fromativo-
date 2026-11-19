@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Card } from '@heroui/react';
 import { Navigate } from 'react-router-dom';
 import { AuthLayout } from '../components/templates/AuthLayout';
 import { Header } from '../components/organisms/Header';
@@ -19,9 +20,9 @@ export const LoginPage = () => {
     <>
       <AuthLayout header={<Header />} onOpenHelp={() => setIsHelpOpen(true)}>
         {isPending ? (
-          <div className="bg-white/95 rounded-3xl shadow-2xl w-full max-w-md">
-            <LoadingSpinner label="Verificando sesión GastroSENA..." />
-          </div>
+          <Card className="w-full max-w-md">
+            <LoadingSpinner label="Verificando sesión..." />
+          </Card>
         ) : (
           <LoginForm />
         )}

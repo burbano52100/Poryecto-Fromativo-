@@ -1,4 +1,4 @@
-export type RolUsuario = 'aprendiz' | 'instructor' | 'encargado' | 'invitado'
+export type RolUsuario = 'aprendiz' | 'instructor' | 'encargado'
 export type MetodoVerificacion = 'facial' | 'qr' | 'manual'
 
 export interface Ficha {

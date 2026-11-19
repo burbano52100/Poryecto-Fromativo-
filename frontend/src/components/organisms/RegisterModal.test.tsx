@@ -13,27 +13,26 @@ const llenarDatosBasicos = async (documento: string) => {
 };
 
 describe('Registro', () => {
-  it('ofrece los 4 tipos de cuenta y pide mínimo 8 caracteres de contraseña', () => {
+  it('ofrece solo aprendiz e instructor (ADR 018), y pide mínimo 8 caracteres de contraseña', () => {
     renderConProveedores(<RegisterModal isOpen onClose={() => {}} />);
 
-    for (const tipo of ['Aprendiz', 'Invitado', 'Instructor', 'Encargado']) {
-      expect(screen.getByRole('button', { name: tipo })).toBeInTheDocument();
-    }
+    const tipos = screen.getAllByRole('radio');
+    expect(tipos.map((b) => b.textContent)).toEqual(['Aprendiz', 'Instructor']);
     expect(screen.getByLabelText(/^Contraseña/)).toHaveAttribute('placeholder', 'Mínimo 8 caracteres');
   });
 
   it('un instructor envía una solicitud: ve el aviso, no inicia sesión y no se cierra solo', async () => {
     const post = vi.spyOn(apiClient, 'post').mockResolvedValue(
       respuesta({
-        message: 'Solicitud enviada. Un encargado del comedor debe aprobar tu cuenta de instructor antes de que puedas ingresar.',
+        message: 'Solicitud enviada. El Coordinador debe aprobar tu cuenta de instructor antes de que puedas ingresar.',
         solicitud: { id: 'sol-1', rol: 'instructor', estado: 'pendiente' },
       })
     );
     const onClose = vi.fn();
     renderConProveedores(<RegisterModal isOpen onClose={onClose} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Instructor' }));
-    expect(screen.getByText(/necesitan aprobación/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('radio', { name: 'Instructor' }));
+    expect(screen.getByText(/el Coordinador revisará tu solicitud/)).toBeInTheDocument();
     expect(screen.queryByLabelText(/Número de Ficha/)).not.toBeInTheDocument();
 
     await llenarDatosBasicos('1098765432');
@@ -49,18 +48,37 @@ describe('Registro', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('un invitado sí crea la cuenta e inicia sesión', async () => {
-    vi.spyOn(apiClient, 'post').mockResolvedValue(
-      respuesta({ token: 'jwt-invitado', user: usuarioDePrueba({ role: 'invitado' }), message: 'ok' })
+  it('un aprendiz también queda pendiente del Coordinador y envía su ficha', async () => {
+    const post = vi.spyOn(apiClient, 'post').mockResolvedValue(
+      respuesta({
+        message: 'Solicitud enviada. El Coordinador debe aprobar tu cuenta de aprendiz antes de que puedas ingresar.',
+        solicitud: { id: 'sol-2', rol: 'aprendiz', estado: 'pendiente' },
+      })
     );
     renderConProveedores(<RegisterModal isOpen onClose={() => {}} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Invitado' }));
-    expect(screen.queryByText(/necesitan aprobación/)).not.toBeInTheDocument();
+    expect(screen.getByText(/el Coordinador revisará tu solicitud/)).toBeInTheDocument();
     await llenarDatosBasicos('1234567890');
-    await userEvent.click(screen.getByRole('button', { name: 'Registrarme' }));
+    await userEvent.type(screen.getByLabelText(/Número de Ficha/), '2847251');
+    await userEvent.click(screen.getByRole('button', { name: 'Enviar solicitud' }));
 
-    expect(await screen.findByText(/Cuenta creada correctamente/)).toBeInTheDocument();
-    expect(localStorage.getItem('gastrosena_token')).toBe('jwt-invitado');
+    expect(await screen.findByRole('heading', { name: 'Solicitud enviada' })).toBeInTheDocument();
+    expect(post).toHaveBeenCalledWith('/auth/register', expect.objectContaining({ accountType: 'aprendiz', ficha: '2847251' }));
+    expect(localStorage.getItem('gastrosena_token')).toBeNull();
+  });
+
+  it('si la cédula ya estaba en una carga masiva, la cuenta se activa e inicia sesión', async () => {
+    const mensaje = 'Tu cédula estaba en la lista del Coordinador: tu cuenta quedó activa.';
+    vi.spyOn(apiClient, 'post').mockResolvedValue(
+      respuesta({ token: 'jwt-aprendiz', user: usuarioDePrueba({ role: 'aprendiz' }), message: mensaje })
+    );
+    renderConProveedores(<RegisterModal isOpen onClose={() => {}} />);
+
+    await llenarDatosBasicos('1005678920');
+    await userEvent.type(screen.getByLabelText(/Número de Ficha/), '2847251');
+    await userEvent.click(screen.getByRole('button', { name: 'Enviar solicitud' }));
+
+    expect(await screen.findByText(mensaje)).toBeInTheDocument();
+    expect(localStorage.getItem('gastrosena_token')).toBe('jwt-aprendiz');
   });
 });

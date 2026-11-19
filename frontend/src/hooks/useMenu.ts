@@ -16,8 +16,8 @@ export const esMenuPublicado = (menu: MenuActivo | undefined): menu is MenuActiv
   !!menu && menu.id !== 'default_menu';
 
 /**
- * POST /api/consumos/reservar. El precio lo fija el backend (beneficiario $0, aprendiz
- * $5.000, invitado $8.000); el frontend nunca envía montos.
+ * POST /api/consumos/reservar. El precio lo fija el backend (beneficiario $0; aprendiz e
+ * instructor, el precio del menú); el frontend nunca envía montos.
  */
 export const useReservarAlmuerzo = () => {
   const queryClient = useQueryClient();

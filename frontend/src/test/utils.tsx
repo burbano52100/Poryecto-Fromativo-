@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Sidebar } from '../components/organisms/Sidebar';
@@ -49,3 +50,12 @@ export const respuesta = <T,>(data: T) => ({
   headers: {},
   config: { headers: {} },
 });
+
+/**
+ * Elige una opción de un Select de HeroUI: abre el disparador (su nombre incluye la etiqueta)
+ * y pulsa la opción en la lista.
+ */
+export const elegirOpcion = async (etiqueta: RegExp | string, opcion: string) => {
+  await userEvent.click(screen.getByRole('button', { name: etiqueta }));
+  await userEvent.click(await screen.findByRole('option', { name: opcion }));
+};

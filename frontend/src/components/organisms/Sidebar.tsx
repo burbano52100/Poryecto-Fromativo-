@@ -1,31 +1,35 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
-  Home,
-  Award,
-  Receipt,
-  CreditCard,
-  Mail,
-  User,
-  LogOut,
-  UtensilsCrossed,
-  X,
-  TrendingUp,
-  Utensils,
-  Package,
-  Users,
-  ListFilter,
-  ChefHat,
-  History,
   AlertTriangle,
-  Settings,
+  Award,
+  BookOpen,
   Building2,
+  ChefHat,
+  CreditCard,
+  HandPlatter,
+  History,
+  Home,
+  ListFilter,
+  LogOut,
+  Mail,
+  Package,
+  Receipt,
+  Settings,
+  TrendingUp,
+  Upload,
+  User,
   UserPlus,
+  Users,
+  Utensils,
 } from 'lucide-react';
+import { Button, Drawer, Separator } from '@heroui/react';
 import type { User as UserType } from '../../schemas/auth.schema';
 import { SidebarNavItem } from '../molecules/SidebarNavItem';
 import { SidebarUserProfile } from '../molecules/SidebarUserProfile';
 import { useResumenConsumos } from '../../hooks/useConsumos';
 import { useResumenEncargado } from '../../hooks/useVentas';
+import { useResumenCoordinador } from '../../hooks/useCoordinador';
+import { asset } from '../../lib/assets';
 
 export type SectionType =
   | 'inicio'
@@ -36,19 +40,19 @@ export type SectionType =
   | 'perfil'
   | 'ventas'
   | 'menu'
+  | 'almuerzosInvitados'
   | 'beneficiarios'
   | 'deudas'
   | 'inventario'
   | 'grupos'
   | 'visitas'
-  | 'solicitudes';
+  // Coordinador
+  | 'solicitudes'
+  | 'usuarios'
+  | 'gestionFichas'
+  | 'cargas';
 
-export type InventarioSubSection =
-  | 'stock'
-  | 'recetas'
-  | 'kardex'
-  | 'mermas'
-  | 'configuracion';
+export type InventarioSubSection = 'stock' | 'recetas' | 'kardex' | 'mermas' | 'configuracion';
 
 export interface SidebarProps {
   user: UserType;
@@ -60,6 +64,21 @@ export interface SidebarProps {
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
 }
+
+interface ItemMenu {
+  id: SectionType;
+  label: string;
+  icon: ReactNode;
+  badge?: number;
+}
+
+const SUBSECCIONES_INVENTARIO: { id: InventarioSubSection; label: string; icon: ReactNode }[] = [
+  { id: 'stock', label: 'Control de Stock', icon: <ListFilter /> },
+  { id: 'recetas', label: 'Recetas & Productos', icon: <ChefHat /> },
+  { id: 'kardex', label: 'Kardex (Historial)', icon: <History /> },
+  { id: 'mermas', label: 'Gestión de Mermas', icon: <AlertTriangle /> },
+  { id: 'configuracion', label: 'Configuración', icon: <Settings /> },
+];
 
 export const Sidebar = ({
   user,
@@ -73,378 +92,153 @@ export const Sidebar = ({
 }: SidebarProps) => {
   const isEncargado = user.role === 'encargado';
   const isInstructor = user.role === 'instructor';
-  const isInvitado = user.role === 'invitado';
+  const isCoordinador = user.role === 'coordinador';
 
-  // Conteo de almuerzos para el badge de "Mis Fichas" (aprendiz) y "Consumos" (instructor)
+  // Conteo de almuerzos para "Mis Fichas" (aprendiz) y "Consumos" (instructor)
   const { data: resumen } = useResumenConsumos(user.role === 'aprendiz' || isInstructor);
-  const totalLunchesCount = resumen?.totalAlmuerzos;
+  const totalAlmuerzos = resumen?.totalAlmuerzos;
 
-  // Pendientes del Encargado: los mismos datos del encabezado; sin badge cuando no hay ninguno
+  // Pendientes del Encargado: los mismos datos del encabezado; sin contador cuando no hay ninguno
   const { data: resumenEncargado } = useResumenEncargado(isEncargado);
   const deudasPendientes = resumenEncargado?.deudasPendientes?.cantidad || undefined;
   const sugerenciasPendientes = resumenEncargado?.sugerenciasPendientes || undefined;
-  const solicitudesPendientes = resumenEncargado?.solicitudesPendientes || undefined;
 
-  const [isInventarioExpanded, setIsInventarioExpanded] = useState(
-    activeSection === 'inventario'
-  );
+  // Solicitudes de cuenta pendientes del Coordinador (ADR 018)
+  const { data: resumenCoordinador } = useResumenCoordinador(isCoordinador);
+  const solicitudesPendientes = resumenCoordinador?.pendientes || undefined;
 
-  const handleInventarioClick = () => {
-    const nextState = !isInventarioExpanded;
-    setIsInventarioExpanded(nextState);
-    onSelectSection('inventario');
+  const [inventarioAbierto, setInventarioAbierto] = useState(activeSection === 'inventario');
+
+  const seleccionar = (id: SectionType) => {
+    onSelectSection(id);
+    onCloseMobile?.();
   };
 
-  const inventarioSubItems: { id: InventarioSubSection; label: string; icon: React.ReactNode }[] = [
-    { id: 'stock', label: 'Control de Stock', icon: <ListFilter className="w-4 h-4" /> },
-    { id: 'recetas', label: 'Recetas & Productos', icon: <ChefHat className="w-4 h-4" /> },
-    { id: 'kardex', label: 'Kardex (Historial)', icon: <History className="w-4 h-4" /> },
-    { id: 'mermas', label: 'Gestión de Mermas', icon: <AlertTriangle className="w-4 h-4" /> },
-    { id: 'configuracion', label: 'Configuración', icon: <Settings className="w-4 h-4" /> },
-  ];
+  const items: ItemMenu[] = isEncargado
+    ? [
+        { id: 'ventas', label: 'Ventas', icon: <TrendingUp /> },
+        { id: 'menu', label: 'Menú del Día', icon: <Utensils /> },
+        { id: 'almuerzosInvitados', label: 'Almuerzos Invitados', icon: <HandPlatter /> },
+        { id: 'beneficiarios', label: 'Beneficiarios', icon: <Award /> },
+        { id: 'deudas', label: 'Cartera de Deudas', icon: <CreditCard />, badge: deudasPendientes },
+        { id: 'inventario', label: 'Inventario', icon: <Package /> },
+        { id: 'grupos', label: 'Grupos', icon: <Users /> },
+        { id: 'visitas', label: 'Visitas Institucionales', icon: <Building2 /> },
+        { id: 'sugerencias', label: 'Buzón de Sugerencias', icon: <Mail />, badge: sugerenciasPendientes },
+      ]
+    : isCoordinador
+      ? [
+          { id: 'solicitudes', label: 'Solicitudes de Cuenta', icon: <UserPlus />, badge: solicitudesPendientes },
+          { id: 'usuarios', label: 'Usuarios', icon: <Users /> },
+          { id: 'gestionFichas', label: 'Fichas', icon: <BookOpen /> },
+          { id: 'cargas', label: 'Carga Masiva', icon: <Upload /> },
+          { id: 'perfil', label: 'Perfil', icon: <User /> },
+        ]
+      : isInstructor
+        ? [
+            { id: 'inicio', label: 'Inicio', icon: <Home /> },
+            { id: 'cuenta', label: 'Mi Cuenta', icon: <CreditCard /> },
+            { id: 'consumos', label: 'Consumos', icon: <Receipt />, badge: totalAlmuerzos },
+            { id: 'sugerencias', label: 'Buzón de Sugerencias', icon: <Mail /> },
+            { id: 'perfil', label: 'Perfil', icon: <User /> },
+          ]
+        : [
+            { id: 'inicio', label: 'Inicio', icon: <Home /> },
+            { id: 'fichas', label: 'Mis Fichas', icon: <Receipt />, badge: totalAlmuerzos },
+            { id: 'sugerencias', label: 'Buzón de Sugerencias', icon: <Mail /> },
+            { id: 'perfil', label: 'Perfil', icon: <User /> },
+          ];
+
+  const contenido = (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center gap-2.5 px-5 py-4">
+        <img src={asset('/logo.png')} alt="" className="size-8 object-contain" />
+        <div className="leading-tight">
+          <p className="font-semibold text-foreground">GastroSENA</p>
+          <p className="text-xs text-muted">Comedor estudiantil</p>
+        </div>
+      </div>
+
+      <div className="px-3">
+        <SidebarUserProfile user={user} />
+      </div>
+
+      <nav aria-label="Menú principal" className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
+        {items.map((item) =>
+          item.id === 'inventario' ? (
+            <div key={item.id}>
+              <SidebarNavItem
+                label={item.label}
+                icon={item.icon}
+                isActive={activeSection === 'inventario'}
+                hasSubItems
+                isExpanded={inventarioAbierto}
+                onClick={() => {
+                  setInventarioAbierto((abierto) => !abierto);
+                  onSelectSection('inventario');
+                }}
+              />
+              {inventarioAbierto && (
+                <div className="ml-5 mt-0.5 space-y-0.5 border-l border-separator pl-2">
+                  {SUBSECCIONES_INVENTARIO.map((sub) => (
+                    <SidebarNavItem
+                      key={sub.id}
+                      label={sub.label}
+                      icon={sub.icon}
+                      isSubItem
+                      isActive={activeSection === 'inventario' && activeInventarioSubSection === sub.id}
+                      onClick={() => {
+                        onSelectInventarioSubSection?.(sub.id);
+                        seleccionar('inventario');
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <SidebarNavItem
+              key={item.id}
+              label={item.label}
+              icon={item.icon}
+              badge={item.badge}
+              isActive={activeSection === item.id}
+              onClick={() => seleccionar(item.id)}
+            />
+          )
+        )}
+      </nav>
+
+      <Separator />
+      <div className="p-3">
+        <Button variant="ghost" fullWidth onPress={onLogout} className="justify-start text-muted hover:text-danger">
+          <LogOut />
+          Cerrar Sesión
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <>
-      {/* Overlay Backdrop for Mobile Drawer */}
-      {isOpenMobile && (
-        <div
-          className="fixed inset-0 bg-gray-950/60 backdrop-blur-xs z-40 lg:hidden"
-          onClick={onCloseMobile}
-        />
-      )}
-
-      {/* Sidebar Main Container (Light Theme) */}
-      <aside
-        className={`fixed top-0 left-0 bottom-0 z-50 w-72 bg-white text-gray-800 flex flex-col justify-between border-r border-gray-200 shadow-md transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          isOpenMobile ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        {/* Top Header & Branding */}
-        <div className="p-5 flex flex-col gap-5 border-b border-gray-100">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-600/20">
-                <UtensilsCrossed className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-lg font-black tracking-tight text-gray-900 flex items-center gap-1">
-                  Gastro<span className="text-emerald-600">SENA</span>
-                </h1>
-                <p className="text-[11px] text-gray-500 font-semibold tracking-wide">
-                  Comedor Estudiantil
-                </p>
-              </div>
-            </div>
-
-            {/* Mobile Close Button */}
-            {onCloseMobile && (
-              <button
-                onClick={onCloseMobile}
-                className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
-          </div>
-
-          {/* User Profile Component */}
-          <SidebarUserProfile user={user} />
-        </div>
-
-        {/* Navigation Items Area */}
-        <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
-          <p className="px-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-            Navegación Principal
-          </p>
-
-          {isInvitado ? (
-            <>
-              <SidebarNavItem
-                id="inicio"
-                label="Inicio"
-                icon={<Home className="w-5 h-5" />}
-                isActive={activeSection === 'inicio'}
-                roleVariant="invitado"
-                onClick={() => {
-                  onSelectSection('inicio');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-              <SidebarNavItem
-                id="sugerencias"
-                label="Buzón de Sugerencias"
-                icon={<Mail className="w-5 h-5" />}
-                isActive={activeSection === 'sugerencias'}
-                roleVariant="invitado"
-                onClick={() => {
-                  onSelectSection('sugerencias');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-            </>
-          ) : isEncargado ? (
-            <>
-              <SidebarNavItem
-                id="ventas"
-                label="Ventas"
-                icon={<TrendingUp className="w-5 h-5" />}
-                isActive={activeSection === 'ventas'}
-                roleVariant="encargado"
-                onClick={() => {
-                  onSelectSection('ventas');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-
-              <SidebarNavItem
-                id="menu"
-                label="Menú del Día"
-                icon={<Utensils className="w-5 h-5" />}
-                isActive={activeSection === 'menu'}
-                roleVariant="encargado"
-                onClick={() => {
-                  onSelectSection('menu');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-
-              <SidebarNavItem
-                id="beneficiarios"
-                label="Beneficiarios"
-                icon={<Award className="w-5 h-5" />}
-                isActive={activeSection === 'beneficiarios'}
-                roleVariant="encargado"
-                onClick={() => {
-                  onSelectSection('beneficiarios');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-
-              <SidebarNavItem
-                id="deudas"
-                label="Cartera de Deudas"
-                icon={<CreditCard className="w-5 h-5" />}
-                isActive={activeSection === 'deudas'}
-                roleVariant="encargado"
-                badge={deudasPendientes}
-                onClick={() => {
-                  onSelectSection('deudas');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-
-              {/* Inventario Accordion Parent */}
-              <div>
-                <SidebarNavItem
-                  id="inventario"
-                  label="Inventario"
-                  icon={<Package className="w-5 h-5" />}
-                  isActive={activeSection === 'inventario'}
-                  roleVariant="encargado"
-                  hasSubItems={true}
-                  isExpanded={isInventarioExpanded}
-                  onClick={handleInventarioClick}
-                />
-
-                {/* Sub-items accordion container */}
-                {isInventarioExpanded && (
-                  <div className="mt-1 space-y-1 border-l-2 border-emerald-500/40 ml-5 pl-2 animate-fade-in">
-                    {inventarioSubItems.map((sub) => (
-                      <SidebarNavItem
-                        key={sub.id}
-                        id={sub.id}
-                        label={sub.label}
-                        icon={sub.icon}
-                        isSubItem={true}
-                        roleVariant="encargado"
-                        isActive={
-                          activeSection === 'inventario' &&
-                          activeInventarioSubSection === sub.id
-                        }
-                        onClick={() => {
-                          onSelectSection('inventario');
-                          if (onSelectInventarioSubSection) {
-                            onSelectInventarioSubSection(sub.id);
-                          }
-                          if (onCloseMobile) onCloseMobile();
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <SidebarNavItem
-                id="grupos"
-                label="Grupos"
-                icon={<Users className="w-5 h-5" />}
-                isActive={activeSection === 'grupos'}
-                roleVariant="encargado"
-                onClick={() => {
-                  onSelectSection('grupos');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-
-              <SidebarNavItem
-                id="visitas"
-                label="Visitas Institucionales"
-                icon={<Building2 className="w-5 h-5" />}
-                isActive={activeSection === 'visitas'}
-                roleVariant="encargado"
-                onClick={() => {
-                  onSelectSection('visitas');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-
-              <SidebarNavItem
-                id="solicitudes"
-                label="Solicitudes de Cuenta"
-                icon={<UserPlus className="w-5 h-5" />}
-                isActive={activeSection === 'solicitudes'}
-                roleVariant="encargado"
-                badge={solicitudesPendientes}
-                onClick={() => {
-                  onSelectSection('solicitudes');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-
-              <SidebarNavItem
-                id="sugerencias"
-                label="Buzón de Sugerencias"
-                icon={<Mail className="w-5 h-5" />}
-                isActive={activeSection === 'sugerencias'}
-                roleVariant="encargado"
-                badge={sugerenciasPendientes}
-                onClick={() => {
-                  onSelectSection('sugerencias');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-            </>
-          ) : isInstructor ? (
-            <>
-              <SidebarNavItem
-                id="inicio"
-                label="Inicio"
-                icon={<Home className="w-5 h-5" />}
-                isActive={activeSection === 'inicio'}
-                roleVariant="instructor"
-                onClick={() => {
-                  onSelectSection('inicio');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-              <SidebarNavItem
-                id="cuenta"
-                label="Mi Cuenta"
-                icon={<CreditCard className="w-5 h-5" />}
-                isActive={activeSection === 'cuenta'}
-                roleVariant="instructor"
-                onClick={() => {
-                  onSelectSection('cuenta');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-              <SidebarNavItem
-                id="consumos"
-                label="Consumos"
-                icon={<Receipt className="w-5 h-5" />}
-                isActive={activeSection === 'consumos'}
-                roleVariant="instructor"
-                badge={totalLunchesCount}
-                onClick={() => {
-                  onSelectSection('consumos');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-              <SidebarNavItem
-                id="sugerencias"
-                label="Buzón de Sugerencias"
-                icon={<Mail className="w-5 h-5" />}
-                isActive={activeSection === 'sugerencias'}
-                roleVariant="instructor"
-                onClick={() => {
-                  onSelectSection('sugerencias');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-              <SidebarNavItem
-                id="perfil"
-                label="Perfil"
-                icon={<User className="w-5 h-5" />}
-                isActive={activeSection === 'perfil'}
-                roleVariant="instructor"
-                onClick={() => {
-                  onSelectSection('perfil');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-            </>
-          ) : (
-            <>
-              <SidebarNavItem
-                id="inicio"
-                label="Inicio"
-                icon={<Home className="w-5 h-5" />}
-                isActive={activeSection === 'inicio'}
-                roleVariant="aprendiz"
-                onClick={() => {
-                  onSelectSection('inicio');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-              <SidebarNavItem
-                id="fichas"
-                label="Mis Fichas"
-                icon={<Receipt className="w-5 h-5" />}
-                isActive={activeSection === 'fichas'}
-                roleVariant="aprendiz"
-                badge={totalLunchesCount}
-                onClick={() => {
-                  onSelectSection('fichas');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-              <SidebarNavItem
-                id="sugerencias"
-                label="Buzón de Sugerencias"
-                icon={<Mail className="w-5 h-5" />}
-                isActive={activeSection === 'sugerencias'}
-                roleVariant="aprendiz"
-                onClick={() => {
-                  onSelectSection('sugerencias');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-              <SidebarNavItem
-                id="perfil"
-                label="Perfil"
-                icon={<User className="w-5 h-5" />}
-                isActive={activeSection === 'perfil'}
-                roleVariant="aprendiz"
-                onClick={() => {
-                  onSelectSection('perfil');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-              />
-            </>
-          )}
-        </nav>
-
-        {/* Bottom Logout Area */}
-        <div className="p-4 border-t border-gray-100 bg-gray-50/50">
-          <button
-            onClick={onLogout}
-            className="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl text-gray-600 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition duration-200 cursor-pointer text-sm font-semibold group"
-          >
-            <LogOut className="w-4 h-4 text-gray-400 group-hover:text-red-500 transition" />
-            <span>Cerrar Sesión</span>
-          </button>
-        </div>
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-separator bg-surface lg:block">
+        {contenido}
       </aside>
+
+      {onCloseMobile && (
+        <Drawer.Backdrop
+          isOpen={isOpenMobile}
+          onOpenChange={(abierto) => {
+            if (!abierto) onCloseMobile();
+          }}
+        >
+          <Drawer.Content placement="left" className="w-72 max-w-[85vw]">
+            <Drawer.Dialog aria-label="Menú de navegación" className="h-full p-0">
+              {contenido}
+            </Drawer.Dialog>
+          </Drawer.Content>
+        </Drawer.Backdrop>
+      )}
     </>
   );
 };
