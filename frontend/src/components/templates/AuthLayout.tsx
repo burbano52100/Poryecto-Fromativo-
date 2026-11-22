@@ -25,7 +25,7 @@ export const AuthLayout = ({ header, children, onOpenHelp }: AuthLayoutProps) =>
     </div>
 
     <footer className="relative z-10 w-full pt-6 text-center">
-      <p className="text-xs text-white/70">© 2026 SENA · Todos los derechos reservados</p>
+      <p className="text-xs text-white/70">© 2026 SENA</p>
     </footer>
 
     {/* El Button de HeroUI es el disparador del Tooltip (sin Tooltip.Trigger, que añadiría otro botón) */}

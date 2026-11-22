@@ -23,7 +23,7 @@ export const HistorialAlmuerzosInvitados = ({ registros, onEditar, onEliminar }:
           <Table.Column className="text-right">Personas</Table.Column>
           <Table.Column className="text-right">Precio unitario</Table.Column>
           <Table.Column className="text-right">Total</Table.Column>
-          <Table.Column>Nombre / nota</Table.Column>
+          <Table.Column>Nombre o nota</Table.Column>
           <Table.Column>Registró</Table.Column>
           <Table.Column className="text-right">Acciones</Table.Column>
         </Table.Header>

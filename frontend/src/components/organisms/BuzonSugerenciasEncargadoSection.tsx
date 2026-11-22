@@ -85,8 +85,8 @@ export const BuzonSugerenciasEncargadoSection = () => {
                   <Card.Content className="gap-2">
                     <p className="text-sm text-foreground">{item.message}</p>
                     {item.respuesta && (
-                      <p className="rounded-lg border-l-2 border-accent bg-surface p-3 text-sm text-muted">
-                        {item.respuesta}
+                      <p className="border-t border-separator pt-2 text-sm text-muted">
+                        <span className="font-medium text-foreground">Tu respuesta:</span> {item.respuesta}
                       </p>
                     )}
                   </Card.Content>

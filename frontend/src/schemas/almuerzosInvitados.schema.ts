@@ -10,9 +10,9 @@ import { ahoraBogotaLocal } from '../lib/formato';
 export const TIPOS_ALMUERZO_INVITADO = ['instructor', 'aprendiz', 'corriente'] as const satisfies readonly TipoAlmuerzoInvitado[];
 
 export const ETIQUETA_TIPO_INVITADO: Record<TipoAlmuerzoInvitado, { titulo: string; corto: string }> = {
-  instructor: { titulo: 'Almuerzos Invitados Instructores', corto: 'Instructores' },
-  aprendiz: { titulo: 'Almuerzos Invitados Aprendices', corto: 'Aprendices' },
-  corriente: { titulo: 'Almuerzos Invitados Corrientes', corto: 'Corrientes' },
+  instructor: { titulo: 'Almuerzos invitados de instructores', corto: 'Instructores' },
+  aprendiz: { titulo: 'Almuerzos invitados de aprendices', corto: 'Aprendices' },
+  corriente: { titulo: 'Almuerzos invitados corrientes', corto: 'Corrientes' },
 };
 
 export const tipoInvitadoSchema = z.enum(TIPOS_ALMUERZO_INVITADO, {

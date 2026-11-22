@@ -75,7 +75,7 @@ export function VisitasInstitucionalesSection() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['visitas'] });
       queryClient.invalidateQueries({ queryKey: ['visitas', 'kpi'] });
-      toast.success('¡Visita registrada correctamente!');
+      toast.success('Visita registrada');
       setInstitucionNombre('');
       setResponsableNombre('');
       setErroresNombres({});
@@ -166,7 +166,7 @@ export function VisitasInstitucionalesSection() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <FormField
-              label="Nombre de la Institución"
+              label="Nombre de la institución"
               placeholder="Ej: Colegio San José"
               required
               maxLength={MAX_NOMBRE_VISITA}
@@ -179,7 +179,7 @@ export function VisitasInstitucionalesSection() {
             />
 
             <FormField
-              label="Nombre del Responsable"
+              label="Nombre del responsable"
               placeholder="Ej: María Fernanda Gómez"
               required
               maxLength={MAX_NOMBRE_VISITA}
@@ -193,7 +193,7 @@ export function VisitasInstitucionalesSection() {
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
               <FormField
-                label="Cantidad de Personas"
+                label="Cantidad de personas"
                 inputMode="numeric"
                 placeholder="Ej: 25"
                 required
@@ -205,7 +205,7 @@ export function VisitasInstitucionalesSection() {
               />
 
               <FormField
-                label="Fecha de la Visita"
+                label="Fecha de la visita"
                 type="date"
                 required
                 value={fechaVisita}

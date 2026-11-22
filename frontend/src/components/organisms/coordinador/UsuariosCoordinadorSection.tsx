@@ -228,7 +228,7 @@ export const UsuariosCoordinadorSection = () => {
                           </div>
                         ) : (
                           <p className="text-right text-xs text-muted">
-                            {u.estado === 'pendiente' ? 'Revísala en Solicitudes' : 'Sin acciones'}
+                            {u.estado === 'pendiente' ? 'Revísala en Solicitudes de cuenta' : 'Sin acciones'}
                           </p>
                         )}
                       </Table.Cell>

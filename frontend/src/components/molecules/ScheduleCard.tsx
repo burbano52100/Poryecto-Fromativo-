@@ -5,12 +5,10 @@ export interface ScheduleCardProps {
   scheduleText?: string;
 }
 
-export const ScheduleCard = ({ scheduleText = 'Lunes a viernes: 7:00 a. m. – 6:00 p. m.' }: ScheduleCardProps) => (
+export const ScheduleCard = ({ scheduleText = 'Reservas: 7:00 a. m. a 9:00 p. m. (hora de Colombia)' }: ScheduleCardProps) => (
   <Card>
     <Card.Header className="flex-row items-start gap-3">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent-soft-foreground">
-        <Clock className="size-5" />
-      </div>
+      <Clock className="mt-0.5 size-5 shrink-0 text-muted" aria-hidden="true" />
       <div>
         <Card.Title>Horario de atención</Card.Title>
         <Card.Description>{scheduleText}</Card.Description>

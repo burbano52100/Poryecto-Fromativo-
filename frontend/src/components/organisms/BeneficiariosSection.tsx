@@ -233,7 +233,7 @@ export const BeneficiariosSection = () => {
           <div className="flex flex-col gap-3 pt-4 sm:flex-row">
             <SearchInput
               label="Buscar aprendiz"
-              placeholder="Buscar por nombre, cédula o ficha..."
+              placeholder="Buscar por nombre, cédula o ficha"
               value={searchTerm}
               onChange={setSearchTerm}
               className="flex-1"
@@ -262,7 +262,7 @@ export const BeneficiariosSection = () => {
 
       <ConfirmDialog
         abierto={studentToRevoke !== null}
-        titulo="¿Quitar como Beneficiario?"
+        titulo="¿Quitar como beneficiario?"
         variante="warning"
         textoConfirmar="Sí, quitar beneficio"
         onConfirmar={handleConfirmRevoke}

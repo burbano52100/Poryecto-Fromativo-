@@ -160,7 +160,7 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
 
                 <form id="form-registro" onSubmit={onSubmit} className="flex flex-col gap-3.5" noValidate>
                   <FormField
-                    label="Nombre Completo"
+                    label="Nombre completo"
                     placeholder="Ej: Carlos Andrés Ruiz"
                     required
                     error={errors.name?.message}
@@ -168,7 +168,7 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
                   />
 
                   <FormField
-                    label="Cédula / Documento de Identidad"
+                    label="Número de documento"
                     placeholder="Ej: 1005678901"
                     required
                     icon={<IdCard className="size-4" />}
@@ -178,7 +178,7 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
 
                   {currentAccountType === 'aprendiz' && (
                     <FormField
-                      label="Número de Ficha SENA"
+                      label="Número de ficha"
                       placeholder="Ej: 2847251"
                       required
                       icon={<BookOpen className="size-4" />}
@@ -188,7 +188,7 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
                   )}
 
                   <FormField
-                    label="Correo Electrónico Institucional"
+                    label="Correo institucional"
                     type="email"
                     placeholder={PLACEHOLDER_CORREO[currentAccountType]}
                     required

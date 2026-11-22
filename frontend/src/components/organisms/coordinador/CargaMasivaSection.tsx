@@ -105,8 +105,8 @@ export const CargaMasivaSection = () => {
           <Paso numero={1} titulo="Descarga la plantilla">
             <p className="text-xs text-muted">
               {tipo === 'aprendices'
-                ? 'Columnas: nombre, cédula, correo y ficha (programa y jornada son opcionales).'
-                : 'Columnas: nombre, cédula y correo (el teléfono es opcional).'}
+                ? 'Columnas: nombre, cédula, correo y ficha (programa y jornada son opcionales)'
+                : 'Columnas: nombre, cédula y correo (el teléfono es opcional)'}
             </p>
             <Button
               variant="outline"
@@ -132,7 +132,7 @@ export const CargaMasivaSection = () => {
             <Button variant="outline" className="self-start" onPress={() => entrada.current?.click()}>
               <Paperclip /> {archivo ? 'Cambiar archivo' : 'Seleccionar archivo'}
             </Button>
-            <p className="break-all text-xs text-muted">{archivo ? archivo.name : 'Máximo 5 MB.'}</p>
+            <p className="break-all text-xs text-muted">{archivo ? archivo.name : 'Máximo 5 MB'}</p>
           </Paso>
           <Paso numero={3} titulo="Revisa y confirma">
             <p className="text-xs text-muted">La revisión no crea nada: muestra qué filas se crearán y cuáles tienen errores.</p>

@@ -73,10 +73,10 @@ interface ItemMenu {
 }
 
 const SUBSECCIONES_INVENTARIO: { id: InventarioSubSection; label: string; icon: ReactNode }[] = [
-  { id: 'stock', label: 'Control de Stock', icon: <ListFilter /> },
-  { id: 'recetas', label: 'Recetas & Productos', icon: <ChefHat /> },
-  { id: 'kardex', label: 'Kardex (Historial)', icon: <History /> },
-  { id: 'mermas', label: 'Gestión de Mermas', icon: <AlertTriangle /> },
+  { id: 'stock', label: 'Control de stock', icon: <ListFilter /> },
+  { id: 'recetas', label: 'Recetas y productos', icon: <ChefHat /> },
+  { id: 'kardex', label: 'Kardex', icon: <History /> },
+  { id: 'mermas', label: 'Gestión de mermas', icon: <AlertTriangle /> },
   { id: 'configuracion', label: 'Configuración', icon: <Settings /> },
 ];
 
@@ -117,35 +117,35 @@ export const Sidebar = ({
   const items: ItemMenu[] = isEncargado
     ? [
         { id: 'ventas', label: 'Ventas', icon: <TrendingUp /> },
-        { id: 'menu', label: 'Menú del Día', icon: <Utensils /> },
-        { id: 'almuerzosInvitados', label: 'Almuerzos Invitados', icon: <HandPlatter /> },
+        { id: 'menu', label: 'Menú del día', icon: <Utensils /> },
+        { id: 'almuerzosInvitados', label: 'Almuerzos invitados', icon: <HandPlatter /> },
         { id: 'beneficiarios', label: 'Beneficiarios', icon: <Award /> },
-        { id: 'deudas', label: 'Cartera de Deudas', icon: <CreditCard />, badge: deudasPendientes },
+        { id: 'deudas', label: 'Cartera de deudas', icon: <CreditCard />, badge: deudasPendientes },
         { id: 'inventario', label: 'Inventario', icon: <Package /> },
         { id: 'grupos', label: 'Grupos', icon: <Users /> },
-        { id: 'visitas', label: 'Visitas Institucionales', icon: <Building2 /> },
-        { id: 'sugerencias', label: 'Buzón de Sugerencias', icon: <Mail />, badge: sugerenciasPendientes },
+        { id: 'visitas', label: 'Visitas institucionales', icon: <Building2 /> },
+        { id: 'sugerencias', label: 'Buzón de sugerencias', icon: <Mail />, badge: sugerenciasPendientes },
       ]
     : isCoordinador
       ? [
-          { id: 'solicitudes', label: 'Solicitudes de Cuenta', icon: <UserPlus />, badge: solicitudesPendientes },
+          { id: 'solicitudes', label: 'Solicitudes de cuenta', icon: <UserPlus />, badge: solicitudesPendientes },
           { id: 'usuarios', label: 'Usuarios', icon: <Users /> },
           { id: 'gestionFichas', label: 'Fichas', icon: <BookOpen /> },
-          { id: 'cargas', label: 'Carga Masiva', icon: <Upload /> },
+          { id: 'cargas', label: 'Carga masiva', icon: <Upload /> },
           { id: 'perfil', label: 'Perfil', icon: <User /> },
         ]
       : isInstructor
         ? [
             { id: 'inicio', label: 'Inicio', icon: <Home /> },
-            { id: 'cuenta', label: 'Mi Cuenta', icon: <CreditCard /> },
+            { id: 'cuenta', label: 'Mi cuenta', icon: <CreditCard /> },
             { id: 'consumos', label: 'Consumos', icon: <Receipt />, badge: totalAlmuerzos },
-            { id: 'sugerencias', label: 'Buzón de Sugerencias', icon: <Mail /> },
+            { id: 'sugerencias', label: 'Buzón de sugerencias', icon: <Mail /> },
             { id: 'perfil', label: 'Perfil', icon: <User /> },
           ]
         : [
             { id: 'inicio', label: 'Inicio', icon: <Home /> },
-            { id: 'fichas', label: 'Mis Fichas', icon: <Receipt />, badge: totalAlmuerzos },
-            { id: 'sugerencias', label: 'Buzón de Sugerencias', icon: <Mail /> },
+            { id: 'fichas', label: 'Mis fichas', icon: <Receipt />, badge: totalAlmuerzos },
+            { id: 'sugerencias', label: 'Buzón de sugerencias', icon: <Mail /> },
             { id: 'perfil', label: 'Perfil', icon: <User /> },
           ];
 
@@ -213,7 +213,7 @@ export const Sidebar = ({
       <div className="p-3">
         <Button variant="ghost" fullWidth onPress={onLogout} className="justify-start text-muted hover:text-danger">
           <LogOut />
-          Cerrar Sesión
+          Cerrar sesión
         </Button>
       </div>
     </div>

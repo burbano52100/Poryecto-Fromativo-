@@ -88,7 +88,7 @@ export const ReservaAlmuerzoCard = ({
         <Alert status="success" role="status">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>¡Almuerzo reservado con éxito!</Alert.Title>
+            <Alert.Title>Almuerzo reservado</Alert.Title>
             <Alert.Description>{mensajeExito(reservaHecha)}</Alert.Description>
           </Alert.Content>
           <CloseButton aria-label="Cerrar aviso" onPress={() => setReservaHecha(null)} />

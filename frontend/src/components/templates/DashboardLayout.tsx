@@ -80,6 +80,7 @@ export const DashboardLayout = ({
       />
 
       <div className="flex min-h-screen min-w-0 flex-col lg:ml-64">
+        {/* human-web-design: allow slop.glass — el encabezado es fijo y el contenido pasa por debajo al desplazarse */}
         <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-separator bg-background/80 px-4 py-3 backdrop-blur sm:px-8">
           <div className="flex items-center gap-3">
             <Button

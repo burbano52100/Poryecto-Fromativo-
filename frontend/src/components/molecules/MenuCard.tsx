@@ -94,7 +94,7 @@ export const MenuCard = ({
           </div>
         ) : (
           <Button size="lg" onPress={onRequestLunch} isDisabled={!canReserve || isLoading} isPending={isLoading}>
-            {isBeneficiario ? 'Reservar Almuerzo (Gratis)' : 'Solicitar Almuerzo'}
+            {isBeneficiario ? 'Reservar almuerzo gratis' : 'Solicitar almuerzo'}
           </Button>
         )}
       </Card.Footer>

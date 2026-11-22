@@ -45,7 +45,7 @@ export const VentasSection = () => {
     if (!data) return;
     descargarCsv(
       `ventas-${data.period}-${data.desde}.csv`,
-      ['Fecha', 'Origen', 'Cliente', 'Cédula', 'Rol / Tipo', 'Ficha', 'Menú', 'Personas', 'Estado de pago', 'Valor'],
+      ['Fecha', 'Origen', 'Cliente', 'Cédula', 'Rol', 'Ficha', 'Menú', 'Personas', 'Estado de pago', 'Valor'],
       data.transacciones.map((t) => [
         fechaHora(t.fecha),
         esInvitado(t) ? 'Almuerzo invitado' : 'Reserva',
@@ -118,7 +118,7 @@ export const VentasSection = () => {
             />
           </div>
 
-          <section aria-label="Almuerzos Invitados del período">
+          <section aria-label="Almuerzos invitados del período">
             <SectionCard
               titulo="Almuerzos invitados del período"
               acciones={
@@ -195,7 +195,7 @@ export const VentasSection = () => {
                   <Table.Header>
                     <Table.Column>Fecha y hora</Table.Column>
                     <Table.Column isRowHeader>Cliente</Table.Column>
-                    <Table.Column>Rol / Tipo</Table.Column>
+                    <Table.Column>Rol</Table.Column>
                     <Table.Column>Menú</Table.Column>
                     <Table.Column>Pago</Table.Column>
                     <Table.Column className="text-right">Valor</Table.Column>

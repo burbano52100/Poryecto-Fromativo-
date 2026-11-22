@@ -42,8 +42,8 @@ describe('Visitas institucionales (Encargado)', () => {
     const get = simularApi();
     renderConProveedores(<VisitasInstitucionalesSection />);
 
-    expect(await screen.findByLabelText(/Nombre de la Institución/)).toHaveAttribute('placeholder', 'Ej: Colegio San José');
-    expect(screen.getByLabelText(/Nombre del Responsable/)).toHaveAttribute('placeholder', 'Ej: María Fernanda Gómez');
+    expect(await screen.findByLabelText(/Nombre de la institución/)).toHaveAttribute('placeholder', 'Ej: Colegio San José');
+    expect(screen.getByLabelText(/Nombre del responsable/)).toHaveAttribute('placeholder', 'Ej: María Fernanda Gómez');
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Instructor SENA' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Nombre Externo' })).not.toBeInTheDocument();
@@ -56,12 +56,12 @@ describe('Visitas institucionales (Encargado)', () => {
     const post = vi.spyOn(apiClient, 'post').mockResolvedValue(respuesta({ id: 'vis-2' }));
     renderConProveedores(<VisitasInstitucionalesSection />);
 
-    await userEvent.type(await screen.findByLabelText(/Nombre de la Institución/), '  Universidad Surcolombiana ');
-    await userEvent.type(screen.getByLabelText(/Nombre del Responsable/), ' Pedro Pérez  ');
-    const cantidad = screen.getByLabelText(/Cantidad de Personas/);
+    await userEvent.type(await screen.findByLabelText(/Nombre de la institución/), '  Universidad Surcolombiana ');
+    await userEvent.type(screen.getByLabelText(/Nombre del responsable/), ' Pedro Pérez  ');
+    const cantidad = screen.getByLabelText(/Cantidad de personas/);
     await userEvent.type(cantidad, '3a0');
     expect(cantidad).toHaveValue('30');
-    await userEvent.type(screen.getByLabelText(/Fecha de la Visita/), '2026-11-25');
+    await userEvent.type(screen.getByLabelText(/Fecha de la visita/), '2026-11-25');
     await userEvent.click(screen.getByRole('button', { name: 'Registrar Visita' }));
 
     expect(post).toHaveBeenCalledWith('/visitas', {
@@ -70,8 +70,8 @@ describe('Visitas institucionales (Encargado)', () => {
       cantidad_personas: 30,
       fecha_visita: '2026-11-25',
     });
-    expect(await screen.findByText('¡Visita registrada correctamente!')).toBeInTheDocument();
-    expect(screen.getByLabelText(/Nombre de la Institución/)).toHaveValue('');
+    expect(await screen.findByText('Visita registrada')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Nombre de la institución/)).toHaveValue('');
   });
 
   it('si faltan la institución o el responsable muestra el error debajo de cada campo y no envía', async () => {
@@ -79,13 +79,13 @@ describe('Visitas institucionales (Encargado)', () => {
     const post = vi.spyOn(apiClient, 'post');
     renderConProveedores(<VisitasInstitucionalesSection />);
 
-    await userEvent.type(await screen.findByLabelText(/Nombre del Responsable/), '    ');
-    await userEvent.type(screen.getByLabelText(/Cantidad de Personas/), '10');
-    await userEvent.type(screen.getByLabelText(/Fecha de la Visita/), '2026-11-25');
+    await userEvent.type(await screen.findByLabelText(/Nombre del responsable/), '    ');
+    await userEvent.type(screen.getByLabelText(/Cantidad de personas/), '10');
+    await userEvent.type(screen.getByLabelText(/Fecha de la visita/), '2026-11-25');
     await userEvent.click(screen.getByRole('button', { name: 'Registrar Visita' }));
 
-    const institucion = screen.getByLabelText(/Nombre de la Institución/);
-    const responsable = screen.getByLabelText(/Nombre del Responsable/);
+    const institucion = screen.getByLabelText(/Nombre de la institución/);
+    const responsable = screen.getByLabelText(/Nombre del responsable/);
     expect(institucion).toHaveAccessibleDescription('El nombre de la institución es obligatorio.');
     expect(responsable).toHaveAccessibleDescription('El nombre del responsable es obligatorio.');
     expect(institucion).toHaveAttribute('aria-invalid', 'true');
@@ -101,8 +101,8 @@ describe('Visitas institucionales (Encargado)', () => {
     simularApi();
     renderConProveedores(<VisitasInstitucionalesSection />);
 
-    expect(await screen.findByLabelText(/Nombre de la Institución/)).toHaveAttribute('maxLength', '150');
-    expect(screen.getByLabelText(/Nombre del Responsable/)).toHaveAttribute('maxLength', '150');
+    expect(await screen.findByLabelText(/Nombre de la institución/)).toHaveAttribute('maxLength', '150');
+    expect(screen.getByLabelText(/Nombre del responsable/)).toHaveAttribute('maxLength', '150');
 
     const largo = nombresVisitaSchema.safeParse({ institucionNombre: 'a'.repeat(151), responsableNombre: 'b'.repeat(150) });
     expect(largo.success).toBe(false);

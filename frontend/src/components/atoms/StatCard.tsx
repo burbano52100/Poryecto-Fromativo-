@@ -13,15 +13,10 @@ export interface StatCardProps {
   badgeText?: string;
 }
 
-const ICONO: Record<Tono, string> = {
-  accent: 'bg-accent-soft text-accent-soft-foreground',
-  success: 'bg-success-soft text-success-soft-foreground',
-  warning: 'bg-warning-soft text-warning-soft-foreground',
-  danger: 'bg-danger-soft text-danger-soft-foreground',
-  default: 'bg-default text-default-foreground',
-};
-
-/** Métrica del encabezado del panel: título, valor y un icono a la derecha. */
+/**
+ * Métrica del encabezado del panel: título, valor y un icono a la derecha. El tono solo colorea
+ * el Chip de estado (`badgeText`); el icono va sin fondo de color porque no indica nada.
+ */
 export const StatCard = ({ title, value, subtitle, icon, tone = 'accent', badgeText }: StatCardProps) => (
   <Card className="flex-row items-center justify-between gap-3">
     <div className="min-w-0 flex-1">
@@ -40,6 +35,8 @@ export const StatCard = ({ title, value, subtitle, icon, tone = 'accent', badgeT
       )}
       {subtitle && <p className="mt-0.5 truncate text-xs text-muted">{subtitle}</p>}
     </div>
-    <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${ICONO[tone]}`}>{icon}</div>
+    <div className="shrink-0 self-start text-muted" aria-hidden="true">
+      {icon}
+    </div>
   </Card>
 );

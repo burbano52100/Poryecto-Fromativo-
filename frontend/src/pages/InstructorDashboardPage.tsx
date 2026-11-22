@@ -51,7 +51,7 @@ export const InstructorDashboardPage = ({ user, onLogout }: InstructorDashboardP
           <ReservaAlmuerzoCard
             user={user}
             note="Se agregará a tu cuenta mensual"
-            tituloConfirmacion="Solicitar Almuerzo de Instructor"
+            tituloConfirmacion="Solicitar almuerzo de instructor"
             detalleConfirmacion={(precio) => (
               <div className="flex flex-col gap-3">
                 <p>

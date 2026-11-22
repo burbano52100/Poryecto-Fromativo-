@@ -79,7 +79,7 @@ export const CarteraDeudasSection = () => {
           <>
             <SearchInput
               label="Buscar deudor"
-              placeholder="Buscar por nombre o C.C..."
+              placeholder="Buscar por nombre o cédula"
               value={searchTerm}
               onChange={setSearchTerm}
             />
@@ -99,7 +99,7 @@ export const CarteraDeudasSection = () => {
             <Table.ScrollContainer>
               <Table.Content aria-label="Cartera de deudas" className="min-w-[720px]">
                 <Table.Header>
-                  <Table.Column isRowHeader>Instructor / Deudor</Table.Column>
+                  <Table.Column isRowHeader>Instructor</Table.Column>
                   <Table.Column>Cédula</Table.Column>
                   <Table.Column>Almuerzos</Table.Column>
                   <Table.Column>Deuda total</Table.Column>

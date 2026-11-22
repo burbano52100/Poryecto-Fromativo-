@@ -6,9 +6,9 @@ import { apiClient } from '../../lib/api';
 import { renderConProveedores, respuesta, usuarioDePrueba } from '../../test/utils';
 
 const llenarDatosBasicos = async (documento: string) => {
-  await userEvent.type(screen.getByLabelText(/Nombre Completo/), 'María Fernanda Gómez');
-  await userEvent.type(screen.getByLabelText(/Documento de Identidad/), documento);
-  await userEvent.type(screen.getByLabelText(/Correo Electrónico/), 'mgomez@sena.edu.co');
+  await userEvent.type(screen.getByLabelText(/Nombre completo/), 'María Fernanda Gómez');
+  await userEvent.type(screen.getByLabelText(/Número de documento/), documento);
+  await userEvent.type(screen.getByLabelText(/Correo institucional/), 'mgomez@sena.edu.co');
   await userEvent.type(screen.getByLabelText(/^Contraseña/), 'clave-segura-123');
 };
 
@@ -33,7 +33,7 @@ describe('Registro', () => {
 
     await userEvent.click(screen.getByRole('radio', { name: 'Instructor' }));
     expect(screen.getByText(/el Coordinador revisará tu solicitud/)).toBeInTheDocument();
-    expect(screen.queryByLabelText(/Número de Ficha/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Número de ficha/)).not.toBeInTheDocument();
 
     await llenarDatosBasicos('1098765432');
     await userEvent.click(screen.getByRole('button', { name: 'Enviar solicitud' }));
@@ -59,7 +59,7 @@ describe('Registro', () => {
 
     expect(screen.getByText(/el Coordinador revisará tu solicitud/)).toBeInTheDocument();
     await llenarDatosBasicos('1234567890');
-    await userEvent.type(screen.getByLabelText(/Número de Ficha/), '2847251');
+    await userEvent.type(screen.getByLabelText(/Número de ficha/), '2847251');
     await userEvent.click(screen.getByRole('button', { name: 'Enviar solicitud' }));
 
     expect(await screen.findByRole('heading', { name: 'Solicitud enviada' })).toBeInTheDocument();
@@ -75,7 +75,7 @@ describe('Registro', () => {
     renderConProveedores(<RegisterModal isOpen onClose={() => {}} />);
 
     await llenarDatosBasicos('1005678920');
-    await userEvent.type(screen.getByLabelText(/Número de Ficha/), '2847251');
+    await userEvent.type(screen.getByLabelText(/Número de ficha/), '2847251');
     await userEvent.click(screen.getByRole('button', { name: 'Enviar solicitud' }));
 
     expect(await screen.findByText(mensaje)).toBeInTheDocument();

@@ -53,20 +53,20 @@ const simularApi = () =>
 /** La tarjeta de un tipo, buscada por su título. */
 const tarjeta = async (titulo: string) => within(await screen.findByRole('region', { name: titulo }));
 
-describe('Almuerzos Invitados (Encargado)', () => {
+describe('Almuerzos invitados (Encargado)', () => {
   it('muestra las tres separaciones con la tarifa que envía el backend', async () => {
     simularApi();
     renderConProveedores(<AlmuerzosInvitadosSection />);
 
-    expect((await tarjeta('Almuerzos Invitados Instructores')).getByText('$10.000')).toBeInTheDocument();
-    expect((await tarjeta('Almuerzos Invitados Aprendices')).getByText('$5.000')).toBeInTheDocument();
-    expect((await tarjeta('Almuerzos Invitados Corrientes')).getByText('$11.000')).toBeInTheDocument();
+    expect((await tarjeta('Almuerzos invitados de instructores')).getByText('$10.000')).toBeInTheDocument();
+    expect((await tarjeta('Almuerzos invitados de aprendices')).getByText('$5.000')).toBeInTheDocument();
+    expect((await tarjeta('Almuerzos invitados corrientes')).getByText('$11.000')).toBeInTheDocument();
   });
 
   it('los botones + y − cambian el número de personas y el total se calcula en vivo', async () => {
     simularApi();
     renderConProveedores(<AlmuerzosInvitadosSection />);
-    const card = await tarjeta('Almuerzos Invitados Instructores');
+    const card = await tarjeta('Almuerzos invitados de instructores');
     const campo = card.getByLabelText(/Número de personas/);
 
     expect(campo).toHaveValue('1');
@@ -84,7 +84,7 @@ describe('Almuerzos Invitados (Encargado)', () => {
   it('el campo solo acepta números y también se puede escribir', async () => {
     simularApi();
     renderConProveedores(<AlmuerzosInvitadosSection />);
-    const card = await tarjeta('Almuerzos Invitados Aprendices');
+    const card = await tarjeta('Almuerzos invitados de aprendices');
     const campo = card.getByLabelText(/Número de personas/);
 
     await userEvent.clear(campo);
@@ -98,7 +98,7 @@ describe('Almuerzos Invitados (Encargado)', () => {
     simularApi();
     const post = vi.spyOn(apiClient, 'post').mockResolvedValue(respuesta({ ...REGISTRO, tipo: 'instructor', cantidad: 4, total: 40000 }));
     renderConProveedores(<AlmuerzosInvitadosSection />);
-    const card = await tarjeta('Almuerzos Invitados Instructores');
+    const card = await tarjeta('Almuerzos invitados de instructores');
 
     const campo = card.getByLabelText(/Número de personas/);
     await userEvent.clear(campo);
@@ -116,7 +116,7 @@ describe('Almuerzos Invitados (Encargado)', () => {
     simularApi();
     const post = vi.spyOn(apiClient, 'post').mockResolvedValue(respuesta(REGISTRO));
     renderConProveedores(<AlmuerzosInvitadosSection />);
-    const card = await tarjeta('Almuerzos Invitados Corrientes');
+    const card = await tarjeta('Almuerzos invitados corrientes');
 
     await userEvent.click(card.getByRole('button', { name: 'Registrar' }));
     expect(post).toHaveBeenCalledWith('/almuerzos-invitados', { tipo: 'corriente', cantidad: 1, nombre_invitado: null });
@@ -130,7 +130,7 @@ describe('Almuerzos Invitados (Encargado)', () => {
     simularApi();
     const post = vi.spyOn(apiClient, 'post');
     renderConProveedores(<AlmuerzosInvitadosSection />);
-    const card = await tarjeta('Almuerzos Invitados Aprendices');
+    const card = await tarjeta('Almuerzos invitados de aprendices');
 
     const campo = card.getByLabelText(/Número de personas/);
     await userEvent.clear(campo);

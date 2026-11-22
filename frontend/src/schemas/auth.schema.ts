@@ -38,7 +38,7 @@ export const registerSchema = z
       return true;
     },
     {
-      message: 'El ID de Ficha es obligatorio para Aprendices',
+      message: 'El número de ficha es obligatorio para aprendices',
       path: ['ficha'],
     }
   );

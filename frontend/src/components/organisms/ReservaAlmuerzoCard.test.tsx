@@ -44,7 +44,7 @@ const renderTarjeta = (es_beneficiario: boolean) =>
   renderConProveedores(
     <ReservaAlmuerzoCard
       user={usuarioDePrueba({ role: 'aprendiz', es_beneficiario })}
-      tituloConfirmacion="Confirmar Reserva de Almuerzo"
+      tituloConfirmacion="Confirmar reserva de almuerzo"
       detalleConfirmacion={(precio) => <p>Valor {precio}</p>}
       mensajeExito={(r) => `Tarifa ${r.price}`}
     />
@@ -57,11 +57,11 @@ describe('Reserva de almuerzo del aprendiz', () => {
     renderTarjeta(true);
 
     expect(await screen.findByText('$0')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: /Reservar Almuerzo \(Gratis\)/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Reservar almuerzo gratis/ }));
 
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(post).toHaveBeenCalledWith('/consumos/reservar', { menu_id: MENU_ID });
-    expect(await screen.findByText('¡Almuerzo reservado con éxito!')).toBeInTheDocument();
+    expect(await screen.findByText('Almuerzo reservado')).toBeInTheDocument();
   });
 
   it('el aprendiz regular confirma en un modal de $5.000 antes de reservar', async () => {
@@ -69,8 +69,8 @@ describe('Reserva de almuerzo del aprendiz', () => {
     const post = vi.spyOn(apiClient, 'post').mockResolvedValue(respuesta(reservaCreada(5000, 'pendiente')));
     renderTarjeta(false);
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Solicitar Almuerzo' }));
-    const dialogo = screen.getByRole('alertdialog', { name: 'Confirmar Reserva de Almuerzo' });
+    await userEvent.click(await screen.findByRole('button', { name: 'Solicitar almuerzo' }));
+    const dialogo = screen.getByRole('alertdialog', { name: 'Confirmar reserva de almuerzo' });
     expect(within(dialogo).getByText('Valor $5.000')).toBeInTheDocument();
     expect(post).not.toHaveBeenCalled();
 
@@ -87,7 +87,7 @@ describe('Reserva de almuerzo del aprendiz', () => {
 
     expect(await screen.findByText('Almuerzo reservado')).toBeInTheDocument();
     expect(screen.getByText('Pagado')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Solicitar Almuerzo' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Solicitar almuerzo' })).not.toBeInTheDocument();
   });
 
   it('fuera de horario deshabilita el botón y explica el motivo', async () => {
@@ -97,7 +97,7 @@ describe('Reserva de almuerzo del aprendiz', () => {
     );
     renderTarjeta(false);
 
-    expect(await screen.findByRole('button', { name: 'Solicitar Almuerzo' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'Solicitar almuerzo' })).toBeDisabled();
     expect(screen.getByText(motivo)).toBeInTheDocument();
   });
 });

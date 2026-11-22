@@ -27,25 +27,25 @@ describe('Sidebar', () => {
     abrirSidebar('encargado');
 
     // Margen amplio: con toda la suite en paralelo, la primera consulta por rol del Sidebar pasa de 1 s
-    expect(await screen.findByRole('button', { name: /Cartera de Deudas\s*2/ }, { timeout: 5000 })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Buzón de Sugerencias\s*5/ })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Cartera de deudas\s*2/ }, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Buzón de sugerencias\s*5/ })).toBeInTheDocument();
     // Las solicitudes de cuenta ahora las revisa el Coordinador (ADR 018)
-    expect(screen.queryByRole('button', { name: /Solicitudes de Cuenta/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Solicitudes de cuenta/ })).not.toBeInTheDocument();
   });
 
-  it('el Encargado tiene la sección Almuerzos Invitados junto a Ventas y Menú del Día', async () => {
+  it('el Encargado tiene la sección Almuerzos invitados junto a Ventas y Menú del día', async () => {
     vi.spyOn(apiClient, 'get').mockResolvedValue(respuesta(RESUMEN));
     abrirSidebar('encargado');
 
     const nombres = (await screen.findAllByRole('button')).map((b) => b.textContent?.trim());
     const ventas = nombres.indexOf('Ventas');
-    expect(nombres.slice(ventas, ventas + 3)).toEqual(['Ventas', 'Menú del Día', 'Almuerzos Invitados']);
+    expect(nombres.slice(ventas, ventas + 3)).toEqual(['Ventas', 'Menú del día', 'Almuerzos invitados']);
   });
 
-  it('el aprendiz no ve Almuerzos Invitados', async () => {
+  it('el aprendiz no ve Almuerzos invitados', async () => {
     vi.spyOn(apiClient, 'get').mockResolvedValue(respuesta({ totalAlmuerzos: 3 }));
     abrirSidebar('aprendiz');
-    expect(screen.queryByRole('button', { name: 'Almuerzos Invitados' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Almuerzos invitados' })).not.toBeInTheDocument();
   });
 
   it('sin pendientes no muestra contador', async () => {
@@ -57,8 +57,8 @@ describe('Sidebar', () => {
     abrirSidebar('encargado');
 
     await waitFor(() => expect(get).toHaveBeenCalledWith('/dashboard/encargado'));
-    expect(screen.getByRole('button', { name: 'Cartera de Deudas' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Buzón de Sugerencias' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cartera de deudas' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Buzón de sugerencias' })).toBeInTheDocument();
   });
 
   it('los demás roles no piden el resumen del Encargado', async () => {
@@ -75,8 +75,8 @@ describe('Sidebar', () => {
       .mockResolvedValue(respuesta({ activos: 20, pendientes: 3, instructores: 4, aprendices: 16 }));
     abrirSidebar('coordinador');
 
-    expect(await screen.findByRole('button', { name: /Solicitudes de Cuenta\s*3/ }, { timeout: 5000 })).toBeInTheDocument();
-    for (const item of ['Usuarios', 'Fichas', 'Carga Masiva', 'Perfil']) {
+    expect(await screen.findByRole('button', { name: /Solicitudes de cuenta\s*3/ }, { timeout: 5000 })).toBeInTheDocument();
+    for (const item of ['Usuarios', 'Fichas', 'Carga masiva', 'Perfil']) {
       expect(screen.getByRole('button', { name: item })).toBeInTheDocument();
     }
     expect(screen.getByText('Coordinación Académica')).toBeInTheDocument();

@@ -44,7 +44,7 @@ export const BuzonSugerenciasSection = () => {
       { asunto: data.subject, mensaje: data.message },
       {
         onSuccess: () => {
-          toast.success('¡Sugerencia enviada con éxito!', {
+          toast.success('Sugerencia enviada', {
             description: 'El encargado del comedor revisará tu mensaje.',
           });
           reset();
@@ -74,7 +74,7 @@ export const BuzonSugerenciasSection = () => {
           <TextAreaField
             label="Mensaje"
             rows={5}
-            placeholder="Escribe aquí tu sugerencia, comentario o idea..."
+            placeholder="Escribe tu sugerencia, comentario o idea"
             error={errors.message?.message}
             {...register('message')}
           />
@@ -102,7 +102,7 @@ export const BuzonSugerenciasSection = () => {
                 <Card.Content>
                   <p className="text-sm text-muted">{sugerencia.message}</p>
                   {sugerencia.respuesta && (
-                    <p className="mt-2 rounded-lg border-l-2 border-accent bg-surface p-3 text-sm text-foreground">
+                    <p className="mt-2 border-t border-separator pt-2 text-sm text-foreground">
                       <span className="font-medium">Respuesta del comedor:</span> {sugerencia.respuesta}
                     </p>
                   )}

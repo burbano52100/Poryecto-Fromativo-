@@ -49,7 +49,7 @@ export const LoginForm = () => {
 
         <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
           <FormField
-            label="Cédula / Documento de Identidad"
+            label="Número de documento"
             placeholder="Ej: 1005678901"
             autoComplete="username"
             required

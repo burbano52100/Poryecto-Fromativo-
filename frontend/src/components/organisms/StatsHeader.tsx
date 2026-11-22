@@ -22,14 +22,14 @@ const StatsEncargado = () => {
   return (
     <div className={GRID}>
       <StatCard
-        title="Ventas de Hoy"
+        title="Ventas de hoy"
         value={valor(data?.ventasHoy, (n) => `${n} almuerzos`)}
         subtitle={data ? `Incluye ${data.invitadosHoy} de almuerzos invitados` : 'Reservas y almuerzos invitados'}
         icon={<ShoppingCart className="size-5" />}
         tone="success"
       />
       <StatCard
-        title="Ingresos de Hoy"
+        title="Ingresos de hoy"
         value={valor(data?.ingresosHoy, pesos)}
         subtitle={
           data
@@ -40,7 +40,7 @@ const StatsEncargado = () => {
         tone="accent"
       />
       <StatCard
-        title="Deudas Pendientes"
+        title="Deudas pendientes"
         value={valor(data?.deudasPendientes.monto, pesos)}
         subtitle={data ? `${data.deudasPendientes.cantidad} cuenta(s) por cobrar` : 'Cartera de instructores'}
         icon={<CreditCard className="size-5" />}
@@ -62,14 +62,14 @@ const StatsCoordinador = () => {
   return (
     <div className={GRID}>
       <StatCard
-        title="Solicitudes Pendientes"
+        title="Solicitudes pendientes"
         value={valor(data?.pendientes, (n) => n)}
         subtitle="Cuentas por aprobar"
         icon={<UserPlus className="size-5" />}
         tone="warning"
       />
       <StatCard
-        title="Cuentas Activas"
+        title="Cuentas activas"
         value={valor(data?.activos, (n) => n)}
         subtitle="Instructores y aprendices"
         icon={<UserCheck className="size-5" />}
@@ -100,14 +100,14 @@ const StatsInstructor = ({ user }: StatsHeaderProps) => {
   return (
     <div className={GRID}>
       <StatCard
-        title="Almuerzos Este Mes"
+        title="Almuerzos este mes"
         value={valor(cuenta?.monthlyLunches, (n) => n)}
         subtitle="Mes actual"
         icon={<Calendar className="size-5" />}
         tone="accent"
       />
       <StatCard
-        title="Saldo Pendiente"
+        title="Saldo pendiente"
         value={valor(cuenta?.pendingBalance, pesos)}
         subtitle={pendiente > 0 ? 'Por cancelar en oficina' : 'Cuenta al día'}
         icon={<CreditCard className="size-5" />}
@@ -115,14 +115,14 @@ const StatsInstructor = ({ user }: StatsHeaderProps) => {
         badgeText={pendiente > 0 ? 'Pendiente' : 'Al día'}
       />
       <StatCard
-        title="Total Consumido"
+        title="Total consumido"
         value={valor(resumen?.gastoTotal, pesos)}
         subtitle="Acumulado histórico"
         icon={<DollarSign className="size-5" />}
         tone="accent"
       />
       <StatCard
-        title="Documento & Rol"
+        title="Documento"
         value={`C.C. ${user.document}`}
         subtitle="Instructor SENA"
         icon={<IdCard className="size-5" />}
@@ -137,21 +137,21 @@ const StatsAprendiz = ({ user }: StatsHeaderProps) => {
   return (
     <div className={GRID}>
       <StatCard
-        title="Total Almuerzos"
+        title="Total de almuerzos"
         value={valor(resumen?.totalAlmuerzos, (n) => n)}
         subtitle="Historial acumulado"
         icon={<Utensils className="size-5" />}
         tone="success"
       />
       <StatCard
-        title="Almuerzos Este Mes"
+        title="Almuerzos este mes"
         value={valor(resumen?.almuerzosMes, (n) => n)}
         subtitle="Mes actual"
         icon={<Calendar className="size-5" />}
         tone="accent"
       />
       <StatCard
-        title={user.es_beneficiario ? 'Tarifa Actual' : 'Gasto Este Mes'}
+        title={user.es_beneficiario ? 'Tarifa actual' : 'Gasto este mes'}
         value={user.es_beneficiario ? '$0' : valor(resumen?.gastoMes, pesos)}
         subtitle={
           user.es_beneficiario
@@ -164,7 +164,7 @@ const StatsAprendiz = ({ user }: StatsHeaderProps) => {
         tone="warning"
       />
       <StatCard
-        title="Ficha & Documento"
+        title="Ficha y documento"
         value={user.ficha || 'Sin ficha'}
         subtitle={`C.C. ${user.document}`}
         icon={<IdCard className="size-5" />}

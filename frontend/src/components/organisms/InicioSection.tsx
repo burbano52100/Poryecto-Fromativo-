@@ -2,7 +2,6 @@ import { Card, Chip } from '@heroui/react';
 import { Award } from 'lucide-react';
 import type { User } from '../../schemas/auth.schema';
 import { ScheduleCard } from '../molecules/ScheduleCard';
-import { ProgressCard } from '../molecules/ProgressCard';
 import { ReservaAlmuerzoCard } from './ReservaAlmuerzoCard';
 import { useResumenConsumos } from '../../hooks/useConsumos';
 import { useMenuActivo } from '../../hooks/useMenu';
@@ -28,7 +27,7 @@ export const InicioSection = ({ user }: InicioSectionProps) => {
             {esBeneficiario && (
               <Chip size="sm" variant="soft" color="warning">
                 <Award className="size-3.5" />
-                <Chip.Label>Beneficiario · almuerzo sin costo</Chip.Label>
+                <Chip.Label>Beneficiario</Chip.Label>
               </Chip>
             )}
           </div>
@@ -50,7 +49,7 @@ export const InicioSection = ({ user }: InicioSectionProps) => {
 
       <ReservaAlmuerzoCard
         user={user}
-        tituloConfirmacion="Confirmar Reserva de Almuerzo"
+        tituloConfirmacion="Confirmar reserva de almuerzo"
         detalleConfirmacion={(precio) => (
           <div className="flex flex-col gap-3">
             <p>
@@ -74,14 +73,11 @@ export const InicioSection = ({ user }: InicioSectionProps) => {
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <ScheduleCard
-          scheduleText={
-            menu ? `Reservas: ${menu.horario.abre} a ${menu.horario.cierra} (hora de Colombia)` : 'Reservas: 07:00 a 21:00'
-          }
-        />
-        <ProgressCard consumedLunches={almuerzosMes} />
-      </div>
+      <ScheduleCard
+        scheduleText={
+          menu ? `Reservas: ${menu.horario.abre} a ${menu.horario.cierra} (hora de Colombia)` : 'Reservas: 07:00 a 21:00'
+        }
+      />
     </div>
   );
 };

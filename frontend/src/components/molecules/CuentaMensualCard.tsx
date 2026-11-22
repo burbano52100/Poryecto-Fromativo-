@@ -10,9 +10,7 @@ export interface CuentaMensualCardProps {
 export const CuentaMensualCard = ({ pendingBalance, onViewAccount }: CuentaMensualCardProps) => (
   <Card>
     <Card.Header className="flex-row items-start gap-3">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-warning-soft text-warning-soft-foreground">
-        <CreditCard className="size-5" />
-      </div>
+      <CreditCard className="mt-0.5 size-5 shrink-0 text-muted" aria-hidden="true" />
       <div>
         <Card.Title>Cuenta mensual</Card.Title>
         <Card.Description>Como instructor, consumes almuerzos y pagas a fin de mes.</Card.Description>

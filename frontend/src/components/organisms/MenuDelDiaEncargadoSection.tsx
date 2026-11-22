@@ -51,7 +51,7 @@ export const MenuDelDiaEncargadoSection = () => {
     defaultValues: {
       dishName: 'Menú Ejecutivo SENA',
       date: hoyBogota(),
-      description: 'Almuerzo completo: Sopa, bandeja con proteína, arroz, ensalada, jugo natural y postre',
+      description: 'Almuerzo completo: sopa, bandeja con proteína, arroz, ensalada, jugo natural y postre',
       priceStudents: '5000',
       availableQuantity: '200',
     },
@@ -82,7 +82,7 @@ export const MenuDelDiaEncargadoSection = () => {
       },
       {
         onSuccess: () => {
-          toast.success('¡El menú fue guardado y publicado con éxito!');
+          toast.success('Menú guardado y publicado');
         },
       }
     );
@@ -111,7 +111,7 @@ export const MenuDelDiaEncargadoSection = () => {
               <Skeleton className="h-5 w-20 rounded-full" />
             ) : (
               <Chip size="sm" variant="soft" color={isMenuAvailable ? 'success' : 'danger'}>
-                {isMenuAvailable ? 'Disponible' : 'No Disponible'}
+                {isMenuAvailable ? 'Disponible' : 'No disponible'}
               </Chip>
             )}
           </span>
@@ -125,7 +125,7 @@ export const MenuDelDiaEncargadoSection = () => {
             isPending={toggleStatusMutation.isPending}
           >
             <Power />
-            {isMenuAvailable ? 'Marcar como No Disponible' : 'Marcar como Disponible'}
+            {isMenuAvailable ? 'Marcar como no disponible' : 'Marcar como disponible'}
           </Button>
         }
       >
@@ -173,33 +173,33 @@ export const MenuDelDiaEncargadoSection = () => {
         <form onSubmit={handleSubmit(onPublish)} className="flex flex-col gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField
-              label="Nombre del Plato Principal"
+              label="Nombre del menú"
               placeholder="Ej: Menú Ejecutivo SENA"
               required
               error={errors.dishName?.message}
               {...register('dishName')}
             />
-            <FormField label="Fecha del Menú" type="date" required error={errors.date?.message} {...register('date')} />
+            <FormField label="Fecha del menú" type="date" required error={errors.date?.message} {...register('date')} />
           </div>
 
           <TextAreaField
-            label="Descripción Completa de Componentes"
+            label="Qué incluye el menú"
             rows={3}
-            placeholder="Ej: Sopa de verduras, bandeja con carne asada, arroz, ensalada fresca..."
+            placeholder="Ej: Sopa de verduras, carne asada, arroz y ensalada"
             error={errors.description?.message}
             {...register('description')}
           />
 
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField
-              label="Precio Aprendiz (COP)"
+              label="Precio para aprendices (COP)"
               placeholder="5000"
               required
               error={errors.priceStudents?.message}
               {...soloNumeros(register('priceStudents'), 'entero')}
             />
             <FormField
-              label="Cantidad de Porciones Disponibles"
+              label="Porciones disponibles"
               placeholder="200"
               required
               error={errors.availableQuantity?.message}

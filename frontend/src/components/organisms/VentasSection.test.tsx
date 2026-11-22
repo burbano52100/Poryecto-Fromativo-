@@ -55,7 +55,7 @@ const REPORTE: ReporteVentas = {
   ],
 };
 
-describe('Ventas del Encargado con Almuerzos Invitados', () => {
+describe('Ventas del Encargado con Almuerzos invitados', () => {
   it('suma los invitados en las tarjetas y los distingue por tipo', async () => {
     vi.spyOn(apiClient, 'get').mockResolvedValue(respuesta(REPORTE));
     renderConProveedores(<VentasSection />);
@@ -64,7 +64,7 @@ describe('Ventas del Encargado con Almuerzos Invitados', () => {
     expect(screen.getByText('$37.000')).toBeInTheDocument();
     expect(screen.getByText(/\+ \$32\.000 de almuerzos invitados/)).toBeInTheDocument();
 
-    const invitados = within(screen.getByRole('region', { name: 'Almuerzos Invitados del período' }));
+    const invitados = within(screen.getByRole('region', { name: 'Almuerzos invitados del período' }));
     expect(invitados.getByText('Instructores').nextElementSibling).toHaveTextContent('1 persona · $10.000');
     expect(invitados.getByText('Aprendices').nextElementSibling).toHaveTextContent('0 personas · $0');
     expect(invitados.getByText('Corrientes').nextElementSibling).toHaveTextContent('2 personas · $22.000');

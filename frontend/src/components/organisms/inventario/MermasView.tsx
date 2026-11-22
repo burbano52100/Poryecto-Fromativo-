@@ -75,7 +75,7 @@ export const MermasView = () => {
             <FormField
               id="merma-razon"
               label="Razón detallada"
-              placeholder="Ej: Vencimiento / Daño por empaque"
+              placeholder="Ej: producto vencido o empaque dañado"
               error={errors.reason?.message}
               {...register('reason')}
             />

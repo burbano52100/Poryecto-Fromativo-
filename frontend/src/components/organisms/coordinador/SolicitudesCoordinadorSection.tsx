@@ -259,7 +259,7 @@ export const SolicitudesCoordinadorSection = () => {
             required
             onChange={(e) => setMotivo(e.target.value)}
             placeholder="Ej: No figura en la planta de instructores del centro"
-            description="Mínimo 3 caracteres."
+            description="Mínimo 3 caracteres"
           />
           <div className="flex justify-end gap-2">
             <Button variant="tertiary" onPress={() => setARechazar(null)}>

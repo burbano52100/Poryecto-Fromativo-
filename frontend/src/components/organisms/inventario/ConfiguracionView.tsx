@@ -14,7 +14,7 @@ const REGLAS = [
 ] as const;
 
 export const ConfiguracionView = () => (
-  <SectionCard titulo="Configuración de inventario" descripcion="Cómo se calcula el estado de cada material en Control de Stock">
+  <SectionCard titulo="Configuración de inventario" descripcion="Cómo se calcula el estado de cada material en Control de stock">
     <ul className="rounded-xl bg-surface-secondary">
       {REGLAS.map(({ estado, color, regla }, i) => (
         <Fragment key={estado}>

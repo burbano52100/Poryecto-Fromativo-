@@ -70,7 +70,7 @@ const FormularioReceta = ({ receta, onListo }: { receta: Receta | null; onListo:
                   <SelectField
                     label={`Material del ingrediente ${index + 1}`}
                     ocultarLabel
-                    placeholder="Selecciona material…"
+                    placeholder="Selecciona un material"
                     className="flex-1"
                     name={campo.name}
                     value={campo.value}
@@ -137,7 +137,7 @@ export const RecetasView = () => {
       acciones={
         <Button onPress={() => setEditor({ receta: null })}>
           <Plus />
-          Nueva Receta
+          Nueva receta
         </Button>
       }
     >
@@ -146,7 +146,7 @@ export const RecetasView = () => {
       ) : isError ? (
         <ErrorAlert error={error} titulo="No se pudieron cargar las recetas" onReintentar={() => refetch()} />
       ) : !seleccionada ? (
-        <EmptyMessage>Aún no hay recetas. Crea la primera con "Nueva Receta".</EmptyMessage>
+        <EmptyMessage>Aún no hay recetas. Crea la primera con "Nueva receta".</EmptyMessage>
       ) : (
         <div className="grid gap-6 md:grid-cols-3">
           <ListBox

@@ -51,7 +51,7 @@ describe('Formulario de login', () => {
   it('ya no muestra botones de tipo de cuenta: solo documento, contraseña, Ingresar y Registrarse', async () => {
     renderConProveedores(<LoginPage />, { ruta: '/login' });
 
-    expect(await screen.findByLabelText(/Documento de Identidad/)).toBeInTheDocument();
+    expect(await screen.findByLabelText(/Número de documento/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Contraseña/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Registrarse' })).toBeInTheDocument();
@@ -62,10 +62,9 @@ describe('Formulario de login', () => {
     }
     expect(screen.queryByRole('button', { name: /Reconocimiento Facial/i })).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Ficha/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'GastroSENA' })).toHaveAttribute(
-      'src',
-      `${import.meta.env.BASE_URL}logo.png`
-    );
+    // El nombre lo da el título; el logo de al lado es decorativo (alt vacío) y debe cargar desde la base de Vite
+    expect(screen.getByRole('heading', { name: 'GastroSENA' })).toBeInTheDocument();
+    expect(document.querySelector('header img')).toHaveAttribute('src', `${import.meta.env.BASE_URL}logo.png`);
   });
 
   it('valida el documento antes de llamar al backend', async () => {
@@ -86,7 +85,7 @@ describe('Formulario de login', () => {
     );
     renderConProveedores(<AppRoutes />, { ruta: '/login' });
 
-    await userEvent.type(await screen.findByLabelText(/Documento de Identidad/), '1005678901');
+    await userEvent.type(await screen.findByLabelText(/Número de documento/), '1005678901');
     await userEvent.type(screen.getByLabelText(/Contraseña/), 'mala-clave');
     await userEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
 
@@ -103,7 +102,7 @@ describe('Formulario de login', () => {
     );
     renderConProveedores(<AppRoutes />, { ruta: '/login' });
 
-    await userEvent.type(await screen.findByLabelText(/Documento de Identidad/), '1098765432');
+    await userEvent.type(await screen.findByLabelText(/Número de documento/), '1098765432');
     await userEvent.type(screen.getByLabelText(/Contraseña/), 'clave-segura');
     await userEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
 
@@ -123,7 +122,7 @@ describe('Redirección después del login', () => {
       vi.spyOn(apiClient, 'get').mockResolvedValue(respuesta({}));
       renderConProveedores(<AppRoutes />, { ruta: '/login' });
 
-      await userEvent.type(await screen.findByLabelText(/Documento de Identidad/), '1005678901');
+      await userEvent.type(await screen.findByLabelText(/Número de documento/), '1005678901');
       await userEvent.type(screen.getByLabelText(/Contraseña/), 'clave-segura');
       await userEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
 
@@ -236,11 +235,11 @@ describe('Cerrar sesión', () => {
   };
 
   it.each(Object.keys(PANELES) as AccountType[])(
-    'el botón "Cerrar Sesión" del Sidebar de %s muestra el login',
+    'el botón "Cerrar sesión" del Sidebar de %s muestra el login',
     async (role) => {
       const queryClient = await abrirPanel(role);
 
-      await userEvent.click(screen.getByRole('button', { name: 'Cerrar Sesión' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
 
       await expectSesionCerrada(queryClient, role);
     }

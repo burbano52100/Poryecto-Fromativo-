@@ -140,7 +140,7 @@ export const GruposSection = () => {
         acciones={
           <SearchInput
             label="Buscar grupo"
-            placeholder="Buscar por ficha, programa o instructor..."
+            placeholder="Buscar por ficha, programa o instructor"
             value={searchTerm}
             onChange={setSearchTerm}
             className="w-full sm:w-80"

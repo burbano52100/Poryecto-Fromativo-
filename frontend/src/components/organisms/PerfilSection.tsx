@@ -67,7 +67,7 @@ export const PerfilSection = ({ user }: PerfilSectionProps) => {
       {
         onSuccess: () => {
           setIsEditing(false);
-          toast.success('¡Perfil actualizado correctamente!');
+          toast.success('Perfil actualizado');
         },
       }
     );
@@ -80,7 +80,7 @@ export const PerfilSection = ({ user }: PerfilSectionProps) => {
       acciones={
         <Button variant={isEditing ? 'tertiary' : 'secondary'} onPress={toggleEdicion}>
           {isEditing ? <X /> : <Pencil />}
-          {isEditing ? 'Cancelar' : 'Editar Perfil'}
+          {isEditing ? 'Cancelar' : 'Editar perfil'}
         </Button>
       }
     >
@@ -106,16 +106,16 @@ export const PerfilSection = ({ user }: PerfilSectionProps) => {
         <form onSubmit={onSubmit} noValidate className="flex max-w-xl flex-col gap-4">
           {actualizarPerfil.isError && <ErrorAlert error={actualizarPerfil.error} titulo="No se pudo guardar el perfil" />}
 
-          <FormField label="Nombre Completo" required error={errors.name?.message} {...register('name')} />
+          <FormField label="Nombre completo" required error={errors.name?.message} {...register('name')} />
           <FormField
-            label="Correo Institucional"
+            label="Correo institucional"
             type="email"
             autoComplete="email"
             required
             error={errors.email?.message}
             {...register('email')}
           />
-          {user.role === 'aprendiz' && <FormField label="ID de Ficha" error={errors.ficha?.message} {...register('ficha')} />}
+          {user.role === 'aprendiz' && <FormField label="Número de ficha" error={errors.ficha?.message} {...register('ficha')} />}
 
           <div className="flex justify-end gap-2">
             <Button variant="tertiary" onPress={toggleEdicion}>
@@ -128,7 +128,7 @@ export const PerfilSection = ({ user }: PerfilSectionProps) => {
         </form>
       ) : (
         <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-          <Dato etiqueta={isInstructor ? 'Cédula' : 'Cédula / Documento'} valor={user.document} />
+          <Dato etiqueta={isInstructor ? 'Cédula' : 'Número de documento'} valor={user.document} />
           {user.role === 'aprendiz' && <Dato etiqueta="Ficha" valor={user.ficha || 'Sin ficha'} />}
           <Dato etiqueta="Correo institucional" valor={user.email || 'Sin correo registrado'} />
           {isInstructor && <Dato etiqueta="Tipo de cuenta" valor={cuenta?.paymentFrequency ?? 'Mensual'} />}

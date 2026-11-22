@@ -87,7 +87,7 @@ const FormularioMaterial = ({ categorias, onListo }: { categorias: string[]; onL
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
       {crear.isError && <ErrorAlert error={crear.error} titulo="No se pudo crear el material" />}
-      <FormField label="Nombre del Material" required placeholder="Ej: Harina de Trigo 1kg" error={errors.name?.message} {...register('name')} />
+      <FormField label="Nombre del material" required placeholder="Ej: Harina de Trigo 1kg" error={errors.name?.message} {...register('name')} />
       <div className="grid gap-3 sm:grid-cols-2">
         <FormField label="Código de barras" placeholder="Opcional" error={errors.code?.message} {...register('code')} />
         <FormField
@@ -103,7 +103,7 @@ const FormularioMaterial = ({ categorias, onListo }: { categorias: string[]; onL
             <option key={c} value={c} />
           ))}
         </datalist>
-        <FormField label="Unidad" required placeholder="Kg, Litros, Unidades" error={errors.unit?.message} {...register('unit')} />
+        <FormField label="Unidad" required placeholder="Kg, litros o unidades" error={errors.unit?.message} {...register('unit')} />
         <FormField label="Vencimiento" type="date" error={errors.expiry?.message} {...register('expiry')} />
         <FormField label="Stock inicial" required error={errors.stock?.message} {...soloNumeros(register('stock'))} />
         <FormField label="Stock mínimo" required error={errors.stock_minimo?.message} {...soloNumeros(register('stock_minimo'))} />
@@ -222,7 +222,7 @@ export const StockView = () => {
       <div className="flex flex-wrap items-center gap-3">
         <SearchInput
           label="Buscar material"
-          placeholder="Buscar artículo o código..."
+          placeholder="Buscar por nombre o código"
           value={busqueda}
           onChange={setBusqueda}
           className="min-w-[200px] flex-1"
