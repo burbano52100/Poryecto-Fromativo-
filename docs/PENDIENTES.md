@@ -38,7 +38,7 @@ Estado al **22 de noviembre de 2026**, en `main` (commit `7707bd9`, Fase 7 con H
 ## 2. Despliegue (configuración manual, requiere acceso a las cuentas)
 - [ ] En Render: crear el Blueprint desde `render.yaml` y cargar `ADMIN_DOCUMENT`, `ADMIN_PASSWORD`, `ADMIN_EMAIL`, `COORDINADOR_DOCUMENT`, `COORDINADOR_PASSWORD` y `COORDINADOR_EMAIL`. El coordinador necesita un documento y un correo distintos de los del encargado.
 - [ ] En GitHub → Settings → Variables: crear `VITE_API_URL` con la URL del backend en Render terminada en `/api`.
-- [ ] **Correo**: `correo.service.ts` lee `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` y `SMTP_FROM`, pero no están en `backend/.env.example` ni en `render.yaml`. Sin `SMTP_HOST`, los recordatorios de deuda solo se imprimen en la consola ("modo prueba"). Agregarlas a los dos archivos y cargarlas en Render.
+- [ ] **Correo (opcional)**: cargar en Render `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` y, si se quiere, `SMTP_FROM`. Ya están en `backend/.env.example`, en `render.yaml` y en `DESPLIEGUE.md`. Sin `SMTP_HOST`, los recordatorios de deuda solo se imprimen en el log ("modo prueba").
 - [ ] Recordar que la base gratuita de Render expira a los 30 días (ver `DESPLIEGUE.md`).
 
 ## 3. Documentación atrasada

@@ -40,9 +40,16 @@ La forma recomendada es **New + → Blueprint** apuntando a este repositorio. El
 | `COORDINADOR_PASSWORD` | Contraseña del primer coordinador | `OtraClaveSegura2026!` |
 | `COORDINADOR_NAME` | Nombre del primer coordinador (Opcional) | `Coordinación Académica` |
 | `COORDINADOR_EMAIL` | Correo del primer coordinador (Opcional) | `coordinacion@sena.edu.co` |
+| `SMTP_HOST` | Servidor SMTP de los recordatorios de deuda (Opcional) | `smtp.gmail.com` |
+| `SMTP_PORT` | Puerto SMTP: `587` (STARTTLS) o `465` (TLS directo) | `587` |
+| `SMTP_USER` | Usuario de la cuenta de correo | `tu-cuenta@gmail.com` |
+| `SMTP_PASS` | Contraseña de la cuenta (en Gmail, una contraseña de aplicación) | *(la contraseña de aplicación)* |
+| `SMTP_FROM` | Remitente; si se deja vacío se usa `SMTP_USER` (Opcional) | `GastroSENA <tu-cuenta@gmail.com>` |
 
 > **Nota sobre el Bootstrap del Encargado y del Coordinador**:
 > En cada arranque, después de las migraciones, el backend revisa cada rol por separado. Si la base no tiene ningún encargado y `ADMIN_DOCUMENT` y `ADMIN_PASSWORD` están definidos, crea el encargado. Si no tiene ningún coordinador y `COORDINADOR_DOCUMENT` y `COORDINADOR_PASSWORD` están definidos, crea el coordinador. Las dos cuentas quedan activas y con la contraseña hasheada. No necesitas activar el seed demo en producción.
+>
+> **Correo (opcional)**: las variables `SMTP_*` solo las usan los recordatorios de deuda que el encargado envía a los instructores desde la Cartera (ADR 023). Sin `SMTP_HOST`, la app funciona igual, pero los recordatorios no salen: se imprimen en el log de Render ("modo prueba") y la respuesta de la API lo indica.
 >
 > **El coordinador es obligatorio en producción**: el registro solo crea cuentas pendientes de aprendiz e instructor, y solo el coordinador las aprueba (ADR 018). Usa un documento y un correo distintos de los del encargado. Si alguno ya pertenece a otra cuenta, el backend no crea el coordinador y lo avisa en el log.
 

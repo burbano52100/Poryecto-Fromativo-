@@ -44,3 +44,14 @@ services:
         value: Coordinación Académica
       - key: COORDINADOR_EMAIL
         sync: false
+      # Correo de los recordatorios de deuda (opcional): sin SMTP_HOST quedan en "modo prueba"
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
