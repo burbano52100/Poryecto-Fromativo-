@@ -11,7 +11,7 @@ La forma recomendada es **New + → Blueprint** apuntando a este repositorio. El
 - Crea la base de datos `gastrosena-db` (PostgreSQL, plan free).
 - Conecta `DATABASE_URL` del servicio con `fromDatabase` (`name: gastrosena-db`, `property: connectionString`).
 - Genera `JWT_SECRET` automáticamente (`generateValue: true`).
-- Pide en el panel `ADMIN_DOCUMENT`, `ADMIN_PASSWORD` y `ADMIN_EMAIL` (`sync: false`), que nunca se versionan.
+- Pide en el panel `ADMIN_DOCUMENT`, `ADMIN_PASSWORD`, `ADMIN_EMAIL`, `COORDINADOR_DOCUMENT`, `COORDINADOR_PASSWORD` y `COORDINADOR_EMAIL` (`sync: false`), que nunca se versionan.
 
 > La base de datos gratuita de Render expira a los 30 días. Como alternativa permanente se puede usar Neon o Supabase: en ese caso se reemplaza `DATABASE_URL` por la URL externa en el panel de Render.
 
@@ -36,9 +36,15 @@ La forma recomendada es **New + → Blueprint** apuntando a este repositorio. El
 | `ADMIN_PASSWORD` | Contraseña del primer encargado | `TuClaveSegura2026!` |
 | `ADMIN_NAME` | Nombre del primer encargado (Opcional) | `Administrador General Comedor` |
 | `ADMIN_EMAIL` | Correo del primer encargado (Opcional) | `admin@sena.edu.co` |
+| `COORDINADOR_DOCUMENT` | Cédula del primer coordinador (Bootstrap) | `1023456789` |
+| `COORDINADOR_PASSWORD` | Contraseña del primer coordinador | `OtraClaveSegura2026!` |
+| `COORDINADOR_NAME` | Nombre del primer coordinador (Opcional) | `Coordinación Académica` |
+| `COORDINADOR_EMAIL` | Correo del primer coordinador (Opcional) | `coordinacion@sena.edu.co` |
 
-> **Nota sobre el Bootstrap del Encargado**:
-> Al iniciar por primera vez, el backend detecta si la base no tiene encargados registrados. Si `ADMIN_DOCUMENT` y `ADMIN_PASSWORD` están definidos, crea de inmediato al usuario encargado con su contraseña hasheada. No necesitas activar el seed demo en producción.
+> **Nota sobre el Bootstrap del Encargado y del Coordinador**:
+> En cada arranque, después de las migraciones, el backend revisa cada rol por separado. Si la base no tiene ningún encargado y `ADMIN_DOCUMENT` y `ADMIN_PASSWORD` están definidos, crea el encargado. Si no tiene ningún coordinador y `COORDINADOR_DOCUMENT` y `COORDINADOR_PASSWORD` están definidos, crea el coordinador. Las dos cuentas quedan activas y con la contraseña hasheada. No necesitas activar el seed demo en producción.
+>
+> **El coordinador es obligatorio en producción**: el registro solo crea cuentas pendientes de aprendiz e instructor, y solo el coordinador las aprueba (ADR 018). Usa un documento y un correo distintos de los del encargado. Si alguno ya pertenece a otra cuenta, el backend no crea el coordinador y lo avisa en el log.
 
 ---
 
@@ -68,7 +74,7 @@ El frontend se despliega automáticamente en cada `push` a la rama `main` a trav
    { "status": "OK", "database": "connected", "system": "GastroSENA API" }
    ```
 2. Abre la URL de GitHub Pages (ej. `https://burbano52100.github.io/Poryecto-Fromativo-/#/login`).
-3. Inicia sesión solo con documento y contraseña del primer encargado (`ADMIN_DOCUMENT` y `ADMIN_PASSWORD`); la app abre `#/encargado/inicio`.
+3. Inicia sesión solo con documento y contraseña del primer encargado (`ADMIN_DOCUMENT` y `ADMIN_PASSWORD`); la app abre `#/encargado/inicio`. Luego repite con el coordinador (`COORDINADOR_DOCUMENT` y `COORDINADOR_PASSWORD`); la app abre su panel, donde se aprueban las cuentas nuevas.
 4. Navega entre las pestañas y recarga la página. Gracias a `HashRouter`, la ruta se mantendrá sin arrojar 404.
 
 ---

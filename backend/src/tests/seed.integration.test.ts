@@ -4,6 +4,7 @@ import { pool } from '../db/index.js';
 import { runSeed } from '../db/seed.js';
 import { fechaBogota } from '../utils/horario.js';
 import { cleanDatabase } from './helpers/db.js';
+import { fechaRelativa } from './helpers/fechas.js';
 import { fijarHoraBogota, restaurarReloj } from './helpers/tiempo.js';
 
 const q = async <T = Record<string, unknown>>(sql: string): Promise<T[]> => (await pool.query(sql)).rows as T[];
@@ -82,7 +83,12 @@ describe('Semilla de demostración', () => {
 
   it('deja historia suficiente para la sugerencia y cierres de caja de días anteriores', async () => {
     const { sugerenciaParaFecha } = await import('../services/sugerencia.service.js');
-    const sugerencia = await sugerenciaParaFecha(fechaBogota());
+    // El comedor no abre los domingos y la semilla no deja historia de ese día de la semana.
+    // Un domingo se pide la sugerencia del lunes, cuyos lunes anteriores sí están en la semilla.
+    const hoy = fechaBogota();
+    const [anio, mes, dia] = hoy.split('-').map(Number);
+    const esDomingo = new Date(Date.UTC(anio, mes - 1, dia)).getUTCDay() === 0;
+    const sugerencia = await sugerenciaParaFecha(esDomingo ? fechaRelativa(1) : hoy);
     assert.strictEqual(sugerencia.suficiente, true, sugerencia.mensaje);
     const [cierres] = await q<{ n: number }>('SELECT count(*)::int AS n FROM cierres_caja');
     assert.strictEqual(cierres.n, 6);

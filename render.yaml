@@ -35,3 +35,12 @@ services:
         value: Encargado General Comedor
       - key: ADMIN_EMAIL
         sync: false
+      # Primer coordinador (bootstrapAdmin): aprueba las cuentas de aprendiz e instructor
+      - key: COORDINADOR_DOCUMENT
+        sync: false
+      - key: COORDINADOR_PASSWORD
+        sync: false
+      - key: COORDINADOR_NAME
+        value: Coordinación Académica
+      - key: COORDINADOR_EMAIL
+        sync: false

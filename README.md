@@ -38,7 +38,7 @@ El login pide **solo documento y contraseña**: el rol sale de la base de datos 
    cd backend
    cp .env.example .env      # ajusta DATABASE_URL, DATABASE_URL_TEST y JWT_SECRET
    npm install
-   npm run db:init           # aplica las migraciones y crea el primer encargado (ADMIN_*)
+   npm run db:init           # aplica las migraciones y crea el primer encargado (ADMIN_*) y el primer coordinador (COORDINADOR_*)
    npm run db:seed           # opcional: datos de demostración
    npm run dev
    ```
@@ -65,7 +65,7 @@ Además, `1005678920` es una aprendiz creada por carga masiva: entra con su docu
 
 El seed no corre en producción salvo que `SEED_DEMO=true`.
 
-Las cuentas nuevas de **aprendiz** e **instructor** se piden desde "Registrarse" y quedan pendientes hasta que el **Coordinador** las apruebe en **Solicitudes de Cuenta** (ADR 018). Encargados y coordinadores no se registran solos.
+Las cuentas nuevas de **aprendiz** e **instructor** se piden desde "Registrarse" y quedan pendientes hasta que el **Coordinador** las apruebe en **Solicitudes de Cuenta** (ADR 018). Encargados y coordinadores no se registran solos: el primero de cada rol lo crea el backend al migrar, con las variables `ADMIN_*` y `COORDINADOR_*`.
 
 ## Calidad
 
