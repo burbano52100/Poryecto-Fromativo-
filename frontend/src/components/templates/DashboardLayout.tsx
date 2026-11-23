@@ -5,6 +5,7 @@ import type { User } from '../../schemas/auth.schema';
 import { Sidebar, type SectionType, type InventarioSubSection } from '../organisms/Sidebar';
 import { StatsHeader } from '../organisms/StatsHeader';
 import { iniciales, TITULO_ROL } from '../../lib/usuario';
+import { useColorDeRol } from '../../hooks/useColorDeRol';
 
 export interface DashboardLayoutProps {
   user: User;
@@ -58,6 +59,7 @@ export const DashboardLayout = ({
   children,
 }: DashboardLayoutProps) => {
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
+  useColorDeRol(user.role);
 
   const fechaHoy = new Date().toLocaleDateString('es-CO', {
     weekday: 'long',
@@ -106,7 +108,7 @@ export const DashboardLayout = ({
           </div>
 
           <div className="flex items-center gap-2.5">
-            <Chip size="sm" variant="soft" className="hidden md:inline-flex">
+            <Chip size="sm" variant="soft" color="accent" className="hidden md:inline-flex">
               {TITULO_ROL[user.role]}
             </Chip>
             <Dropdown>

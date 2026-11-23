@@ -8,13 +8,13 @@
  * El acento es el verde del logo de SARA (#308B57, matiz 155), un poco más oscuro
  * (#247F4D) para que el texto blanco encima cumpla contraste AA (4,98:1).
  *
- * Los grises de HeroUI vienen teñidos hacia el violeta (matiz 286). Aquí se tiñen,
- * apenas, hacia el mismo verde: el fondo, las superficies secundarias, los bordes y el
- * texto atenuado. Es lo que le da color a toda la app sin pintar nada de verde intenso.
- * --muted se oscurece un poco para seguir por encima de 4,5:1 sobre el fondo nuevo.
+ * Los grises de HeroUI vienen teñidos hacia el violeta (matiz 286). Aquí se tiñen hacia
+ * el matiz del acento (--tono): el fondo, la barra lateral, los bordes y el texto atenuado.
+ * --muted se oscurece un poco para seguir por encima de 4,5:1 sobre esos fondos.
  */
 :root,
 [data-theme="light"] {
+  --tono: 155;
   --accent: oklch(0.53 0.115 155);
   --accent-foreground: oklch(0.99 0 0);
   --focus: var(--accent);
@@ -22,13 +22,38 @@
   --radius: 0.625rem;
   --field-radius: 0.625rem;
 
-  --background: oklch(0.975 0.009 155);
-  --surface-secondary: oklch(0.955 0.016 155);
-  --surface-tertiary: oklch(0.94 0.02 155);
-  --default: oklch(0.94 0.018 155);
-  --muted: oklch(0.52 0.02 155);
-  --border: oklch(0.9 0.014 155);
-  --separator: oklch(0.92 0.012 155);
+  --background: oklch(0.975 0.012 var(--tono));
+  --surface-secondary: oklch(0.95 0.028 var(--tono));
+  --surface-tertiary: oklch(0.935 0.032 var(--tono));
+  --default: oklch(0.94 0.022 var(--tono));
+  --muted: oklch(0.52 0.025 var(--tono));
+  --border: oklch(0.9 0.018 var(--tono));
+  --separator: oklch(0.92 0.015 var(--tono));
+}
+
+/*
+ * Color de cada perfil. DashboardLayout pone data-rol en <html> (useColorDeRol), así el
+ * color también llega a los modales, menús y avisos, que se abren fuera del layout.
+ * El aprendiz se queda con el verde de SARA, igual que el inicio de sesión.
+ * Contraste del texto blanco sobre cada acento: instructor 6,3:1, encargado 4,9:1,
+ * coordinador 5,8:1.
+ */
+:root[data-rol="instructor"] {
+  --tono: 277;
+  --accent: oklch(0.5 0.2 277);
+  --link: oklch(0.43 0.2 277);
+}
+
+:root[data-rol="encargado"] {
+  --tono: 52;
+  --accent: oklch(0.55 0.13 52);
+  --link: oklch(0.48 0.12 52);
+}
+
+:root[data-rol="coordinador"] {
+  --tono: 243;
+  --accent: oklch(0.5 0.115 243);
+  --link: oklch(0.43 0.1 243);
 }
 
 @theme {
