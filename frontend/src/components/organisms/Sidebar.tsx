@@ -150,7 +150,7 @@ export const Sidebar = ({
           ];
 
   const contenido = (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-surface-secondary">
       <div className="flex items-center gap-2.5 px-5 py-4">
         <img src={asset('/sara-icono.svg')} alt="" className="size-8 object-contain" />
         <div className="leading-tight">

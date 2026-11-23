@@ -10,7 +10,7 @@ export const SidebarUserProfile = ({ user }: SidebarUserProfileProps) => {
   const detalle = user.role === 'aprendiz' ? `Ficha ${user.ficha || 'sin asignar'}` : `Doc. ${user.document}`;
 
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-surface-secondary p-3">
+    <div className="flex items-center gap-3 rounded-xl bg-surface p-3">
       <Badge.Anchor>
         <Avatar color="accent" variant="soft">
           <Avatar.Fallback>{iniciales(user.name)}</Avatar.Fallback>

@@ -4,17 +4,31 @@
 
 /*
  * Tema de SARA sobre HeroUI v3.
- * El acento es el verde institucional del SENA, un tono más oscuro que #39A900
- * para que el texto blanco encima cumpla contraste AA.
+ *
+ * El acento es el verde del logo de SARA (#308B57, matiz 155), un poco más oscuro
+ * (#247F4D) para que el texto blanco encima cumpla contraste AA (4,98:1).
+ *
+ * Los grises de HeroUI vienen teñidos hacia el violeta (matiz 286). Aquí se tiñen,
+ * apenas, hacia el mismo verde: el fondo, las superficies secundarias, los bordes y el
+ * texto atenuado. Es lo que le da color a toda la app sin pintar nada de verde intenso.
+ * --muted se oscurece un poco para seguir por encima de 4,5:1 sobre el fondo nuevo.
  */
 :root,
 [data-theme="light"] {
-  --accent: oklch(0.52 0.15 140);
+  --accent: oklch(0.53 0.115 155);
   --accent-foreground: oklch(0.99 0 0);
   --focus: var(--accent);
-  --link: oklch(0.45 0.13 140);
+  --link: oklch(0.46 0.11 155);
   --radius: 0.625rem;
   --field-radius: 0.625rem;
+
+  --background: oklch(0.975 0.009 155);
+  --surface-secondary: oklch(0.955 0.016 155);
+  --surface-tertiary: oklch(0.94 0.02 155);
+  --default: oklch(0.94 0.018 155);
+  --muted: oklch(0.52 0.02 155);
+  --border: oklch(0.9 0.014 155);
+  --separator: oklch(0.92 0.012 155);
 }
 
 @theme {

@@ -16,7 +16,7 @@ export const InicioSection = ({ user }: InicioSectionProps) => {
 
   return (
     <div className="flex flex-col gap-6">
-      <Card>
+      <Card className="bg-accent-soft">
         <Card.Header className="gap-1">
           <div className="flex flex-wrap items-center gap-2">
             <Card.Title className="text-xl">Hola, {primerNombre}</Card.Title>
@@ -27,7 +27,7 @@ export const InicioSection = ({ user }: InicioSectionProps) => {
               </Chip>
             )}
           </div>
-          <Card.Description>
+          <Card.Description className="text-foreground/80">
             {esBeneficiario
               ? 'Tienes alimentación 100 % subsidiada por el SENA: reserva el almuerzo del día con un clic.'
               : 'Reserva el almuerzo del día con anticipación y presenta tu documento o ficha al ingresar.'}
