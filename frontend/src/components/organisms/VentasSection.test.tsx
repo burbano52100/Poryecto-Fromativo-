@@ -60,14 +60,19 @@ describe('Ventas del Encargado con Almuerzos invitados', () => {
     vi.spyOn(apiClient, 'get').mockResolvedValue(respuesta(REPORTE));
     renderConProveedores(<VentasSection />);
 
-    expect(await screen.findByText(/Incluye 1 gratis de beneficiarios y 3 de almuerzos invitados/)).toBeInTheDocument();
+    expect(await screen.findByText(/Incluye 1 gratis de beneficiarios y 3 de invitados/)).toBeInTheDocument();
     expect(screen.getByText('$37.000')).toBeInTheDocument();
-    expect(screen.getByText(/\+ \$32\.000 de almuerzos invitados/)).toBeInTheDocument();
+    expect(screen.getByText(/Reservas pagadas y \$32\.000 de invitados/)).toBeInTheDocument();
 
+    // Cada tipo es una cifra de la franja: etiqueta, total cobrado y personas
     const invitados = within(screen.getByRole('region', { name: 'Almuerzos invitados del período' }));
-    expect(invitados.getByText('Instructores').nextElementSibling).toHaveTextContent('1 persona · $10.000');
-    expect(invitados.getByText('Aprendices').nextElementSibling).toHaveTextContent('0 personas · $0');
-    expect(invitados.getByText('Corrientes').nextElementSibling).toHaveTextContent('2 personas · $22.000');
+    const cifra = (tipo: string) => invitados.getByText(tipo).closest('div')!;
+    expect(cifra('Instructores')).toHaveTextContent('$10.000');
+    expect(cifra('Instructores')).toHaveTextContent('1 persona');
+    expect(cifra('Aprendices')).toHaveTextContent('$0');
+    expect(cifra('Aprendices')).toHaveTextContent('0 personas');
+    expect(cifra('Corrientes')).toHaveTextContent('$22.000');
+    expect(cifra('Corrientes')).toHaveTextContent('2 personas');
     expect(screen.getByText(/5 almuerzos \(3 invitados\)/)).toBeInTheDocument();
   });
 

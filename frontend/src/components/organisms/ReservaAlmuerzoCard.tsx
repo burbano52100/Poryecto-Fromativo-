@@ -105,6 +105,7 @@ export const ReservaAlmuerzoCard = ({
         description={menu.descripcion}
         price={precio}
         note={note}
+        horario={`Reservas de ${menu.horario.abre} a ${menu.horario.cierra}, hora de Colombia`}
         imageUrl={menu.imagen_url}
         isAvailable={hayCupo}
         canReserve={menu.reservable}

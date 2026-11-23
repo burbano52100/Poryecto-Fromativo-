@@ -152,7 +152,7 @@ export const DashboardLayout = ({
         </header>
 
         <main className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6 lg:p-8">
-          <StatsHeader user={user} />
+          <StatsHeader user={user} activeSection={activeSection} onSelectSection={onSelectSection} />
           {children}
         </main>
       </div>

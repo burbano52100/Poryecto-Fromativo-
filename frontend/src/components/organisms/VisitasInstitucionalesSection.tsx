@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarClock, DollarSign, Users } from 'lucide-react';
 import { Alert, Chip, Table, toast } from '@heroui/react';
 import { apiClient } from '../../lib/api';
 import { filtrarNumero } from '../../lib/numeros';
@@ -12,7 +11,7 @@ import {
   type NombresVisita,
 } from '../../schemas/visitas.schema';
 import { Button } from '../atoms/Button';
-import { StatCard } from '../atoms/StatCard';
+import { FranjaCifras } from '../molecules/FranjaCifras';
 import { EmptyMessage } from '../molecules/EmptyMessage';
 import { FormField } from '../molecules/FormField';
 import { ListSkeleton } from '../molecules/ListSkeleton';
@@ -127,26 +126,17 @@ export function VisitasInstitucionalesSection() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard
-          title="Visitas del mes"
-          value={kpiQuery.isLoading ? undefined : (kpi?.totalVisitasMes ?? 0)}
-          icon={<CalendarClock className="size-5" />}
-          tone="accent"
-        />
-        <StatCard
-          title="Personas atendidas"
-          value={kpiQuery.isLoading ? undefined : (kpi?.totalPersonasAtendidas ?? 0)}
-          icon={<Users className="size-5" />}
-          tone="warning"
-        />
-        <StatCard
-          title="Ingresos por visitas"
-          value={kpiQuery.isLoading ? undefined : currencyFormatter.format(kpi?.ingresosVisitas ?? 0)}
-          icon={<DollarSign className="size-5" />}
-          tone="success"
-        />
-      </div>
+      <FranjaCifras
+        etiqueta="Visitas de este mes"
+        cifras={[
+          { etiqueta: 'Visitas este mes', valor: kpiQuery.isLoading ? undefined : (kpi?.totalVisitasMes ?? 0) },
+          { etiqueta: 'Personas atendidas', valor: kpiQuery.isLoading ? undefined : (kpi?.totalPersonasAtendidas ?? 0) },
+          {
+            etiqueta: 'Cobrado por visitas',
+            valor: kpiQuery.isLoading ? undefined : currencyFormatter.format(kpi?.ingresosVisitas ?? 0),
+          },
+        ]}
+      />
 
       <div className="grid gap-6 lg:grid-cols-5">
         <SectionCard

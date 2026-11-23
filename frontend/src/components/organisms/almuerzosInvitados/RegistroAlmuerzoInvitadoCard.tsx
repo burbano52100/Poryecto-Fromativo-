@@ -30,7 +30,7 @@ interface RegistroAlmuerzoInvitadoCardProps {
 export const RegistroAlmuerzoInvitadoCard = ({ tipo, precio, maxPersonas }: RegistroAlmuerzoInvitadoCardProps) => {
   const tituloId = useId();
   const registrar = useRegistrarAlmuerzoInvitado();
-  const { icono: Icono, iconoFondo } = ESTILO_TIPO_INVITADO[tipo];
+  const { icono: Icono, iconoColor } = ESTILO_TIPO_INVITADO[tipo];
 
   const schema = useMemo(() => crearRegistroInvitadoSchema(maxPersonas), [maxPersonas]);
   const {
@@ -64,9 +64,7 @@ export const RegistroAlmuerzoInvitadoCard = ({ tipo, precio, maxPersonas }: Regi
     <Card role="region" aria-labelledby={tituloId} className="gap-4 p-5">
       <Card.Header className="flex-row items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${iconoFondo}`}>
-            <Icono className="size-5" />
-          </div>
+          <Icono className={`size-6 shrink-0 ${iconoColor}`} aria-hidden="true" />
           <div className="min-w-0">
             <Card.Title id={tituloId}>{ETIQUETA_TIPO_INVITADO[tipo].titulo}</Card.Title>
             <Card.Description className="text-xs">Precio fijo por persona</Card.Description>

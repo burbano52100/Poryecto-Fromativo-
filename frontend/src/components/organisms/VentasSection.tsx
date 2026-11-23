@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Award, Clock, DollarSign, Download, ShoppingCart } from 'lucide-react';
+import { Award, Download } from 'lucide-react';
 import { Card, Chip, Table } from '@heroui/react';
 import { Button } from '../atoms/Button';
 import { EstadoPagoBadge } from '../atoms/EstadoPagoBadge';
-import { StatCard } from '../atoms/StatCard';
+import { FranjaCifras } from '../molecules/FranjaCifras';
 import { EmptyMessage } from '../molecules/EmptyMessage';
 import { ErrorAlert } from '../molecules/ErrorAlert';
 import { ListSkeleton } from '../molecules/ListSkeleton';
@@ -14,7 +14,6 @@ import { fechaHora, pesos } from '../../lib/formato';
 import { descargarCsv } from '../../lib/csv';
 import { ETIQUETA_TIPO_INVITADO, TIPOS_ALMUERZO_INVITADO, textoPersonas } from '../../schemas/almuerzosInvitados.schema';
 import type { PeriodoVentas, ReporteVentas, TipoAlmuerzoInvitado } from '../../types/api';
-import { ESTILO_TIPO_INVITADO } from './almuerzosInvitados/estiloTipo';
 
 const PERIODOS: PeriodoVentas[] = ['Día', 'Semana', 'Mes', 'Trimestre', 'Semestre', 'Año'];
 
@@ -94,29 +93,22 @@ export const VentasSection = () => {
         </Card>
       ) : data ? (
         <>
-          <div className="grid gap-4 md:grid-cols-3">
-            <StatCard
-              title="Almuerzos servidos"
-              value={data.totales.almuerzosServidos}
-              subtitle={`Incluye ${data.totales.almuerzosGratis} gratis de beneficiarios y ${data.totales.almuerzosInvitados} de almuerzos invitados`}
-              icon={<ShoppingCart className="size-5" />}
-              tone="accent"
-            />
-            <StatCard
-              title="Ingresos cobrados"
-              value={pesos(data.totales.ingresosCobrados)}
-              subtitle={`Reservas pagadas + ${pesos(data.totales.ingresosInvitados)} de almuerzos invitados`}
-              icon={<DollarSign className="size-5" />}
-              tone="success"
-            />
-            <StatCard
-              title="Por cobrar"
-              value={pesos(data.totales.porCobrar)}
-              subtitle="Reservas pendientes de pago"
-              icon={<Clock className="size-5" />}
-              tone="warning"
-            />
-          </div>
+          <FranjaCifras
+            etiqueta="Totales del período"
+            cifras={[
+              {
+                etiqueta: 'Almuerzos servidos',
+                valor: data.totales.almuerzosServidos,
+                detalle: `Incluye ${data.totales.almuerzosGratis} gratis de beneficiarios y ${data.totales.almuerzosInvitados} de invitados`,
+              },
+              {
+                etiqueta: 'Cobrado',
+                valor: pesos(data.totales.ingresosCobrados),
+                detalle: `Reservas pagadas y ${pesos(data.totales.ingresosInvitados)} de invitados`,
+              },
+              { etiqueta: 'Por cobrar', valor: pesos(data.totales.porCobrar), detalle: 'Reservas sin pagar' },
+            ]}
+          />
 
           <section aria-label="Almuerzos invitados del período">
             <SectionCard
@@ -127,25 +119,18 @@ export const VentasSection = () => {
                 </Chip>
               }
             >
-              <div className="grid gap-3 sm:grid-cols-3">
-                {TIPOS_ALMUERZO_INVITADO.map((tipo) => {
-                  const { icono: Icono, iconoFondo } = ESTILO_TIPO_INVITADO[tipo];
+              <FranjaCifras
+                sinTarjeta
+                etiqueta="Almuerzos invitados por tipo"
+                cifras={TIPOS_ALMUERZO_INVITADO.map((tipo) => {
                   const totales = data.totales.invitadosPorTipo[tipo];
-                  return (
-                    <div key={tipo} className="flex items-center gap-3 rounded-xl bg-surface-secondary p-3">
-                      <div className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${iconoFondo}`}>
-                        <Icono className="size-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs text-muted">{ETIQUETA_TIPO_INVITADO[tipo].corto}</p>
-                        <p className="text-sm font-medium text-foreground">
-                          {textoPersonas(totales.personas)} · {pesos(totales.ingresos)}
-                        </p>
-                      </div>
-                    </div>
-                  );
+                  return {
+                    etiqueta: ETIQUETA_TIPO_INVITADO[tipo].corto,
+                    valor: pesos(totales.ingresos),
+                    detalle: textoPersonas(totales.personas),
+                  };
                 })}
-              </div>
+              />
             </SectionCard>
           </section>
 

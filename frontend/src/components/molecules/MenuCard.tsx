@@ -1,5 +1,5 @@
 import { Card, Chip } from '@heroui/react';
-import { Award, Calendar, CheckCircle2, Info } from 'lucide-react';
+import { Award, Calendar, CheckCircle2, Clock, Info } from 'lucide-react';
 import { Button } from '../atoms/Button';
 import { EstadoPagoBadge } from '../atoms/EstadoPagoBadge';
 import { resolverImagen } from '../../lib/assets';
@@ -11,6 +11,8 @@ export interface MenuCardProps {
   description?: string | null;
   price: string;
   note?: string;
+  /** Horario en que se reciben las reservas. */
+  horario?: string;
   imageUrl?: string | null;
   /** Hay cupo en el menú. */
   isAvailable: boolean;
@@ -30,6 +32,7 @@ export const MenuCard = ({
   description,
   price,
   note,
+  horario,
   imageUrl,
   isAvailable,
   canReserve,
@@ -67,6 +70,12 @@ export const MenuCard = ({
           <Calendar className="size-4" />
           {dateText}
         </p>
+        {horario && (
+          <p className="flex items-center gap-1.5 text-sm text-muted">
+            <Clock className="size-4" />
+            {horario}
+          </p>
+        )}
       </Card.Header>
 
       {description && (

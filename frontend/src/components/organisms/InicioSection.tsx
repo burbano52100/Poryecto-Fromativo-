@@ -1,9 +1,7 @@
 import { Card, Chip } from '@heroui/react';
 import { Award } from 'lucide-react';
 import type { User } from '../../schemas/auth.schema';
-import { ScheduleCard } from '../molecules/ScheduleCard';
 import { ReservaAlmuerzoCard } from './ReservaAlmuerzoCard';
-import { useResumenConsumos } from '../../hooks/useConsumos';
 import { useMenuActivo } from '../../hooks/useMenu';
 
 export interface InicioSectionProps {
@@ -11,11 +9,9 @@ export interface InicioSectionProps {
 }
 
 export const InicioSection = ({ user }: InicioSectionProps) => {
-  const { data: resumen } = useResumenConsumos();
   const { data: menu } = useMenuActivo();
   // El estado de beneficiario vigente lo reporta el menú (se lee de la BD en cada consulta)
   const esBeneficiario = menu?.es_beneficiario ?? user.es_beneficiario ?? false;
-  const almuerzosMes = resumen?.almuerzosMes ?? 0;
   const primerNombre = user.name.split(' ')[0];
 
   return (
@@ -40,9 +36,6 @@ export const InicioSection = ({ user }: InicioSectionProps) => {
         <Card.Footer className="flex-wrap gap-2">
           <Chip size="sm" variant="secondary">
             Ficha {user.ficha || 'sin asignar'}
-          </Chip>
-          <Chip size="sm" variant="secondary">
-            {almuerzosMes} almuerzos este mes
           </Chip>
         </Card.Footer>
       </Card>
@@ -70,12 +63,6 @@ export const InicioSection = ({ user }: InicioSectionProps) => {
           reserva.estado_pago === 'gratis'
             ? 'Tarifa: $0 COP (beneficio 100 % subsidiado). Presenta tu documento o ficha en el comedor.'
             : `Tarifa: ${reserva.price} COP. Queda pendiente de pago hasta que la canceles en la ventanilla.`
-        }
-      />
-
-      <ScheduleCard
-        scheduleText={
-          menu ? `Reservas: ${menu.horario.abre} a ${menu.horario.cierra} (hora de Colombia)` : 'Reservas: 07:00 a 21:00'
         }
       />
     </div>

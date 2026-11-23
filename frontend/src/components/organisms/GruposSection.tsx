@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Award, BookOpen, ChevronDown, Users, Utensils } from 'lucide-react';
+import { Award, ChevronDown } from 'lucide-react';
 import { Chip, Separator, ToggleButton } from '@heroui/react';
 import { EstadoPagoBadge } from '../atoms/EstadoPagoBadge';
-import { StatCard } from '../atoms/StatCard';
+import { FranjaCifras } from '../molecules/FranjaCifras';
 import { EmptyMessage } from '../molecules/EmptyMessage';
 import { ErrorAlert } from '../molecules/ErrorAlert';
 import { ListSkeleton } from '../molecules/ListSkeleton';
@@ -112,27 +112,18 @@ export const GruposSection = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard
-          title="Total de grupos"
-          value={isPending ? undefined : `${grupos.length} fichas`}
-          icon={<BookOpen className="size-5" />}
-          tone="accent"
-        />
-        <StatCard
-          title="Aprendices registrados"
-          value={isPending ? undefined : totalAprendices}
-          icon={<Users className="size-5" />}
-          tone="default"
-        />
-        <StatCard
-          title="Reservas de hoy"
-          value={isPending ? undefined : reservasHoy}
-          subtitle={`${pendientesHoy} sin pagar`}
-          icon={<Utensils className="size-5" />}
-          tone="warning"
-        />
-      </div>
+      <FranjaCifras
+        etiqueta="Resumen de grupos"
+        cifras={[
+          { etiqueta: 'Fichas', valor: isPending ? undefined : grupos.length },
+          { etiqueta: 'Aprendices', valor: isPending ? undefined : totalAprendices },
+          {
+            etiqueta: 'Reservas de hoy',
+            valor: isPending ? undefined : reservasHoy,
+            detalle: isPending ? undefined : pendientesHoy > 0 ? `${pendientesHoy} sin pagar` : 'Todas pagadas',
+          },
+        ]}
+      />
 
       <SectionCard
         titulo="Grupos y fichas"

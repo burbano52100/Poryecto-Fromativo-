@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import { Card, Chip } from '@heroui/react';
+import { Card } from '@heroui/react';
 import type { User } from '../schemas/auth.schema';
 import { DashboardLayout } from '../components/templates/DashboardLayout';
 import type { SectionType } from '../components/organisms/Sidebar';
-import { CuentaMensualCard } from '../components/molecules/CuentaMensualCard';
-import { ScheduleCard } from '../components/molecules/ScheduleCard';
 import { MiCuentaSection } from '../components/organisms/MiCuentaSection';
 import { ConsumosSection } from '../components/organisms/ConsumosSection';
 import { BuzonSugerenciasSection } from '../components/organisms/BuzonSugerenciasSection';
@@ -12,8 +10,6 @@ import { PerfilSection } from '../components/organisms/PerfilSection';
 import { ReservaAlmuerzoCard } from '../components/organisms/ReservaAlmuerzoCard';
 import { ListSkeleton } from '../components/molecules/ListSkeleton';
 import { useMiCuenta } from '../hooks/useCartera';
-import { useMenuActivo } from '../hooks/useMenu';
-import { pesos } from '../lib/formato';
 
 interface InstructorDashboardPageProps {
   user: User;
@@ -24,8 +20,6 @@ interface InstructorDashboardPageProps {
 export const InstructorDashboardPage = ({ user, onLogout }: InstructorDashboardPageProps) => {
   const [activeSection, setActiveSection] = useState<SectionType>('inicio');
   const { data: cuenta } = useMiCuenta();
-  const { data: menu } = useMenuActivo();
-  const pendingBalance = cuenta?.pendingBalance ?? 0;
 
   return (
     <DashboardLayout user={user} activeSection={activeSection} onSelectSection={setActiveSection} onLogout={onLogout}>
@@ -38,14 +32,6 @@ export const InstructorDashboardPage = ({ user, onLogout }: InstructorDashboardP
                 Consume tus almuerzos del día y paga el total del mes en la oficina del comedor.
               </Card.Description>
             </Card.Header>
-            <Card.Footer className="flex-wrap gap-2">
-              <Chip size="sm" variant="secondary">
-                {cuenta?.monthlyLunches ?? 0} almuerzos este mes
-              </Chip>
-              <Chip size="sm" variant="soft" color={pendingBalance > 0 ? 'warning' : 'success'}>
-                Saldo pendiente: {pesos(pendingBalance)}
-              </Chip>
-            </Card.Footer>
           </Card>
 
           <ReservaAlmuerzoCard
@@ -70,15 +56,6 @@ export const InstructorDashboardPage = ({ user, onLogout }: InstructorDashboardP
             )}
             mensajeExito={(reserva) => `Se registró el consumo de ${reserva.price} y se cargó a tu cuenta mensual.`}
           />
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <ScheduleCard
-              scheduleText={
-                menu ? `Reservas: ${menu.horario.abre} a ${menu.horario.cierra} (hora de Colombia)` : 'Reservas: 07:00 a 21:00'
-              }
-            />
-            <CuentaMensualCard pendingBalance={pendingBalance} onViewAccount={() => setActiveSection('cuenta')} />
-          </div>
         </div>
       )}
 
@@ -86,7 +63,6 @@ export const InstructorDashboardPage = ({ user, onLogout }: InstructorDashboardP
         (cuenta ? (
           <MiCuentaSection
             totalConsumed={cuenta.totalConsumed}
-            pendingBalance={cuenta.pendingBalance}
             paymentMethod={cuenta.paymentMethod}
             paymentFrequency={cuenta.paymentFrequency}
             nextCutoffDate={cuenta.nextCutoffDate}

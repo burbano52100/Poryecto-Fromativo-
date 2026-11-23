@@ -9,6 +9,7 @@ import { FormField } from '../molecules/FormField';
 import { ListSkeleton } from '../molecules/ListSkeleton';
 import { SearchInput } from '../molecules/SearchInput';
 import { SectionCard } from '../molecules/SectionCard';
+import { FranjaCifras } from '../molecules/FranjaCifras';
 import { useCartera, usePagarDeuda } from '../../hooks/useCartera';
 import { pesos } from '../../lib/formato';
 import { filtrarNumero } from '../../lib/numeros';
@@ -138,20 +139,15 @@ export const CarteraDeudasSection = () => {
       </SectionCard>
 
       <SectionCard titulo="Resumen de cartera">
-        <dl className="grid grid-cols-3 gap-3">
-          <div className="rounded-xl bg-surface-secondary p-4">
-            <dt className="text-xs text-muted">Deudores</dt>
-            <dd className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{totalDeudoresCount}</dd>
-          </div>
-          <div className="rounded-xl bg-surface-secondary p-4">
-            <dt className="text-xs text-muted">Promedio</dt>
-            <dd className="mt-1 text-xl font-semibold tabular-nums text-foreground">{pesos(avgDebt)}</dd>
-          </div>
-          <div className="rounded-xl bg-surface-secondary p-4">
-            <dt className="text-xs text-muted">Mayor deuda</dt>
-            <dd className="mt-1 text-xl font-semibold tabular-nums text-danger">{pesos(maxDebt)}</dd>
-          </div>
-        </dl>
+        <FranjaCifras
+          sinTarjeta
+          etiqueta="Resumen de cartera"
+          cifras={[
+            { etiqueta: 'Instructores con deuda', valor: totalDeudoresCount },
+            { etiqueta: 'Deuda promedio', valor: pesos(avgDebt) },
+            { etiqueta: 'Deuda más alta', valor: pesos(maxDebt) },
+          ]}
+        />
       </SectionCard>
 
       <ConfirmDialog

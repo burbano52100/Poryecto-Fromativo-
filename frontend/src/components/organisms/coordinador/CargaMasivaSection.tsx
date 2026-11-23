@@ -7,6 +7,7 @@ import { EmptyMessage } from '../../molecules/EmptyMessage';
 import { ErrorAlert } from '../../molecules/ErrorAlert';
 import { ListSkeleton } from '../../molecules/ListSkeleton';
 import { SectionCard } from '../../molecules/SectionCard';
+import { FranjaCifras } from '../../molecules/FranjaCifras';
 import { useConfirmarCarga, useHistorialCargas, usePrevisualizarCarga } from '../../../hooks/useCoordinador';
 import { descargarArchivo } from '../../../lib/descargas';
 import { fechaHora } from '../../../lib/formato';
@@ -17,13 +18,6 @@ const ESTADO_FILA = {
   omitida: { texto: 'Se omite', color: 'warning' },
   error: { texto: 'Con error', color: 'danger' },
 } as const;
-
-const Indicador = ({ titulo, valor, color = 'text-foreground' }: { titulo: string; valor: number; color?: string }) => (
-  <div className="rounded-xl bg-surface-secondary p-3">
-    <p className="text-xs text-muted">{titulo}</p>
-    <p className={`text-2xl font-semibold tabular-nums ${color}`}>{valor}</p>
-  </div>
-);
 
 const Paso = ({ numero, titulo, children }: { numero: number; titulo: string; children: React.ReactNode }) => (
   <li>
@@ -167,11 +161,15 @@ export const CargaMasivaSection = () => {
                 </Alert.Title>
               </Alert.Content>
             </Alert>
-            <div className="grid grid-cols-3 gap-3">
-              <Indicador titulo="Creadas" valor={resultado.resumen.creados} color="text-success" />
-              <Indicador titulo="Omitidas" valor={resultado.resumen.omitidos} color="text-warning" />
-              <Indicador titulo="Con error" valor={resultado.resumen.con_error} color="text-danger" />
-            </div>
+            <FranjaCifras
+              sinTarjeta
+              etiqueta="Resultado de la carga"
+              cifras={[
+                { etiqueta: 'Creadas', valor: resultado.resumen.creados },
+                { etiqueta: 'Omitidas', valor: resultado.resumen.omitidos },
+                { etiqueta: 'Con error', valor: resultado.resumen.con_error },
+              ]}
+            />
             <Button
               variant="outline"
               className="self-start"
@@ -183,12 +181,16 @@ export const CargaMasivaSection = () => {
         ) : (
           vista && (
             <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <Indicador titulo="Filas" valor={vista.resumen.total} />
-                <Indicador titulo="Válidas" valor={vista.resumen.validas} color="text-success" />
-                <Indicador titulo="Se omiten" valor={vista.resumen.omitidas} color="text-warning" />
-                <Indicador titulo="Con error" valor={vista.resumen.errores} color="text-danger" />
-              </div>
+              <FranjaCifras
+                sinTarjeta
+                etiqueta="Revisión del archivo"
+                cifras={[
+                  { etiqueta: 'Filas', valor: vista.resumen.total },
+                  { etiqueta: 'Válidas', valor: vista.resumen.validas },
+                  { etiqueta: 'Se omiten', valor: vista.resumen.omitidas },
+                  { etiqueta: 'Con error', valor: vista.resumen.errores },
+                ]}
+              />
 
               <Table variant="secondary">
                 <Table.ScrollContainer className="max-h-96">

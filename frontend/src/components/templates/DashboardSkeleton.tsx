@@ -39,18 +39,16 @@ export const DashboardSkeleton = ({ label = 'Cargando panel...' }: { label?: str
       </div>
 
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }, (_, i) => (
-            <Card key={i} className="flex-row items-center justify-between">
-              <div className="flex flex-1 flex-col gap-2">
-                <Hueso className="h-3 w-1/2 rounded-md" />
-                <Hueso className="h-7 w-24 rounded-md" />
-                <Hueso className="h-3 w-3/4 rounded-md" />
-              </div>
-              <Hueso className="size-10 rounded-xl" />
-            </Card>
+        {/* Misma forma que FranjaCifras: una sola superficie con las cifras separadas por líneas */}
+        <Card className="grid grid-cols-2 gap-x-4 gap-y-5 p-5 sm:flex sm:flex-row sm:gap-0 sm:divide-x sm:divide-separator">
+          {Array.from({ length: 3 }, (_, i) => (
+            <div key={i} className="flex flex-col gap-2 sm:flex-1 sm:px-5 sm:first:pl-0 sm:last:pr-0">
+              <Hueso className="h-3 w-1/2 rounded-md" />
+              <Hueso className="h-7 w-24 rounded-md" />
+              <Hueso className="h-3 w-3/4 rounded-md" />
+            </div>
           ))}
-        </div>
+        </Card>
         <Card className="gap-4 p-5 sm:p-6">
           <Hueso className="h-4 w-48 rounded-md" />
           <Hueso className="h-3 w-72 max-w-full rounded-md" />

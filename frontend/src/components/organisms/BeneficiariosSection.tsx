@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Award, UserCheck, Users, UserX } from 'lucide-react';
+import { Award, UserX } from 'lucide-react';
 import { Avatar, Chip, Table, Tabs, toast } from '@heroui/react';
 import {
   useEstudiantesQuery,
@@ -7,7 +7,6 @@ import {
   type EstudianteBeneficiario,
 } from '../../hooks/useBeneficiarios';
 import { Button } from '../atoms/Button';
-import { StatCard } from '../atoms/StatCard';
 import { ConfirmDialog } from '../molecules/ConfirmDialog';
 import { EmptyMessage } from '../molecules/EmptyMessage';
 import { ErrorAlert } from '../molecules/ErrorAlert';
@@ -180,31 +179,15 @@ export const BeneficiariosSection = () => {
         <ErrorAlert error={mutationError} titulo="No se pudo actualizar el beneficio" onCerrar={() => setMutationError(null)} />
       )}
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard
-          title="Beneficiarios activos"
-          value={isLoading ? undefined : beneficiariosActuales.length}
-          icon={<Award className="size-5" />}
-          tone="warning"
-        />
-        <StatCard
-          title="Aprendices registrados"
-          value={isLoading ? undefined : estudiantes.length}
-          icon={<Users className="size-5" />}
-          tone="accent"
-        />
-        <StatCard
-          title="Tarifa con subsidio"
-          value="$0"
-          subtitle="Almuerzo 100 % gratis"
-          icon={<UserCheck className="size-5" />}
-          tone="success"
-        />
-      </div>
-
       <SectionCard
         titulo="Beneficiarios del subsidio"
-        descripcion="Los beneficiarios reservan con un clic y no se les cobra el almuerzo."
+        descripcion={
+          isLoading
+            ? 'Los beneficiarios reservan con un clic y no se les cobra el almuerzo.'
+            : `${beneficiariosActuales.length} de ${estudiantes.length} aprendices ${
+                beneficiariosActuales.length === 1 ? 'tiene' : 'tienen'
+              } el subsidio: reservan con un clic y no se les cobra el almuerzo.`
+        }
       >
         <Tabs
           variant="secondary"

@@ -1,188 +1,167 @@
-import { Utensils, Calendar, DollarSign, IdCard, CreditCard, ShoppingCart, Mail, UserPlus, UserCheck, Users, GraduationCap } from 'lucide-react';
-import { StatCard } from '../atoms/StatCard';
 import type { User } from '../../schemas/auth.schema';
 import { useResumenConsumos } from '../../hooks/useConsumos';
 import { useMiCuenta } from '../../hooks/useCartera';
 import { useResumenEncargado } from '../../hooks/useVentas';
 import { useResumenCoordinador } from '../../hooks/useCoordinador';
 import { pesos } from '../../lib/formato';
+import { FranjaCifras, type Cifra } from '../molecules/FranjaCifras';
+import type { SectionType } from './Sidebar';
 
 export interface StatsHeaderProps {
   user: User;
+  activeSection?: SectionType;
+  onSelectSection?: (section: SectionType) => void;
 }
 
-const GRID = 'mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4';
-
-/** `undefined` mientras carga (la tarjeta muestra un Skeleton) y el valor formateado cuando llega. */
+/** `undefined` mientras carga (la cifra muestra un Skeleton) y el valor formateado cuando llega. */
 const valor = <T,>(dato: T | undefined, formato: (v: T) => string | number) =>
   dato === undefined ? undefined : formato(dato);
 
-const StatsEncargado = () => {
+/** "1 cuenta", "3 cuentas". */
+const contar = (n: number, singular: string, plural: string) => `${n} ${n === 1 ? singular : plural}`;
+
+/**
+ * Botón que lleva a la sección donde se resuelve la cifra. No aparece si ya se está en esa
+ * sección o si no hay nada que hacer.
+ */
+const ir = (
+  { activeSection, onSelectSection }: StatsHeaderProps,
+  destino: SectionType,
+  texto: string,
+  hayQueHacer: boolean
+): Cifra['accion'] =>
+  onSelectSection && hayQueHacer && activeSection !== destino ? { texto, onPress: () => onSelectSection(destino) } : undefined;
+
+const Franja = ({ cifras }: { cifras: Cifra[] }) => (
+  <FranjaCifras etiqueta="Resumen" cifras={cifras} className="mb-6" />
+);
+
+const StatsEncargado = (props: StatsHeaderProps) => {
   const { data } = useResumenEncargado();
+  const deudas = data?.deudasPendientes.cantidad ?? 0;
+  const sugerencias = data?.sugerenciasPendientes ?? 0;
   return (
-    <div className={GRID}>
-      <StatCard
-        title="Ventas de hoy"
-        value={valor(data?.ventasHoy, (n) => `${n} almuerzos`)}
-        subtitle={data ? `Incluye ${data.invitadosHoy} de almuerzos invitados` : 'Reservas y almuerzos invitados'}
-        icon={<ShoppingCart className="size-5" />}
-        tone="success"
-      />
-      <StatCard
-        title="Ingresos de hoy"
-        value={valor(data?.ingresosHoy, pesos)}
-        subtitle={
-          data
-            ? `Invitados: ${pesos(data.ingresosInvitadosHoy)} · Por cobrar: ${pesos(data.porCobrarHoy)}`
-            : 'Solo almuerzos pagados'
-        }
-        icon={<DollarSign className="size-5" />}
-        tone="accent"
-      />
-      <StatCard
-        title="Deudas pendientes"
-        value={valor(data?.deudasPendientes.monto, pesos)}
-        subtitle={data ? `${data.deudasPendientes.cantidad} cuenta(s) por cobrar` : 'Cartera de instructores'}
-        icon={<CreditCard className="size-5" />}
-        tone="warning"
-      />
-      <StatCard
-        title="Sugerencias"
-        value={valor(data?.sugerenciasPendientes, (n) => `${n} pendiente${n === 1 ? '' : 's'}`)}
-        subtitle="Buzón de atención"
-        icon={<Mail className="size-5" />}
-        tone="accent"
-      />
-    </div>
+    <Franja
+      cifras={[
+        {
+          etiqueta: 'Almuerzos de hoy',
+          valor: valor(data?.ventasHoy, (n) => n),
+          detalle: data ? `Incluye ${data.invitadosHoy} de invitados` : undefined,
+        },
+        {
+          etiqueta: 'Cobrado hoy',
+          valor: valor(data?.ingresosHoy, pesos),
+          detalle: data
+            ? data.porCobrarHoy > 0
+              ? `Faltan ${pesos(data.porCobrarHoy)} por cobrar`
+              : 'Nada pendiente por cobrar'
+            : undefined,
+        },
+        {
+          etiqueta: 'Deuda de instructores',
+          valor: valor(data?.deudasPendientes.monto, pesos),
+          detalle: data ? `${contar(deudas, 'cuenta', 'cuentas')} por cobrar` : undefined,
+          accion: ir(props, 'deudas', 'Ver cartera', deudas > 0),
+        },
+        {
+          etiqueta: 'Sugerencias sin responder',
+          valor: valor(data?.sugerenciasPendientes, (n) => n),
+          accion: ir(props, 'sugerencias', 'Responder', sugerencias > 0),
+        },
+      ]}
+    />
   );
 };
 
-const StatsCoordinador = () => {
+const StatsCoordinador = (props: StatsHeaderProps) => {
   const { data } = useResumenCoordinador();
+  const pendientes = data?.pendientes ?? 0;
   return (
-    <div className={GRID}>
-      <StatCard
-        title="Solicitudes pendientes"
-        value={valor(data?.pendientes, (n) => n)}
-        subtitle="Cuentas por aprobar"
-        icon={<UserPlus className="size-5" />}
-        tone="warning"
-      />
-      <StatCard
-        title="Cuentas activas"
-        value={valor(data?.activos, (n) => n)}
-        subtitle="Instructores y aprendices"
-        icon={<UserCheck className="size-5" />}
-        tone="success"
-      />
-      <StatCard
-        title="Instructores"
-        value={valor(data?.instructores, (n) => n)}
-        subtitle="Con cuenta activa"
-        icon={<Users className="size-5" />}
-        tone="default"
-      />
-      <StatCard
-        title="Aprendices"
-        value={valor(data?.aprendices, (n) => n)}
-        subtitle="Con cuenta activa"
-        icon={<GraduationCap className="size-5" />}
-        tone="accent"
-      />
-    </div>
+    <Franja
+      cifras={[
+        {
+          etiqueta: 'Solicitudes por aprobar',
+          valor: valor(data?.pendientes, (n) => n),
+          detalle: data ? (pendientes > 0 ? 'Cuentas nuevas de instructores y aprendices' : 'Ninguna cuenta espera aprobación') : undefined,
+          accion: ir(props, 'solicitudes', 'Revisar', pendientes > 0),
+        },
+        {
+          etiqueta: 'Cuentas activas',
+          valor: valor(data?.activos, (n) => n),
+          detalle: data
+            ? `${contar(data.instructores, 'instructor', 'instructores')} y ${contar(data.aprendices, 'aprendiz', 'aprendices')}`
+            : undefined,
+        },
+      ]}
+    />
   );
 };
 
-const StatsInstructor = ({ user }: StatsHeaderProps) => {
+const StatsInstructor = (props: StatsHeaderProps) => {
   const { data: cuenta } = useMiCuenta();
   const { data: resumen } = useResumenConsumos();
   const pendiente = cuenta?.pendingBalance ?? 0;
   return (
-    <div className={GRID}>
-      <StatCard
-        title="Almuerzos este mes"
-        value={valor(cuenta?.monthlyLunches, (n) => n)}
-        subtitle="Mes actual"
-        icon={<Calendar className="size-5" />}
-        tone="accent"
-      />
-      <StatCard
-        title="Saldo pendiente"
-        value={valor(cuenta?.pendingBalance, pesos)}
-        subtitle={pendiente > 0 ? 'Por cancelar en oficina' : 'Cuenta al día'}
-        icon={<CreditCard className="size-5" />}
-        tone={pendiente > 0 ? 'warning' : 'success'}
-        badgeText={pendiente > 0 ? 'Pendiente' : 'Al día'}
-      />
-      <StatCard
-        title="Total consumido"
-        value={valor(resumen?.gastoTotal, pesos)}
-        subtitle="Acumulado histórico"
-        icon={<DollarSign className="size-5" />}
-        tone="accent"
-      />
-      <StatCard
-        title="Documento"
-        value={`C.C. ${user.document}`}
-        subtitle="Instructor SENA"
-        icon={<IdCard className="size-5" />}
-        tone="default"
-      />
-    </div>
+    <Franja
+      cifras={[
+        {
+          etiqueta: 'Almuerzos este mes',
+          valor: valor(cuenta?.monthlyLunches, (n) => n),
+          detalle: 'Se pagan a fin de mes',
+        },
+        {
+          etiqueta: 'Saldo por pagar',
+          valor: valor(cuenta?.pendingBalance, pesos),
+          estado: cuenta ? (pendiente > 0 ? { texto: 'Pendiente', color: 'warning' } : { texto: 'Al día', color: 'success' }) : undefined,
+          detalle: cuenta ? (pendiente > 0 ? 'Se paga en la oficina del comedor' : 'No debes nada') : undefined,
+          accion: ir(props, 'cuenta', 'Ver mi cuenta', true),
+        },
+        {
+          etiqueta: 'Consumo total',
+          valor: valor(resumen?.gastoTotal, pesos),
+          detalle: 'Desde que usas el comedor',
+        },
+      ]}
+    />
   );
 };
 
-const StatsAprendiz = ({ user }: StatsHeaderProps) => {
+const StatsAprendiz = (props: StatsHeaderProps) => {
   const { data: resumen } = useResumenConsumos();
+  const pendiente = resumen?.pendientePago ?? 0;
+  const beneficiario = props.user.es_beneficiario;
   return (
-    <div className={GRID}>
-      <StatCard
-        title="Total de almuerzos"
-        value={valor(resumen?.totalAlmuerzos, (n) => n)}
-        subtitle="Historial acumulado"
-        icon={<Utensils className="size-5" />}
-        tone="success"
-      />
-      <StatCard
-        title="Almuerzos este mes"
-        value={valor(resumen?.almuerzosMes, (n) => n)}
-        subtitle="Mes actual"
-        icon={<Calendar className="size-5" />}
-        tone="accent"
-      />
-      <StatCard
-        title={user.es_beneficiario ? 'Tarifa actual' : 'Gasto este mes'}
-        value={user.es_beneficiario ? '$0' : valor(resumen?.gastoMes, pesos)}
-        subtitle={
-          user.es_beneficiario
-            ? 'Beneficiario: almuerzo 100% subsidiado'
-            : resumen && resumen.pendientePago > 0
-              ? `Pendiente por pagar: ${pesos(resumen.pendientePago)}`
-              : 'Todo pagado'
-        }
-        icon={<DollarSign className="size-5" />}
-        tone="warning"
-      />
-      <StatCard
-        title="Ficha y documento"
-        value={user.ficha || 'Sin ficha'}
-        subtitle={`C.C. ${user.document}`}
-        icon={<IdCard className="size-5" />}
-        tone="accent"
-      />
-    </div>
+    <Franja
+      cifras={[
+        {
+          etiqueta: 'Almuerzos este mes',
+          valor: valor(resumen?.almuerzosMes, (n) => n),
+          detalle: resumen ? `${resumen.totalAlmuerzos} en total` : undefined,
+        },
+        beneficiario
+          ? { etiqueta: 'Tu almuerzo', valor: '$0', detalle: 'Eres beneficiario del subsidio' }
+          : {
+              etiqueta: 'Gasto este mes',
+              valor: valor(resumen?.gastoMes, pesos),
+              estado: pendiente > 0 ? { texto: 'Pendiente', color: 'warning' } : undefined,
+              detalle: resumen ? (pendiente > 0 ? `Debes ${pesos(pendiente)} en la ventanilla` : 'Todo pagado') : undefined,
+              accion: ir(props, 'fichas', 'Ver mis fichas', pendiente > 0),
+            },
+      ]}
+    />
   );
 };
 
-export const StatsHeader = ({ user }: StatsHeaderProps) => {
-  switch (user.role) {
+/** Cifras del rol arriba de cada sección del panel, con un botón a donde se resuelven. */
+export const StatsHeader = (props: StatsHeaderProps) => {
+  switch (props.user.role) {
     case 'encargado':
-      return <StatsEncargado />;
+      return <StatsEncargado {...props} />;
     case 'coordinador':
-      return <StatsCoordinador />;
+      return <StatsCoordinador {...props} />;
     case 'instructor':
-      return <StatsInstructor user={user} />;
+      return <StatsInstructor {...props} />;
     default:
-      return <StatsAprendiz user={user} />;
+      return <StatsAprendiz {...props} />;
   }
 };
