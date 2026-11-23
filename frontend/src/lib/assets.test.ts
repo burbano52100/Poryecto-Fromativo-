@@ -8,7 +8,7 @@ afterEach(() => {
 describe('asset', () => {
   it('antepone la base de Vite para que las imágenes funcionen en GitHub Pages', () => {
     vi.stubEnv('BASE_URL', '/Poryecto-Fromativo-/');
-    expect(asset('/logo.png')).toBe('/Poryecto-Fromativo-/logo.png');
+    expect(asset('/sara-icono.svg')).toBe('/Poryecto-Fromativo-/sara-icono.svg');
     expect(asset('cafeteria-bg.jpg')).toBe('/Poryecto-Fromativo-/cafeteria-bg.jpg');
   });
 });

@@ -131,7 +131,7 @@ export const RegisterModal = ({ isOpen, onClose }: RegisterModalProps) => {
                       <Alert.Description>
                         {registerMutation.error instanceof Error
                           ? registerMutation.error.message
-                          : 'Error al registrar la cuenta en GastroSENA.'}
+                          : 'Error al registrar la cuenta en SARA.'}
                       </Alert.Description>
                     </Alert.Content>
                   </Alert>

@@ -39,27 +39,27 @@ export function plantillaRecordatorio(d: DeudaInstructor): Correo {
   const texto = [
     `Hola, ${d.nombre}:`,
     '',
-    `Te recordamos que tienes un saldo pendiente en el comedor GastroSENA de ${pesos(d.monto)}, correspondiente a ${almuerzos}.`,
+    `Te recordamos que tienes un saldo pendiente en el comedor de ${pesos(d.monto)}, correspondiente a ${almuerzos}.`,
     `La deuda lleva ${dias} desde su primer consumo sin pagar.`,
     '',
     'Puedes cancelarla en efectivo en la oficina del comedor del Tecnoparque Yamboró.',
     'Si ya realizaste el pago, por favor ignora este mensaje.',
     '',
     'Gracias,',
-    'Comedor GastroSENA',
+    'Comedor del SENA Tecnoparque Yamboró (SARA)',
   ].join('\n');
   const html = `
     <div style="font-family: Arial, sans-serif; color: #1f2937; max-width: 560px">
-      <h2 style="color: #15803d">Recordatorio de pago · GastroSENA</h2>
+      <h2 style="color: #308b57">Recordatorio de pago</h2>
       <p>Hola, <strong>${escaparHtml(d.nombre)}</strong>:</p>
       <p>Te recordamos que tienes un saldo pendiente en el comedor de
         <strong>${pesos(d.monto)}</strong>, correspondiente a <strong>${almuerzos}</strong>.</p>
       <p>La deuda lleva <strong>${dias}</strong> desde su primer consumo sin pagar.</p>
       <p>Puedes cancelarla en efectivo en la oficina del comedor del Tecnoparque Yamboró.
         Si ya realizaste el pago, por favor ignora este mensaje.</p>
-      <p style="color: #6b7280">Comedor GastroSENA</p>
+      <p style="color: #6b7280">Comedor del SENA Tecnoparque Yamboró (SARA)</p>
     </div>`;
-  return { para: d.email ?? '', asunto: `Recordatorio: saldo pendiente de ${pesos(d.monto)} en GastroSENA`, texto, html };
+  return { para: d.email ?? '', asunto: `Recordatorio: saldo pendiente de ${pesos(d.monto)} en el comedor`, texto, html };
 }
 
 /** Instructores con deuda pendiente (todos o los indicados). */

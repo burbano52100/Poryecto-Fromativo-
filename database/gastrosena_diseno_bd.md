@@ -1,4 +1,4 @@
-# Diseño de base de datos — GastroSENA / Sistema de Almuerzos SENA
+# Diseño de base de datos — SARA (antes GastroSENA)
 
 Este documento resume lo que encontré revisando el prototipo en Figma Make (App.tsx, LoginScreen, DashboardEncargado, DashboardEstudiante, DashboardInventario) y propone un modelo relacional para reemplazar el `localStorage` actual por una base de datos real (pensado para PostgreSQL / Supabase, que es lo que Figma Make suele conectar).
 
@@ -14,7 +14,7 @@ Del código extraje estas estructuras que ya existen como datos "quemados" en el
 - Menú del día: nombre del plato, precio para aprendices, cantidad disponible, historial de menús con ventas y estado.
 - Deudas: nombre, tipo (instructor), cédula, ficha, deuda, almuerzos, días vencidos, estado (vencida/pendiente).
 - Sugerencias: id, remitente, tipo, ficha, asunto, mensaje, fecha, estado (pendiente/atendida).
-- Inventario GastroSENA — `Material`: id, codigo, nombre, categoria, unidadMedida, fechaVencimiento, stockActual, stockMinimo, estado (bueno/bajo/critico/venciendo).
+- Inventario — `Material`: id, codigo, nombre, categoria, unidadMedida, fechaVencimiento, stockActual, stockMinimo, estado (bueno/bajo/critico/venciendo).
 - `Receta`: id, nombre, codigo, costoProduccion, precioVenta, ingredientes[] (materialId, cantidad, unidad, costo).
 - `MovimientoKardex`: id, fecha, hora, usuario, concepto, tipo (entrada/salida/ajuste), cantidadEntrada, cantidadSalida, saldo, material.
 
@@ -123,7 +123,7 @@ erDiagram
 
 **Buzón de sugerencias.** Casi calcado del objeto que ya existe en el código (`remitente`, `tipo`, `ficha`, `asunto`, `mensaje`, `fecha`, `estado`), solo que `usuario_id` reemplaza el nombre de texto libre para poder hacer trazabilidad real.
 
-**Inventario GastroSENA.** `materiales`, `recetas` y la tabla puente `receta_ingredientes` (una receta tiene muchos materiales, un material puede estar en muchas recetas — relación muchos-a-muchos con cantidad). El campo `estado` del material (bueno/bajo/crítico/venciendo) que se ve como badge de color en la UI **no lo guardaría como columna**: es 100% derivable de `stock_actual` vs `stock_minimo` y de `fecha_vencimiento`, así que lo dejé como ejemplo de `VIEW` en el SQL — evita el clásico bug de un stock que baja pero el badge se queda en verde porque nadie actualizó la columna de estado.
+**Inventario.** `materiales`, `recetas` y la tabla puente `receta_ingredientes` (una receta tiene muchos materiales, un material puede estar en muchas recetas — relación muchos-a-muchos con cantidad). El campo `estado` del material (bueno/bajo/crítico/venciendo) que se ve como badge de color en la UI **no lo guardaría como columna**: es 100% derivable de `stock_actual` vs `stock_minimo` y de `fecha_vencimiento`, así que lo dejé como ejemplo de `VIEW` en el SQL — evita el clásico bug de un stock que baja pero el badge se queda en verde porque nadie actualizó la columna de estado.
 
 **Kardex y mermas.** `movimientos_kardex` es el historial completo de entradas/salidas/ajustes por material (igual que la pestaña "Kardex Ledger"), y `mermas` guarda el detalle humano (razón del desperdicio) que no tiene sentido meter en el kardex genérico — pero cada merma también debería generar su fila espejo en el kardex para que el saldo de stock cuadre siempre. Agregué `compras` / `compra_detalle` como extensión opcional para cuando quieran registrar entradas de proveedor con más detalle que un simple concepto de texto.
 

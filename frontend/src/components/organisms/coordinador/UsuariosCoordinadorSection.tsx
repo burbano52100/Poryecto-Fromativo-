@@ -292,7 +292,7 @@ export const UsuariosCoordinadorSection = () => {
           )}
           {accion?.tipo === 'activar' && (
             <p>
-              <strong>{accion.cuenta.nombre}</strong> podrá volver a ingresar a GastroSENA.
+              <strong>{accion.cuenta.nombre}</strong> podrá volver a ingresar a SARA.
             </p>
           )}
           {accion?.tipo === 'desactivar' && (

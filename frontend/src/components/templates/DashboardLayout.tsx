@@ -93,7 +93,7 @@ export const DashboardLayout = ({
               <Menu />
             </Button>
             <div>
-              <h2 className="text-lg font-semibold text-foreground">{TITULOS[activeSection] ?? 'GastroSENA'}</h2>
+              <h2 className="text-lg font-semibold text-foreground">{TITULOS[activeSection] ?? 'SARA'}</h2>
               {activeSection === 'inventario' ? (
                 <Breadcrumbs className="hidden text-xs sm:flex">
                   <Breadcrumbs.Item>Inventario</Breadcrumbs.Item>

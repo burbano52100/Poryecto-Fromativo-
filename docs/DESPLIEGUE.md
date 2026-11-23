@@ -1,4 +1,4 @@
-# Guía de Despliegue — GastroSENA
+# Guía de Despliegue — SARA
 
 Esta guía detalla los pasos para desplegar el backend en **Render** y el frontend en **GitHub Pages**, así como la configuración de variables y el bootstrap del primer encargado en producción.
 
@@ -44,7 +44,7 @@ La forma recomendada es **New + → Blueprint** apuntando a este repositorio. El
 | `SMTP_PORT` | Puerto SMTP: `587` (STARTTLS) o `465` (TLS directo) | `587` |
 | `SMTP_USER` | Usuario de la cuenta de correo | `tu-cuenta@gmail.com` |
 | `SMTP_PASS` | Contraseña de la cuenta (en Gmail, una contraseña de aplicación) | *(la contraseña de aplicación)* |
-| `SMTP_FROM` | Remitente; si se deja vacío se usa `SMTP_USER` (Opcional) | `GastroSENA <tu-cuenta@gmail.com>` |
+| `SMTP_FROM` | Remitente; si se deja vacío se usa `SMTP_USER` (Opcional) | `SARA <tu-cuenta@gmail.com>` |
 
 > **Nota sobre el Bootstrap del Encargado y del Coordinador**:
 > En cada arranque, después de las migraciones, el backend revisa cada rol por separado. Si la base no tiene ningún encargado y `ADMIN_DOCUMENT` y `ADMIN_PASSWORD` están definidos, crea el encargado. Si no tiene ningún coordinador y `COORDINADOR_DOCUMENT` y `COORDINADOR_PASSWORD` están definidos, crea el coordinador. Las dos cuentas quedan activas y con la contraseña hasheada. No necesitas activar el seed demo en producción.
@@ -78,7 +78,7 @@ El frontend se despliega automáticamente en cada `push` a la rama `main` a trav
 
 1. Abre la URL de salud del backend: `https://gastrosena-backend.onrender.com/api/health`. Deberías recibir:
    ```json
-   { "status": "OK", "database": "connected", "system": "GastroSENA API" }
+   { "status": "OK", "database": "connected", "system": "SARA API" }
    ```
 2. Abre la URL de GitHub Pages (ej. `https://burbano52100.github.io/Poryecto-Fromativo-/#/login`).
 3. Inicia sesión solo con documento y contraseña del primer encargado (`ADMIN_DOCUMENT` y `ADMIN_PASSWORD`); la app abre `#/encargado/inicio`. Luego repite con el coordinador (`COORDINADOR_DOCUMENT` y `COORDINADOR_PASSWORD`); la app abre su panel, donde se aprueban las cuentas nuevas.

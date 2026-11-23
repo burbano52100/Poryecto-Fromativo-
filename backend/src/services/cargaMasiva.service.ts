@@ -419,7 +419,7 @@ export async function plantilla(tipo: TipoCarga): Promise<Buffer> {
   const instrucciones = libro.addWorksheet('Instrucciones');
   instrucciones.getColumn(1).width = 110;
   [
-    `Carga masiva de ${tipo} — GastroSENA`,
+    `Carga masiva de ${tipo} — SARA`,
     'Llena una fila por persona en la primera hoja, desde la fila 2. Borra las filas de ejemplo.',
     'Columnas obligatorias: Nombre completo, Cédula (6 a 12 números) y Correo.' +
       (tipo === 'aprendices' ? ' También la Ficha (5 a 12 números); si no existe, se crea con el programa y la jornada.' : ''),

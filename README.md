@@ -1,6 +1,6 @@
-# GastroSENA
+# SARA
 
-Sistema web para reservar almuerzos en el SENA (Tecnoparque Yamboró, Pitalito, Huila). Proyecto formativo ADSO.
+**SARA** (Sistema Automatizado de Solicitud de Almuerzos, antes GastroSENA) es el sistema web para reservar almuerzos en el SENA (Tecnoparque Yamboró, Pitalito, Huila). Proyecto formativo ADSO.
 
 - **`frontend/`**: React 19 + TypeScript + Vite, Tailwind CSS 4, React Query, React Hook Form + Zod. Atomic design.
 - **`backend/`**: API Express 5 + TypeScript sobre **PostgreSQL**, con migraciones versionadas.

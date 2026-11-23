@@ -53,7 +53,7 @@ export function generarPdf(doc: DocumentoPdf): Promise<Buffer> {
       layout: doc.horizontal ? 'landscape' : 'portrait',
       margin: 36,
       bufferPages: true,
-      info: { Title: doc.titulo, Author: 'GastroSENA' },
+      info: { Title: doc.titulo, Author: 'SARA' },
     });
     const partes: Buffer[] = [];
     pdf.on('data', (p: Buffer) => partes.push(p));
@@ -65,7 +65,7 @@ export function generarPdf(doc: DocumentoPdf): Promise<Buffer> {
     const limiteInferior = () => pdf.page.height - pdf.page.margins.bottom - 20;
 
     // Encabezado del documento
-    pdf.fillColor(VERDE).font('Helvetica-Bold').fontSize(16).text('GastroSENA', izquierda, pdf.y);
+    pdf.fillColor(VERDE).font('Helvetica-Bold').fontSize(16).text('SARA', izquierda, pdf.y);
     pdf.fillColor('#111827').fontSize(14).text(doc.titulo);
     pdf.font('Helvetica').fontSize(9).fillColor(GRIS);
     for (const linea of doc.subtitulos) pdf.text(linea);

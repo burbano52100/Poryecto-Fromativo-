@@ -1,4 +1,4 @@
-# Registro de Incidencias y Problemas Resueltos — GastroSENA
+# Registro de Incidencias y Problemas Resueltos — SARA
 
 Este documento recopila problemas detectados durante el desarrollo, cómo se diagnosticaron y solucionaron, y las consideraciones pendientes.
 

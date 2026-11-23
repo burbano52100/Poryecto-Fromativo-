@@ -152,10 +152,10 @@ export const Sidebar = ({
   const contenido = (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2.5 px-5 py-4">
-        <img src={asset('/logo.png')} alt="" className="size-8 object-contain" />
+        <img src={asset('/sara-icono.svg')} alt="" className="size-8 object-contain" />
         <div className="leading-tight">
-          <p className="font-semibold text-foreground">GastroSENA</p>
-          <p className="text-xs text-muted">Comedor estudiantil</p>
+          <p className="font-semibold text-foreground">SARA</p>
+          <p className="text-xs text-muted">Solicitud de almuerzos</p>
         </div>
       </div>
 

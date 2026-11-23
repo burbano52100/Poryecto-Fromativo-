@@ -1,4 +1,4 @@
-# Bitácora de Progreso — GastroSENA
+# Bitácora de Progreso — SARA
 
 Registro cronológico de tareas, fases, comandos ejecutados y resultados obtenidos.
 

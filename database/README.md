@@ -1,6 +1,6 @@
-# Base de datos GastroSENA
+# Base de datos de SARA
 
-Esta carpeta reúne la documentación y el diseño relacional del modelo de datos de GastroSENA.
+Esta carpeta reúne la documentación y el diseño relacional del modelo de datos de SARA.
 
 ## Motor de Base de Datos
 

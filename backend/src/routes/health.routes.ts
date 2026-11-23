@@ -11,7 +11,7 @@ router.get('/', async (_req: Request, res: Response) => {
     return res.json({
       status: 'OK',
       database: isLive ? 'connected' : 'disconnected',
-      system: 'GastroSENA API',
+      system: 'SARA API',
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
@@ -19,7 +19,7 @@ router.get('/', async (_req: Request, res: Response) => {
       status: 'DEGRADED',
       database: 'disconnected',
       error: error.message || 'Error al conectar con la base de datos',
-      system: 'GastroSENA API',
+      system: 'SARA API',
       timestamp: new Date().toISOString(),
     });
   }

@@ -1,6 +1,6 @@
-# Especificación de la API REST — GastroSENA
+# Especificación de la API REST — SARA
 
-Contrato de endpoints del backend de GastroSENA (Express 5 + TypeScript). Todos los endpoints protegidos requieren el encabezado:
+Contrato de endpoints del backend de SARA (Express 5 + TypeScript). Todos los endpoints protegidos requieren el encabezado:
 ```http
 Authorization: Bearer <jwt_token>
 ```

@@ -1,6 +1,6 @@
-# Documentación de Base de Datos — GastroSENA
+# Documentación de Base de Datos — SARA
 
-PostgreSQL 14+ es el motor relacional exclusivo de GastroSENA. Este documento describe el esquema, tablas principales, relaciones, enums y el procedimiento para agregar migraciones incrementales.
+PostgreSQL 14+ es el motor relacional exclusivo de SARA. Este documento describe el esquema, tablas principales, relaciones, enums y el procedimiento para agregar migraciones incrementales.
 
 ---
 

@@ -1,5 +1,5 @@
 /**
- * setup.ts — Configuración global de tests de integración GastroSENA
+ * setup.ts — Configuración global de tests de integración de SARA
  *
  * Reglas de seguridad:
  * - DATABASE_URL_TEST DEBE estar definida y SER DISTINTA de DATABASE_URL

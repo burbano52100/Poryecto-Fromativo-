@@ -48,7 +48,7 @@ describe('Reportes PDF y Excel', () => {
     const hoy = fechaRelativa(0);
     const res = await descargar('almuerzos-invitados', encargado.token, { formato: 'xlsx', desde: hoy, hasta: hoy });
     const filas = await leerXlsx(res.body);
-    assert.strictEqual(filas[0][0], 'GastroSENA · Almuerzos Invitados');
+    assert.strictEqual(filas[0][0], 'SARA · Almuerzos Invitados');
     const [anio, mes, dia] = hoy.split('-');
     assert.strictEqual(filas[1][0], `Del ${dia}/${mes}/${anio} al ${dia}/${mes}/${anio}`);
     assert.match(filas[2][0], /^Generado el/);

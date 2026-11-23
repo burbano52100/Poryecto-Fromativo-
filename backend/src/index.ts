@@ -26,7 +26,7 @@ const revisarBeneficios = () =>
     .catch((error) => console.error('[Beneficios] No se pudieron revisar los beneficios vencidos:', error));
 
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor Express de GastroSENA escuchando en http://localhost:${PORT}`);
+  console.log(`🚀 Servidor Express de SARA escuchando en http://localhost:${PORT}`);
   console.log(`🔒 Modo seguro activo (JWT verificado, Helmet, CORS configurado)`);
   void revisarBeneficios();
   setInterval(revisarBeneficios, UNA_HORA_MS).unref();

@@ -1,4 +1,4 @@
-# Pendientes para completar GastroSENA
+# Pendientes para completar SARA
 
 Estado al **22 de noviembre de 2026**, en `main` (commit `7707bd9`, Fase 7 con HeroUI v3). Lo ya hecho está en [PROGRESO.md](PROGRESO.md) y las decisiones en [DECISIONES.md](DECISIONES.md).
 
@@ -34,6 +34,14 @@ Estado al **22 de noviembre de 2026**, en `main` (commit `7707bd9`, Fase 7 con H
 ## 1. Antes de desplegar (requiere código)
 - [x] **Coordinador en producción**: `bootstrapAdmin.ts` ahora también crea el primer coordinador con `COORDINADOR_DOCUMENT`, `COORDINADOR_PASSWORD`, `COORDINADOR_NAME` y `COORDINADOR_EMAIL`, igual que el primer encargado con `ADMIN_*`. Antes solo lo creaba la semilla, y sin él nadie podía aprobar cuentas de aprendiz ni de instructor. Cubierto por `bootstrapAdmin.integration.test.ts`.
 - [ ] **Un solo encargado.** El registro ya no ofrece la cuenta de encargado y el bootstrap solo crea uno si no existe ninguno. Decidir si hace falta una forma de agregar más.
+
+## 1b. Marca SARA (antes GastroSENA)
+El nombre y el ícono ya están en la app: login, barra lateral, pestaña del navegador, textos del backend, PDF, Excel y correos. El ícono (`frontend/public/sara-icono.svg`) es una versión en vector del diseño del equipo. Falta:
+- [ ] **Símbolo oficial del SENA.** En el diseño original va dentro del globo; hoy ese lugar lo ocupa un tercer punto. Se necesita el archivo oficial (SVG) del manual de identidad del SENA; no se dibuja a mano para no deformarlo. El manual fija el verde oficial en `#39A900` y prohíbe cambiarle el color.
+- [ ] **Verde del logo y de la app.** El logo usa `#308B57` y el acento del tema de HeroUI es un verde un poco más amarillo (`oklch(0.52 0.15 140)`). Decidir si se igualan.
+- [ ] **WhatsApp e IA.** El nombre original decía "vía WhatsApp y IA". Hoy no existe ninguna de las dos; queda para una fase posterior.
+- [ ] **Correo de contacto.** El centro de ayuda muestra `gastrosena@sena.edu.co`. Confirmar cuál es el correo real.
+- Se conservan a propósito con el nombre viejo: la base de datos `gastrosena`, los servicios de Render (`gastrosena-backend`, `gastrosena-db`), las claves de sesión del navegador (`gastrosena_token`; cambiarlas cerraría la sesión de todos) y el nombre del repositorio.
 
 ## 2. Despliegue (configuración manual, requiere acceso a las cuentas)
 - [ ] En Render: crear el Blueprint desde `render.yaml` y cargar `ADMIN_DOCUMENT`, `ADMIN_PASSWORD`, `ADMIN_EMAIL`, `COORDINADOR_DOCUMENT`, `COORDINADOR_PASSWORD` y `COORDINADOR_EMAIL`. El coordinador necesita un documento y un correo distintos de los del encargado.

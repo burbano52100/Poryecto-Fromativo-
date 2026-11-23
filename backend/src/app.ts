@@ -102,7 +102,7 @@ export const createApp = (): Express => {
 
   // 6. Manejo de rutas inexistentes (404)
   app.use((_req, res) => {
-    res.status(404).json({ message: 'Ruta no encontrada en el servidor de GastroSENA.' });
+    res.status(404).json({ message: 'Ruta no encontrada en el servidor de SARA.' });
   });
 
   // 7. Middleware global de errores

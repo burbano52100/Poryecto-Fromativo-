@@ -543,8 +543,8 @@ const generadoEl = () =>
 
 export async function reporteExcel(reporte: Reporte): Promise<Buffer> {
   const libro = new ExcelJS.Workbook();
-  libro.creator = 'GastroSENA';
-  const previas = [`GastroSENA · ${reporte.titulo}`, ...(reporte.rango ? [reporte.rango] : []), generadoEl()];
+  libro.creator = 'SARA';
+  const previas = [`SARA · ${reporte.titulo}`, ...(reporte.rango ? [reporte.rango] : []), generadoEl()];
   for (const hoja of reporte.hojas) {
     const columnas: ColumnaExcel[] = hoja.columnas.map((c) => ({
       encabezado: c.encabezado,

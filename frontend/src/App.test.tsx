@@ -63,8 +63,8 @@ describe('Formulario de login', () => {
     expect(screen.queryByRole('button', { name: /Reconocimiento Facial/i })).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Ficha/i)).not.toBeInTheDocument();
     // El nombre lo da el título; el logo de al lado es decorativo (alt vacío) y debe cargar desde la base de Vite
-    expect(screen.getByRole('heading', { name: 'GastroSENA' })).toBeInTheDocument();
-    expect(document.querySelector('header img')).toHaveAttribute('src', `${import.meta.env.BASE_URL}logo.png`);
+    expect(screen.getByRole('heading', { name: 'SARA' })).toBeInTheDocument();
+    expect(document.querySelector('header img')).toHaveAttribute('src', `${import.meta.env.BASE_URL}sara-icono.svg`);
   });
 
   it('valida el documento antes de llamar al backend', async () => {

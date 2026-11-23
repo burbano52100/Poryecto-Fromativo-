@@ -1,6 +1,6 @@
-# Registro de Decisiones de Arquitectura (ADR) — GastroSENA
+# Registro de Decisiones de Arquitectura (ADR) — SARA
 
-Este documento recopila las decisiones técnicas clave tomadas durante el desarrollo de GastroSENA, la justificación de cada una y las alternativas evaluadas y descartadas.
+Este documento recopila las decisiones técnicas clave tomadas durante el desarrollo de SARA (antes GastroSENA), la justificación de cada una y las alternativas evaluadas y descartadas.
 
 ---
 
