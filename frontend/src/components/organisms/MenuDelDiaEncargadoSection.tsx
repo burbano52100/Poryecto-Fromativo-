@@ -36,9 +36,13 @@ const menuSchema = z.object({
   date: z.string().min(1, 'Selecciona una fecha válida'),
   description: z.string().trim().min(10, 'La descripción debe tener al menos 10 caracteres'),
   priceStudents: entero('el precio para aprendices'),
+  priceInstructors: entero('el precio para instructores'),
   availableQuantity: entero('la cantidad disponible'),
   recetaId: z.string(),
 });
+
+/** El instructor paga distinto que el aprendiz (ADR 025); arranca en la tarifa de instructores de Almuerzos invitados. */
+const PRECIO_INSTRUCTOR_POR_DEFECTO = '10000';
 
 type MenuFormData = z.infer<typeof menuSchema>;
 
@@ -68,6 +72,7 @@ export const MenuDelDiaEncargadoSection = () => {
       date: hoyBogota(),
       description: 'Almuerzo completo: sopa, bandeja con proteína, arroz, ensalada, jugo natural y postre',
       priceStudents: '5000',
+      priceInstructors: PRECIO_INSTRUCTOR_POR_DEFECTO,
       availableQuantity: '200',
       recetaId: SIN_RECETA,
     },
@@ -85,6 +90,7 @@ export const MenuDelDiaEncargadoSection = () => {
         date: activeMenu.fecha,
         description: activeMenu.descripcion || '',
         priceStudents: String(activeMenu.precio_aprendiz),
+        priceInstructors: String(activeMenu.precio_instructor ?? activeMenu.precio_aprendiz),
         availableQuantity: String(activeMenu.cantidad_disponible),
         recetaId: activeMenu.receta_id ?? SIN_RECETA,
       });
@@ -98,6 +104,7 @@ export const MenuDelDiaEncargadoSection = () => {
         fecha: data.date,
         descripcion: data.description,
         precio_aprendiz: Number(data.priceStudents),
+        precio_instructor: Number(data.priceInstructors),
         cantidad_disponible: Number(data.availableQuantity),
         estado: 'activo',
         receta_id: data.recetaId === SIN_RECETA ? null : data.recetaId,
@@ -131,7 +138,7 @@ export const MenuDelDiaEncargadoSection = () => {
         principal
         className="lg:col-span-3"
         titulo="Publicar el menú del día"
-        descripcion="Define el plato, el precio para aprendices y las porciones del comedor"
+        descripcion="Define el plato, el precio para aprendices e instructores y las porciones del comedor"
       >
         {publishMutation.isError && <ErrorAlert error={publishMutation.error} titulo="No se pudo publicar el menú" />}
 
@@ -162,6 +169,13 @@ export const MenuDelDiaEncargadoSection = () => {
               required
               error={errors.priceStudents?.message}
               {...soloNumeros(register('priceStudents'), 'entero')}
+            />
+            <FormField
+              label="Precio para instructores (COP)"
+              placeholder="10000"
+              required
+              error={errors.priceInstructors?.message}
+              {...soloNumeros(register('priceInstructors'), 'entero')}
             />
             <FormField
               label="Porciones disponibles"
@@ -275,10 +289,15 @@ export const MenuDelDiaEncargadoSection = () => {
 
         <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
           <div className="rounded-xl bg-surface-secondary p-4">
-            <dt className="text-xs text-muted">Precio estudiantes</dt>
+            <dt className="text-xs text-muted">Precio aprendices</dt>
             <dd className="mt-0.5 text-xl font-semibold tabular-nums text-foreground">
               {activeMenu ? pesos(activeMenu.precio_aprendiz) : '—'}
             </dd>
+            {activeMenu && (
+              <dd className="mt-1 text-xs text-muted">
+                Instructores: <span className="font-medium tabular-nums text-foreground">{pesos(activeMenu.precio_instructor)}</span>
+              </dd>
+            )}
           </div>
           <div className="rounded-xl bg-surface-secondary p-4">
             <dt className="text-xs text-muted">Vendidos hoy</dt>

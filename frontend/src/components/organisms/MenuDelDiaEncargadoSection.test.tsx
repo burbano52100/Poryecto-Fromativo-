@@ -96,4 +96,19 @@ describe('Menú del día (Encargado): receta e ingredientes', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Guardar y publicar' }));
     await waitFor(() => expect(post).toHaveBeenCalledWith('/menus', expect.objectContaining({ receta_id: null })));
   });
+
+  it('el instructor tiene su propio precio, que arranca en $10.000 y se puede cambiar', async () => {
+    const post = simularApi();
+    renderConProveedores(<MenuDelDiaEncargadoSection />);
+
+    const precioInstructor = await screen.findByLabelText(/Precio para instructores/);
+    expect(precioInstructor).toHaveValue('10000');
+    await userEvent.clear(precioInstructor);
+    await userEvent.type(precioInstructor, '9000');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar y publicar' }));
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith('/menus', expect.objectContaining({ precio_aprendiz: 5000, precio_instructor: 9000 }))
+    );
+  });
 });

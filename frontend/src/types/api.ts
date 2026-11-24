@@ -13,10 +13,13 @@ export interface MenuActivo {
   nombre: string;
   descripcion: string | null;
   precio_aprendiz: number;
+  /** Precio para instructores (ADR 025); en menús sin él, el del aprendiz. */
+  precio_instructor: number;
   cantidad_disponible: number;
   cantidad_vendida: number;
   imagen_url: string | null;
   estado: EstadoMenu;
+  /** Lo que paga quien consulta: aprendiz, instructor o $0 si es beneficiario. */
   precio_aplicable: number;
   es_beneficiario: boolean;
   mi_reserva: { id: string; estado_pago: EstadoPago; precio: number } | null;
@@ -32,6 +35,8 @@ export interface MenuDia {
   nombre: string;
   descripcion: string | null;
   precio_aprendiz: number;
+  /** Precio para instructores (ADR 025); en menús sin él, el del aprendiz. */
+  precio_instructor: number;
   cantidad_disponible: number;
   cantidad_vendida: number;
   imagen_url: string | null;
@@ -64,6 +69,7 @@ export interface NuevoMenu {
   fecha: string;
   descripcion?: string;
   precio_aprendiz: number;
+  precio_instructor?: number | null;
   cantidad_disponible: number;
   imagen_url?: string;
   estado: EstadoMenu;

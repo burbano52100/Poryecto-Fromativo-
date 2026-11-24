@@ -14,6 +14,7 @@ const menu = (overrides: Partial<MenuActivo> = {}): MenuActivo => ({
   nombre: 'Bandeja Huilense',
   descripcion: 'Sopa, arroz, proteína y jugo',
   precio_aprendiz: 5000,
+  precio_instructor: 10000,
   cantidad_disponible: 100,
   cantidad_vendida: 10,
   imagen_url: '/cafeteria-bg.jpg',

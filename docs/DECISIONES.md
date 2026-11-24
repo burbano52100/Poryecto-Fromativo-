@@ -165,3 +165,13 @@ Este documento recopila las decisiones técnicas clave tomadas durante el desarr
 - **Alternativas descartadas**:
   - *Un tipo "especial" dentro de Visitas institucionales*: mezcla dos procesos distintos (quién pide, cómo se cobra y qué se sirve).
   - *Contarlo en Ventas el día de la entrega*: mostraría como cobrado un dinero que el contrato todavía no ha pagado.
+
+## ADR 025: Precio del almuerzo para instructores
+- **Fecha**: 2026-11-24
+- **Estado**: Aceptada
+- **Contexto**: El aprendiz y el instructor pagan precios distintos por el mismo almuerzo. El menú solo tenía `precio_aprendiz` y el instructor pagaba ese mismo valor; solo Almuerzos invitados distinguía tarifas (ADR 016).
+- **Decisión**:
+  - Cada menú guarda `precio_instructor` (migración 019) y el encargado lo escribe al publicarlo, junto al de aprendices. El formulario arranca en $10.000, la tarifa de instructores de Almuerzos invitados.
+  - La reserva del instructor se cobra con ese precio y suma ese valor a su deuda mensual. `GET /api/menus/activo` le muestra su precio en `precio_aplicable`.
+  - `NULL` significa "el mismo precio del aprendiz": así quedan los menús publicados antes, que se cobraron así. Las ventas guardan su `precio_cobrado`, así que el histórico y las deudas ya registradas no cambian.
+- **Alternativa descartada**: *una tarifa fija en el código, como en Almuerzos invitados*. El precio del aprendiz ya se define en cada menú; poner el del instructor al lado evita tener dos lugares distintos para lo mismo.

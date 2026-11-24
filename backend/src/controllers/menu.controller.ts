@@ -15,6 +15,8 @@ const menuSchema = z.object({
   fecha: z.string().min(1, 'La fecha es obligatoria'),
   descripcion: z.string().optional(),
   precio_aprendiz: z.coerce.number().min(0, 'El precio debe ser positivo'),
+  // Precio para instructores (ADR 025). Si no se envía, el instructor paga el precio del aprendiz.
+  precio_instructor: z.coerce.number().min(0, 'El precio para instructores debe ser positivo').nullish(),
   cantidad_disponible: z.coerce.number().min(0, 'La cantidad debe ser positiva'),
   imagen_url: z.string().optional(),
   estado: z.enum(['borrador', 'activo', 'agotado', 'completado']).default('activo'),
@@ -22,9 +24,17 @@ const menuSchema = z.object({
   receta_id: z.string().uuid('La receta seleccionada no es válida.').nullish(),
 });
 
+/**
+ * Precio que paga el instructor por un menú (ADR 025): el suyo, o el del aprendiz en los menús
+ * anteriores a la migración 019 (NULL), que se cobraron así.
+ */
+const SQL_PRECIO_INSTRUCTOR = 'COALESCE(precio_instructor, precio_aprendiz)';
+
 /** Columnas del menú que devuelve el historial del encargado. */
 const COLUMNAS_MENU = `m.id, TO_CHAR(m.fecha, 'YYYY-MM-DD') as fecha, m.nombre, m.descripcion,
-  m.precio_aprendiz::float8 as precio_aprendiz, m.cantidad_disponible, m.cantidad_vendida,
+  m.precio_aprendiz::float8 as precio_aprendiz,
+  COALESCE(m.precio_instructor, m.precio_aprendiz)::float8 as precio_instructor,
+  m.cantidad_disponible, m.cantidad_vendida,
   m.imagen_url, m.estado, m.receta_id, r.nombre as receta_nombre, m.created_at`;
 
 export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -33,6 +43,7 @@ export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, ne
     const result = await query(
       `SELECT id, TO_CHAR(fecha, 'YYYY-MM-DD') as fecha, nombre, descripcion,
               precio_aprendiz::float8 as precio_aprendiz,
+              ${SQL_PRECIO_INSTRUCTOR}::float8 as precio_instructor,
               cantidad_disponible, cantidad_vendida, imagen_url, estado
        FROM menus_dia
        WHERE estado = 'activo'
@@ -52,6 +63,7 @@ export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, ne
         nombre: 'Menú del Día',
         descripcion: 'Almuerzo completo: Sopa, bandeja con proteína, arroz, ensalada, jugo natural y postre.',
         precio_aprendiz: 5000,
+        precio_instructor: 5000,
         cantidad_disponible: 100,
         cantidad_vendida: 0,
         imagen_url: '/cafeteria-bg.jpg',
@@ -59,7 +71,8 @@ export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, ne
       };
     }
 
-    // 2. Precio aplicable: aprendiz e instructor pagan precio_aprendiz; el aprendiz beneficiario, $0
+    // 2. Precio aplicable: el aprendiz paga precio_aprendiz ($0 si es beneficiario) y el
+    //    instructor, precio_instructor (ADR 025)
     let precioAplicable = Number(menu.precio_aprendiz);
     let esBeneficiario = false;
 
@@ -73,6 +86,8 @@ export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, ne
       if (user?.rol === 'aprendiz') {
         esBeneficiario = Boolean(user.es_beneficiario);
         precioAplicable = esBeneficiario ? 0 : Number(menu.precio_aprendiz);
+      } else if (user?.rol === 'instructor') {
+        precioAplicable = Number(menu.precio_instructor);
       }
     }
 
@@ -103,6 +118,7 @@ export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, ne
     return res.json({
       ...menu,
       precio_aprendiz: Number(menu.precio_aprendiz),
+      precio_instructor: Number(menu.precio_instructor),
       precio_aplicable: precioAplicable,
       es_beneficiario: esBeneficiario,
       mi_reserva: miReserva,
@@ -138,6 +154,7 @@ export const createMenu = async (req: AuthenticatedRequest, res: Response, next:
       fecha: raw.fecha || raw.date,
       descripcion: raw.descripcion || raw.description,
       precio_aprendiz: raw.precio_aprendiz ?? raw.priceStudents,
+      precio_instructor: raw.precio_instructor ?? raw.priceInstructors ?? null,
       cantidad_disponible: raw.cantidad_disponible ?? raw.availableQuantity,
       imagen_url: raw.imagen_url || raw.imageUrl || '/cafeteria-bg.jpg',
       estado: raw.estado || (raw.isAvailable === false ? 'borrador' : 'activo'),
@@ -166,11 +183,12 @@ export const createMenu = async (req: AuthenticatedRequest, res: Response, next:
       }
 
       const insertRes = await client.query(
-        `INSERT INTO menus_dia (fecha, nombre, descripcion, precio_aprendiz, cantidad_disponible, imagen_url, estado, creado_por, receta_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `INSERT INTO menus_dia (fecha, nombre, descripcion, precio_aprendiz, cantidad_disponible, imagen_url, estado, creado_por, receta_id, precio_instructor)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          ON CONFLICT (fecha, nombre) DO UPDATE SET
            descripcion = EXCLUDED.descripcion,
            precio_aprendiz = EXCLUDED.precio_aprendiz,
+           precio_instructor = EXCLUDED.precio_instructor,
            cantidad_disponible = EXCLUDED.cantidad_disponible,
            imagen_url = EXCLUDED.imagen_url,
            estado = EXCLUDED.estado,
@@ -186,6 +204,7 @@ export const createMenu = async (req: AuthenticatedRequest, res: Response, next:
           data.estado,
           req.user?.id || null,
           data.receta_id ?? null,
+          data.precio_instructor ?? null,
         ]
       );
       const creado = insertRes.rows[0];

@@ -236,6 +236,8 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
       metodoPago = 'cortesia';
       estadoPago = 'gratis';
     } else if (user.rol === 'instructor') {
+      // El instructor paga su propio precio (ADR 025); en menús sin él, el del aprendiz
+      price = Number(targetMenu.precio_instructor ?? targetMenu.precio_aprendiz);
       metodoPago = 'credito';
     }
 
