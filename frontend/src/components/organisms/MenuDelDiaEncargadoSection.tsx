@@ -102,71 +102,14 @@ export const MenuDelDiaEncargadoSection = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    // Publicar el menú es la tarea de esta sección: va primero y resaltada. El estado del menú en
+    // servicio queda al lado en pantallas anchas y debajo en el celular.
+    <div className="grid gap-6 lg:grid-cols-5 lg:items-start">
       <SectionCard
-        titulo={
-          <span className="flex items-center gap-2">
-            Menú actual en servicio
-            {isLoading ? (
-              <Skeleton className="h-5 w-20 rounded-full" />
-            ) : (
-              <Chip size="sm" variant="soft" color={isMenuAvailable ? 'success' : 'danger'}>
-                {isMenuAvailable ? 'Disponible' : 'No disponible'}
-              </Chip>
-            )}
-          </span>
-        }
-        descripcion={activeMenu ? `${activeMenu.nombre} · ${activeMenu.fecha}` : 'Aún no hay menús publicados'}
-        acciones={
-          <Button
-            variant={isMenuAvailable ? 'danger-soft' : 'secondary'}
-            onPress={handleToggleAvailable}
-            isDisabled={!activeMenu}
-            isPending={toggleStatusMutation.isPending}
-          >
-            <Power />
-            {isMenuAvailable ? 'Marcar como no disponible' : 'Marcar como disponible'}
-          </Button>
-        }
-      >
-        {isError && <ErrorAlert error={error} titulo="No se pudo conectar con el servicio de menú" />}
-        {toggleStatusMutation.isError && (
-          <ErrorAlert error={toggleStatusMutation.error} titulo="No se pudo cambiar el estado del menú" />
-        )}
-
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl bg-surface-secondary p-4">
-            <dt className="text-xs text-muted">Precio estudiantes</dt>
-            <dd className="mt-0.5 text-xl font-semibold tabular-nums text-foreground">
-              {activeMenu ? pesos(activeMenu.precio_aprendiz) : '—'}
-            </dd>
-          </div>
-          <div className="rounded-xl bg-surface-secondary p-4">
-            <dt className="text-xs text-muted">Vendidos hoy</dt>
-            <dd className="mt-0.5 text-xl font-semibold tabular-nums text-foreground">
-              {activeMenu ? `${activeMenu.cantidad_vendida} / ${activeMenu.cantidad_disponible}` : '—'}
-            </dd>
-            {activeMenu && (
-              <ProgressBar
-                className="mt-2"
-                size="sm"
-                value={activeMenu.cantidad_vendida}
-                maxValue={Math.max(activeMenu.cantidad_disponible, 1)}
-                color={activeMenu.cantidad_vendida >= activeMenu.cantidad_disponible ? 'danger' : 'accent'}
-              >
-                <Label className="sr-only">Porciones vendidas</Label>
-                <ProgressBar.Track>
-                  <ProgressBar.Fill />
-                </ProgressBar.Track>
-              </ProgressBar>
-            )}
-          </div>
-        </dl>
-      </SectionCard>
-
-      <SectionCard
-        titulo="Configurar o actualizar menú"
-        descripcion="Define el plato, el precio para estudiantes y las porciones del comedor"
+        principal
+        className="lg:col-span-3"
+        titulo="Publicar el menú del día"
+        descripcion="Define el plato, el precio para aprendices y las porciones del comedor"
       >
         {publishMutation.isError && <ErrorAlert error={publishMutation.error} titulo="No se pudo publicar el menú" />}
 
@@ -207,11 +150,73 @@ export const MenuDelDiaEncargadoSection = () => {
             />
           </div>
 
-          <Button type="submit" isPending={publishMutation.isPending} className="self-end">
+          <Button type="submit" size="lg" isPending={publishMutation.isPending} className="self-end">
             <Save />
-            Guardar y Publicar Menú
+            Guardar y publicar
           </Button>
         </form>
+      </SectionCard>
+
+      <SectionCard
+        className="lg:col-span-2"
+        titulo={
+          <span className="flex items-center gap-2">
+            Menú actual en servicio
+            {isLoading ? (
+              <Skeleton className="h-5 w-20 rounded-full" />
+            ) : (
+              <Chip size="sm" variant="soft" color={isMenuAvailable ? 'success' : 'danger'}>
+                {isMenuAvailable ? 'Disponible' : 'No disponible'}
+              </Chip>
+            )}
+          </span>
+        }
+        descripcion={activeMenu ? `${activeMenu.nombre} · ${activeMenu.fecha}` : 'Aún no hay menús publicados'}
+        acciones={
+          <Button
+            variant={isMenuAvailable ? 'danger-soft' : 'secondary'}
+            onPress={handleToggleAvailable}
+            isDisabled={!activeMenu}
+            isPending={toggleStatusMutation.isPending}
+          >
+            <Power />
+            {isMenuAvailable ? 'Marcar como no disponible' : 'Marcar como disponible'}
+          </Button>
+        }
+      >
+        {isError && <ErrorAlert error={error} titulo="No se pudo conectar con el servicio de menú" />}
+        {toggleStatusMutation.isError && (
+          <ErrorAlert error={toggleStatusMutation.error} titulo="No se pudo cambiar el estado del menú" />
+        )}
+
+        <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
+          <div className="rounded-xl bg-surface-secondary p-4">
+            <dt className="text-xs text-muted">Precio estudiantes</dt>
+            <dd className="mt-0.5 text-xl font-semibold tabular-nums text-foreground">
+              {activeMenu ? pesos(activeMenu.precio_aprendiz) : '—'}
+            </dd>
+          </div>
+          <div className="rounded-xl bg-surface-secondary p-4">
+            <dt className="text-xs text-muted">Vendidos hoy</dt>
+            <dd className="mt-0.5 text-xl font-semibold tabular-nums text-foreground">
+              {activeMenu ? `${activeMenu.cantidad_vendida} / ${activeMenu.cantidad_disponible}` : '—'}
+            </dd>
+            {activeMenu && (
+              <ProgressBar
+                className="mt-2"
+                size="sm"
+                value={activeMenu.cantidad_vendida}
+                maxValue={Math.max(activeMenu.cantidad_disponible, 1)}
+                color={activeMenu.cantidad_vendida >= activeMenu.cantidad_disponible ? 'danger' : 'accent'}
+              >
+                <Label className="sr-only">Porciones vendidas</Label>
+                <ProgressBar.Track>
+                  <ProgressBar.Fill />
+                </ProgressBar.Track>
+              </ProgressBar>
+            )}
+          </div>
+        </dl>
       </SectionCard>
     </div>
   );

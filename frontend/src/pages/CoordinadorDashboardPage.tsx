@@ -7,6 +7,7 @@ import { UsuariosCoordinadorSection } from '../components/organisms/coordinador/
 import { FichasCoordinadorSection } from '../components/organisms/coordinador/FichasCoordinadorSection';
 import { CargaMasivaSection } from '../components/organisms/coordinador/CargaMasivaSection';
 import { PerfilSection } from '../components/organisms/PerfilSection';
+import { StatsHeader } from '../components/organisms/StatsHeader';
 
 interface CoordinadorDashboardPageProps {
   user: User;
@@ -22,7 +23,12 @@ export const CoordinadorDashboardPage = ({ user, onLogout }: CoordinadorDashboar
 
   return (
     <DashboardLayout user={user} activeSection={activeSection} onSelectSection={setActiveSection} onLogout={onLogout}>
-      {activeSection === 'solicitudes' && <SolicitudesCoordinadorSection />}
+      {activeSection === 'solicitudes' && (
+        <div className="flex flex-col gap-6">
+          <StatsHeader user={user} activeSection={activeSection} onSelectSection={setActiveSection} />
+          <SolicitudesCoordinadorSection />
+        </div>
+      )}
       {activeSection === 'usuarios' && <UsuariosCoordinadorSection />}
       {activeSection === 'gestionFichas' && <FichasCoordinadorSection />}
       {activeSection === 'cargas' && <CargaMasivaSection />}

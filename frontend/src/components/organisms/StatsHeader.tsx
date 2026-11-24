@@ -32,44 +32,55 @@ const ir = (
 ): Cifra['accion'] =>
   onSelectSection && hayQueHacer && activeSection !== destino ? { texto, onPress: () => onSelectSection(destino) } : undefined;
 
-const Franja = ({ cifras }: { cifras: Cifra[] }) => (
-  <FranjaCifras etiqueta="Resumen" cifras={cifras} className="mb-6" />
+const Franja = ({ cifras, titulo, destacada }: { cifras: Cifra[]; titulo?: string; destacada?: boolean }) => (
+  <FranjaCifras etiqueta={titulo ?? 'Resumen'} titulo={titulo} cifras={cifras} destacada={destacada} />
 );
 
+/** Lo primero del panel del encargado: las ventas de hoy en el color del perfil y, debajo, lo pendiente. */
 const StatsEncargado = (props: StatsHeaderProps) => {
   const { data } = useResumenEncargado();
   const deudas = data?.deudasPendientes.cantidad ?? 0;
   const sugerencias = data?.sugerenciasPendientes ?? 0;
   return (
-    <Franja
-      cifras={[
-        {
-          etiqueta: 'Almuerzos de hoy',
-          valor: valor(data?.ventasHoy, (n) => n),
-          detalle: data ? `Incluye ${data.invitadosHoy} de invitados` : undefined,
-        },
-        {
-          etiqueta: 'Cobrado hoy',
-          valor: valor(data?.ingresosHoy, pesos),
-          detalle: data
-            ? data.porCobrarHoy > 0
-              ? `Faltan ${pesos(data.porCobrarHoy)} por cobrar`
-              : 'Nada pendiente por cobrar'
-            : undefined,
-        },
-        {
-          etiqueta: 'Deuda de instructores',
-          valor: valor(data?.deudasPendientes.monto, pesos),
-          detalle: data ? `${contar(deudas, 'cuenta', 'cuentas')} por cobrar` : undefined,
-          accion: ir(props, 'deudas', 'Ver cartera', deudas > 0),
-        },
-        {
-          etiqueta: 'Sugerencias sin responder',
-          valor: valor(data?.sugerenciasPendientes, (n) => n),
-          accion: ir(props, 'sugerencias', 'Responder', sugerencias > 0),
-        },
-      ]}
-    />
+    <div className="flex flex-col gap-4">
+      <Franja
+        titulo="Ventas de hoy"
+        destacada
+        cifras={[
+          {
+            etiqueta: 'Almuerzos servidos',
+            valor: valor(data?.ventasHoy, (n) => n),
+            detalle: data ? `Incluye ${data.invitadosHoy} de invitados` : undefined,
+          },
+          {
+            etiqueta: 'Cobrado',
+            valor: valor(data?.ingresosHoy, pesos),
+            detalle: 'Reservas pagadas e invitados',
+          },
+          {
+            etiqueta: 'Por cobrar',
+            valor: valor(data?.porCobrarHoy, pesos),
+            detalle: data ? (data.porCobrarHoy > 0 ? 'Reservas de hoy sin pagar' : 'Nada pendiente') : undefined,
+          },
+        ]}
+      />
+      <Franja
+        titulo="Pendientes"
+        cifras={[
+          {
+            etiqueta: 'Deuda de instructores',
+            valor: valor(data?.deudasPendientes.monto, pesos),
+            detalle: data ? `${contar(deudas, 'cuenta', 'cuentas')} por cobrar` : undefined,
+            accion: ir(props, 'deudas', 'Ver cartera', deudas > 0),
+          },
+          {
+            etiqueta: 'Sugerencias sin responder',
+            valor: valor(data?.sugerenciasPendientes, (n) => n),
+            accion: ir(props, 'sugerencias', 'Responder', sugerencias > 0),
+          },
+        ]}
+      />
+    </div>
   );
 };
 
@@ -78,6 +89,7 @@ const StatsCoordinador = (props: StatsHeaderProps) => {
   const pendientes = data?.pendientes ?? 0;
   return (
     <Franja
+      destacada
       cifras={[
         {
           etiqueta: 'Solicitudes por aprobar',
@@ -152,7 +164,11 @@ const StatsAprendiz = (props: StatsHeaderProps) => {
   );
 };
 
-/** Cifras del rol arriba de cada sección del panel, con un botón a donde se resuelven. */
+/**
+ * Cifras del rol, con un botón a donde se resuelven. Cada página las pone solo en su sección de
+ * inicio: el encargado y el coordinador arriba, en el color del perfil; el aprendiz y el
+ * instructor debajo del menú del día, que es lo que vienen a hacer.
+ */
 export const StatsHeader = (props: StatsHeaderProps) => {
   switch (props.user.role) {
     case 'encargado':

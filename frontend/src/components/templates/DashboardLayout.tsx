@@ -3,7 +3,6 @@ import { LogOut, Menu, User as UserIcon } from 'lucide-react';
 import { Avatar, Badge, Breadcrumbs, Button, Chip, Dropdown, Header, Label, Separator } from '@heroui/react';
 import type { User } from '../../schemas/auth.schema';
 import { Sidebar, type SectionType, type InventarioSubSection } from '../organisms/Sidebar';
-import { StatsHeader } from '../organisms/StatsHeader';
 import { iniciales, TITULO_ROL } from '../../lib/usuario';
 import { useColorDeRol } from '../../hooks/useColorDeRol';
 
@@ -94,7 +93,7 @@ export const DashboardLayout = ({
             >
               <Menu />
             </Button>
-            <div>
+            <div className="border-l-4 border-accent pl-3">
               <h2 className="text-lg font-semibold text-foreground">{TITULOS[activeSection] ?? 'SARA'}</h2>
               {activeSection === 'inventario' ? (
                 <Breadcrumbs className="hidden text-xs sm:flex">
@@ -153,10 +152,9 @@ export const DashboardLayout = ({
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6 lg:p-8">
-          <StatsHeader user={user} activeSection={activeSection} onSelectSection={onSelectSection} />
-          {children}
-        </main>
+        {/* Las cifras del rol (StatsHeader) las pone cada página solo en su sección de inicio: arriba
+            de las demás secciones tapaban lo principal, como el formulario para publicar el menú */}
+        <main className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

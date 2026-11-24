@@ -42,7 +42,8 @@ export const MenuCard = ({
   isLoading = false,
   isBeneficiario = false,
 }: MenuCardProps) => (
-  <Card className="overflow-hidden p-0 md:flex-row">
+  // Es la tarea principal del aprendiz y del instructor: borde y precio en el color del perfil
+  <Card className="overflow-hidden border border-accent/30 p-0 md:flex-row">
     <img
       src={resolverImagen(imageUrl)}
       alt={title}
@@ -87,7 +88,7 @@ export const MenuCard = ({
       <Card.Footer className="mt-auto flex-wrap items-end justify-between gap-4 border-t border-separator pt-4">
         <div>
           <p className="text-xs text-muted">Valor del almuerzo</p>
-          <p className="text-2xl font-semibold tabular-nums text-foreground">
+          <p className="text-2xl font-semibold tabular-nums text-accent">
             {price}
             <span className="ml-1.5 text-xs font-normal text-muted">{isBeneficiario ? 'subsidio 100%' : 'COP'}</span>
           </p>

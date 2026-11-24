@@ -62,7 +62,7 @@ describe('Visitas institucionales (Encargado)', () => {
     await userEvent.type(cantidad, '3a0');
     expect(cantidad).toHaveValue('30');
     await userEvent.type(screen.getByLabelText(/Fecha de la visita/), '2026-11-25');
-    await userEvent.click(screen.getByRole('button', { name: 'Registrar Visita' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Registrar visita' }));
 
     expect(post).toHaveBeenCalledWith('/visitas', {
       institucionNombre: 'Universidad Surcolombiana',
@@ -82,7 +82,7 @@ describe('Visitas institucionales (Encargado)', () => {
     await userEvent.type(await screen.findByLabelText(/Nombre del responsable/), '    ');
     await userEvent.type(screen.getByLabelText(/Cantidad de personas/), '10');
     await userEvent.type(screen.getByLabelText(/Fecha de la visita/), '2026-11-25');
-    await userEvent.click(screen.getByRole('button', { name: 'Registrar Visita' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Registrar visita' }));
 
     const institucion = screen.getByLabelText(/Nombre de la institución/);
     const responsable = screen.getByLabelText(/Nombre del responsable/);

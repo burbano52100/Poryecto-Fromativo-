@@ -3,6 +3,7 @@ import type { User } from '../schemas/auth.schema';
 import { DashboardLayout } from '../components/templates/DashboardLayout';
 import type { SectionType, InventarioSubSection } from '../components/organisms/Sidebar';
 import { VentasSection } from '../components/organisms/VentasSection';
+import { StatsHeader } from '../components/organisms/StatsHeader';
 import { MenuDelDiaEncargadoSection } from '../components/organisms/MenuDelDiaEncargadoSection';
 import { AlmuerzosInvitadosSection } from '../components/organisms/AlmuerzosInvitadosSection';
 import { BeneficiariosSection } from '../components/organisms/BeneficiariosSection';
@@ -45,8 +46,13 @@ export const EncargadoDashboardPage = ({
       onSelectInventarioSubSection={setActiveInventarioSubSection}
       onLogout={onLogout}
     >
-      {/* 1. VENTAS SECTION */}
-      {activeSection === 'ventas' && <VentasSection />}
+      {/* 1. VENTAS: primero las ventas de hoy, en el color del perfil */}
+      {activeSection === 'ventas' && (
+        <div className="flex flex-col gap-6">
+          <StatsHeader user={user} activeSection={activeSection} onSelectSection={setActiveSection} />
+          <VentasSection />
+        </div>
+      )}
 
       {/* 2. MENÚ DEL DÍA SECTION */}
       {activeSection === 'menu' && <MenuDelDiaEncargadoSection />}

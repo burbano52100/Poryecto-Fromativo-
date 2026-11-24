@@ -1,4 +1,5 @@
-import { Card, Chip } from '@heroui/react';
+import type { ReactNode } from 'react';
+import { Chip } from '@heroui/react';
 import { Award } from 'lucide-react';
 import type { User } from '../../schemas/auth.schema';
 import { ReservaAlmuerzoCard } from './ReservaAlmuerzoCard';
@@ -6,9 +7,11 @@ import { useMenuActivo } from '../../hooks/useMenu';
 
 export interface InicioSectionProps {
   user: User;
+  /** Cifras del aprendiz (StatsHeader): van debajo del menú, que es lo que viene a reservar. */
+  resumen?: ReactNode;
 }
 
-export const InicioSection = ({ user }: InicioSectionProps) => {
+export const InicioSection = ({ user, resumen }: InicioSectionProps) => {
   const { data: menu } = useMenuActivo();
   // El estado de beneficiario vigente lo reporta el menú (se lee de la BD en cada consulta)
   const esBeneficiario = menu?.es_beneficiario ?? user.es_beneficiario ?? false;
@@ -16,29 +19,26 @@ export const InicioSection = ({ user }: InicioSectionProps) => {
 
   return (
     <div className="flex flex-col gap-6">
-      <Card className="bg-accent-soft">
-        <Card.Header className="gap-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Card.Title className="text-xl">Hola, {primerNombre}</Card.Title>
-            {esBeneficiario && (
-              <Chip size="sm" variant="soft" color="warning">
-                <Award className="size-3.5" />
-                <Chip.Label>Beneficiario</Chip.Label>
-              </Chip>
-            )}
-          </div>
-          <Card.Description className="text-foreground/80">
-            {esBeneficiario
-              ? 'Tienes alimentación 100 % subsidiada por el SENA: reserva el almuerzo del día con un clic.'
-              : 'Reserva el almuerzo del día con anticipación y presenta tu documento o ficha al ingresar.'}
-          </Card.Description>
-        </Card.Header>
-        <Card.Footer className="flex-wrap gap-2">
-          <Chip size="sm" variant="secondary">
+      {/* Saludo corto, sin tarjeta: lo primero que se ve es el menú del día para reservar */}
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground">Hola, {primerNombre}</h3>
+          {esBeneficiario && (
+            <Chip size="sm" variant="soft" color="warning">
+              <Award className="size-3.5" />
+              <Chip.Label>Beneficiario</Chip.Label>
+            </Chip>
+          )}
+          <Chip size="sm" variant="soft" color="accent">
             Ficha {user.ficha || 'sin asignar'}
           </Chip>
-        </Card.Footer>
-      </Card>
+        </div>
+        <p className="text-sm text-muted">
+          {esBeneficiario
+            ? 'Tienes alimentación 100 % subsidiada por el SENA: reserva el almuerzo del día con un clic'
+            : 'Reserva el almuerzo del día con anticipación y presenta tu documento o ficha al ingresar'}
+        </p>
+      </div>
 
       <ReservaAlmuerzoCard
         user={user}
@@ -65,6 +65,8 @@ export const InicioSection = ({ user }: InicioSectionProps) => {
             : `Tarifa: ${reserva.price} COP. Queda pendiente de pago hasta que la canceles en la ventanilla.`
         }
       />
+
+      {resumen}
     </div>
   );
 };

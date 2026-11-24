@@ -8,6 +8,7 @@ import { ConsumosSection } from '../components/organisms/ConsumosSection';
 import { BuzonSugerenciasSection } from '../components/organisms/BuzonSugerenciasSection';
 import { PerfilSection } from '../components/organisms/PerfilSection';
 import { ReservaAlmuerzoCard } from '../components/organisms/ReservaAlmuerzoCard';
+import { StatsHeader } from '../components/organisms/StatsHeader';
 import { ListSkeleton } from '../components/molecules/ListSkeleton';
 import { useMiCuenta } from '../hooks/useCartera';
 
@@ -25,14 +26,11 @@ export const InstructorDashboardPage = ({ user, onLogout }: InstructorDashboardP
     <DashboardLayout user={user} activeSection={activeSection} onSelectSection={setActiveSection} onLogout={onLogout}>
       {activeSection === 'inicio' && (
         <div className="flex flex-col gap-6">
-          <Card className="bg-accent-soft">
-            <Card.Header className="gap-1">
-              <Card.Title className="text-xl">Hola, {user.name.split(' ')[0]}</Card.Title>
-              <Card.Description className="text-foreground/80">
-                Consume tus almuerzos del día y paga el total del mes en la oficina del comedor.
-              </Card.Description>
-            </Card.Header>
-          </Card>
+          {/* Saludo corto, sin tarjeta: lo primero que se ve es el menú del día; las cifras van debajo */}
+          <div className="flex flex-col gap-1">
+            <h3 className="text-xl font-semibold text-foreground">Hola, {user.name.split(' ')[0]}</h3>
+            <p className="text-sm text-muted">Consume tus almuerzos del día y paga el total del mes en la oficina del comedor</p>
+          </div>
 
           <ReservaAlmuerzoCard
             user={user}
@@ -56,6 +54,8 @@ export const InstructorDashboardPage = ({ user, onLogout }: InstructorDashboardP
             )}
             mensajeExito={(reserva) => `Se registró el consumo de ${reserva.price} y se cargó a tu cuenta mensual.`}
           />
+
+          <StatsHeader user={user} activeSection={activeSection} onSelectSection={setActiveSection} />
         </div>
       )}
 

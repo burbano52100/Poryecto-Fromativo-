@@ -125,21 +125,11 @@ export function VisitasInstitucionalesSection() {
   const visitas = visitasQuery.data ?? [];
 
   return (
+    // Registrar la visita es la tarea de esta sección: va primero y resaltada; las cifras del mes, al final
     <div className="flex flex-col gap-6">
-      <FranjaCifras
-        etiqueta="Visitas de este mes"
-        cifras={[
-          { etiqueta: 'Visitas este mes', valor: kpiQuery.isLoading ? undefined : (kpi?.totalVisitasMes ?? 0) },
-          { etiqueta: 'Personas atendidas', valor: kpiQuery.isLoading ? undefined : (kpi?.totalPersonasAtendidas ?? 0) },
-          {
-            etiqueta: 'Cobrado por visitas',
-            valor: kpiQuery.isLoading ? undefined : currencyFormatter.format(kpi?.ingresosVisitas ?? 0),
-          },
-        ]}
-      />
-
       <div className="grid gap-6 lg:grid-cols-5">
         <SectionCard
+          principal
           className="h-fit lg:col-span-2"
           titulo="Registrar nueva visita"
           descripcion="Colegios, universidades y empresas que almuerzan en el comedor"
@@ -203,8 +193,8 @@ export function VisitasInstitucionalesSection() {
               />
             </div>
 
-            <Button type="submit" fullWidth isPending={crearVisitaMutation.isPending}>
-              Registrar Visita
+            <Button type="submit" size="lg" fullWidth isPending={crearVisitaMutation.isPending}>
+              Registrar visita
             </Button>
           </form>
         </SectionCard>
@@ -248,6 +238,19 @@ export function VisitasInstitucionalesSection() {
           )}
         </SectionCard>
       </div>
+
+      <FranjaCifras
+        etiqueta="Visitas de este mes"
+        titulo="Este mes"
+        cifras={[
+          { etiqueta: 'Visitas', valor: kpiQuery.isLoading ? undefined : (kpi?.totalVisitasMes ?? 0) },
+          { etiqueta: 'Personas atendidas', valor: kpiQuery.isLoading ? undefined : (kpi?.totalPersonasAtendidas ?? 0) },
+          {
+            etiqueta: 'Cobrado por visitas',
+            valor: kpiQuery.isLoading ? undefined : currencyFormatter.format(kpi?.ingresosVisitas ?? 0),
+          },
+        ]}
+      />
     </div>
   );
 }
