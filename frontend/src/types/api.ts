@@ -37,6 +37,26 @@ export interface MenuDia {
   imagen_url: string | null;
   estado: EstadoMenu;
   created_at: string;
+  /** Receta cuyos ingredientes descuenta cada almuerzo vendido (ADR 020); null = no descuenta. */
+  receta_id: string | null;
+  receta_nombre: string | null;
+}
+
+/** GET /api/menus/recetas: recetas activas para elegir en el formulario del menú. */
+export interface RecetaParaMenu {
+  id: string;
+  codigo: string | null;
+  nombre: string;
+  ingredientes: number;
+}
+
+/** GET /api/menus/sugerencia: cuántos almuerzos preparar según el mismo día de semanas anteriores. */
+export interface SugerenciaPreparacion {
+  fecha: string;
+  dia_semana: string;
+  sugerencia: number | null;
+  suficiente: boolean;
+  mensaje: string;
 }
 
 export interface NuevoMenu {
@@ -47,6 +67,7 @@ export interface NuevoMenu {
   cantidad_disponible: number;
   imagen_url?: string;
   estado: EstadoMenu;
+  receta_id?: string | null;
 }
 
 // ---------------------------------------------------------------- Consumos
@@ -92,6 +113,9 @@ export interface ReporteVentas {
     almuerzosInvitados: number;
     ingresosInvitados: number;
     invitadosPorTipo: Record<TipoAlmuerzoInvitado, { personas: number; ingresos: number }>;
+    /** Almuerzos especiales pagados en el período (por la fecha del pago, ADR 024). */
+    almuerzosEspeciales: number;
+    ingresosEspeciales: number;
   };
   breakdown: {
     fecha: string;
@@ -100,37 +124,90 @@ export interface ReporteVentas {
     ingresos: number;
     /** Personas de Almuerzos Invitados incluidas en `count`. */
     invitados: number;
+    /** Personas de almuerzos especiales pagados incluidas en `count`. */
+    especiales: number;
     percent: number;
   }[];
   transacciones: {
     id: string;
     fecha: string;
+    /** En un almuerzo especial, la dependencia que lo pidió. */
     cliente: string;
     cedula: string;
-    /** Rol del usuario; en un Almuerzo Invitado, su tipo. */
+    /** Rol del usuario; en un Almuerzo Invitado, su tipo; en un especial, 'especial'. */
     rol: string;
+    /** Ficha del aprendiz; en un almuerzo especial, el número de contrato. */
     ficha: string;
     menu: string;
     precio: number;
     estado_pago: EstadoPago;
     beneficiario: boolean;
-    origen: 'reserva' | 'invitado';
+    origen: 'reserva' | 'invitado' | 'especial';
     personas: number;
   }[];
 }
 
 export interface ResumenEncargado {
-  /** Reservas + personas de Almuerzos Invitados de hoy. */
+  /** Reservas + personas de Almuerzos Invitados + almuerzos especiales pagados hoy. */
   ventasHoy: number;
   ingresosHoy: number;
   invitadosHoy: number;
   ingresosInvitadosHoy: number;
+  /** Personas de almuerzos especiales cuyo pago se registró hoy. */
+  especialesHoy?: number;
+  ingresosEspecialesHoy?: number;
   porCobrarHoy: number;
   deudasPendientes: { monto: number; cantidad: number };
   sugerenciasPendientes: number;
   beneficiariosActivos: number;
   alertasPendientes?: number;
   cajaCerradaHoy?: boolean;
+}
+
+// ---------------------------------------------------------------- Almuerzos especiales (ADR 024)
+export type EstadoAlmuerzoEspecial = 'programado' | 'entregado' | 'cancelado';
+
+/** Pedido de una dependencia del SENA, con menú y precio propios, casi siempre por contrato. */
+export interface AlmuerzoEspecial {
+  id: string;
+  solicitante: string;
+  responsable: string;
+  numero_contrato: string | null;
+  /** YYYY-MM-DD: día de la entrega. */
+  fecha: string;
+  cantidad_personas: number;
+  menu_descripcion: string;
+  receta_id: string | null;
+  receta_nombre: string | null;
+  precio_unitario: number;
+  total: number;
+  estado: EstadoAlmuerzoEspecial;
+  pagado: boolean;
+  fecha_hora_entrega: string | null;
+  fecha_hora_pago: string | null;
+  observaciones: string | null;
+  created_at: string;
+  /** Solo en la respuesta de "entregado": qué pasó con la bodega. */
+  avisos_inventario?: string[];
+}
+
+export interface NuevoAlmuerzoEspecial {
+  solicitante: string;
+  responsable: string;
+  numero_contrato?: string | null;
+  fecha: string;
+  cantidad_personas: number;
+  menu_descripcion: string;
+  receta_id?: string | null;
+  precio_unitario: number;
+  observaciones?: string | null;
+}
+
+export interface ResumenAlmuerzosEspeciales {
+  /** Entregados que el contrato aún no paga. */
+  porCobrar: { cantidad: number; monto: number };
+  programados: number;
+  cobradoMes: number;
 }
 
 // ---------------------------------------------------------------- Almuerzos Invitados (ADR 016)

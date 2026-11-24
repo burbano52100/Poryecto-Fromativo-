@@ -49,13 +49,13 @@ export const BuzonSugerenciasEncargadoSection = () => {
         descripcion="Mensajes enviados por aprendices e instructores"
         acciones={
           <>
-            <Chip variant="soft">{totalCount} recibidas</Chip>
-            <Chip variant="soft" color="success">
-              {attendedCount} Atendidas
-            </Chip>
             <Chip variant="soft" color="warning">
-              {pendingCount} Pendientes
+              {pendingCount} por responder
             </Chip>
+            <Chip variant="soft" color="success">
+              {attendedCount} atendidas
+            </Chip>
+            <Chip variant="soft">{totalCount} recibidas</Chip>
           </>
         }
       >
@@ -68,7 +68,10 @@ export const BuzonSugerenciasEncargadoSection = () => {
           <EmptyMessage>Aún no hay sugerencias en el buzón.</EmptyMessage>
         ) : (
           <div className="flex flex-col gap-3">
-            {sugerencias.map((item) => {
+            {/* Primero las que faltan por responder; dentro de cada grupo se respeta el orden de llegada */}
+            {[...sugerencias]
+              .sort((a, b) => Number(b.status === 'PENDIENTE') - Number(a.status === 'PENDIENTE'))
+              .map((item) => {
               const pendiente = item.status === 'PENDIENTE';
               return (
                 <Card key={item.id} variant="secondary">

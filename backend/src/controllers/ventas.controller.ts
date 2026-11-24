@@ -4,7 +4,8 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { TIPOS_ALMUERZO_INVITADO, type TipoAlmuerzoInvitado } from '../config/almuerzosInvitados.js';
 
 /**
- * Reporte de Ventas del Encargado: reservas de la app más los registros de Almuerzos Invitados.
+ * Reporte de Ventas del Encargado: reservas de la app, registros de Almuerzos Invitados y almuerzos
+ * especiales por contrato ya pagados (ADR 024, por la fecha del pago).
  *
  * Períodos "en curso" en hora de Colombia: Día = hoy, Semana = desde el lunes,
  * Mes = desde el 1°, y trimestre, semestre y año calendario.
@@ -78,6 +79,16 @@ export const getVentasReport = async (req: AuthenticatedRequest, res: Response, 
        GROUP BY a.tipo;`
     );
 
+    // Almuerzos especiales por contrato (ADR 024): entran a Ventas el día en que se registra su pago
+    const especialesRes = await query<{ personas: number; ingresos: number }>(
+      `WITH ${rango}
+       SELECT COALESCE(SUM(e.cantidad_personas), 0)::int as personas,
+              COALESCE(SUM(e.total), 0)::float8 as ingresos
+       FROM almuerzos_especiales e, rango
+       WHERE e.pagado
+         AND e.fecha_hora_pago AT TIME ZONE 'America/Bogota' >= rango.inicio;`
+    );
+
     const breakdownRes = await query(
       `WITH ${rango},
        serie AS (
@@ -102,14 +113,24 @@ export const getVentasReport = async (req: AuthenticatedRequest, res: Response, 
          FROM almuerzos_invitados a, rango
          WHERE a.fecha_hora AT TIME ZONE 'America/Bogota' >= rango.inicio
          GROUP BY 1
+       ),
+       especiales AS (
+         SELECT DATE_TRUNC('${unidad}', e.fecha_hora_pago AT TIME ZONE 'America/Bogota') AS bucket,
+                SUM(e.cantidad_personas) AS n,
+                SUM(e.total) AS ingresos
+         FROM almuerzos_especiales e, rango
+         WHERE e.pagado AND e.fecha_hora_pago AT TIME ZONE 'America/Bogota' >= rango.inicio
+         GROUP BY 1
        )
        SELECT TO_CHAR(s.bucket, 'YYYY-MM-DD') as fecha,
-              (COALESCE(r.n, 0) + COALESCE(i.n, 0))::int as count,
-              (COALESCE(r.ingresos, 0) + COALESCE(i.ingresos, 0))::float8 as ingresos,
-              COALESCE(i.n, 0)::int as invitados
+              (COALESCE(r.n, 0) + COALESCE(i.n, 0) + COALESCE(e.n, 0))::int as count,
+              (COALESCE(r.ingresos, 0) + COALESCE(i.ingresos, 0) + COALESCE(e.ingresos, 0))::float8 as ingresos,
+              COALESCE(i.n, 0)::int as invitados,
+              COALESCE(e.n, 0)::int as especiales
        FROM serie s
        LEFT JOIN reservas r ON r.bucket = s.bucket
        LEFT JOIN invitados i ON i.bucket = s.bucket
+       LEFT JOIN especiales e ON e.bucket = s.bucket
        ORDER BY s.bucket ASC;`
     );
 
@@ -137,6 +158,14 @@ export const getVentasReport = async (req: AuthenticatedRequest, res: Response, 
                 'invitado', a.cantidad
          FROM almuerzos_invitados a, rango
          WHERE a.fecha_hora AT TIME ZONE 'America/Bogota' >= rango.inicio
+         UNION ALL
+         SELECT e.id, e.fecha_hora_pago, e.total::float8, 'pagado',
+                e.solicitante, '', 'especial',
+                COALESCE(e.numero_contrato, ''),
+                e.menu_descripcion,
+                'especial', e.cantidad_personas
+         FROM almuerzos_especiales e, rango
+         WHERE e.pagado AND e.fecha_hora_pago AT TIME ZONE 'America/Bogota' >= rango.inicio
        ) t
        ORDER BY t.fecha_hora DESC
        LIMIT 100;`
@@ -154,6 +183,7 @@ export const getVentasReport = async (req: AuthenticatedRequest, res: Response, 
       (acc, t) => ({ personas: acc.personas + t.personas, ingresos: acc.ingresos + t.ingresos }),
       { personas: 0, ingresos: 0 }
     );
+    const especiales = especialesRes.rows[0] ?? { personas: 0, ingresos: 0 };
     const maxCount = breakdownRes.rows.reduce((max, row) => Math.max(max, row.count), 0) || 1;
 
     return res.json({
@@ -161,21 +191,25 @@ export const getVentasReport = async (req: AuthenticatedRequest, res: Response, 
       desde: totales.desde,
       agrupacion: unidad === 'month' ? 'mes' : 'dia',
       totales: {
-        almuerzosServidos: totales.servidos + invitados.personas,
+        almuerzosServidos: totales.servidos + invitados.personas + especiales.personas,
         almuerzosGratis: totales.gratis,
-        ingresosCobrados: totales.cobrados + invitados.ingresos,
+        ingresosCobrados: totales.cobrados + invitados.ingresos + especiales.ingresos,
         porCobrar: totales.por_cobrar,
         almuerzosInvitados: invitados.personas,
         ingresosInvitados: invitados.ingresos,
         invitadosPorTipo,
+        // Almuerzos especiales pagados en el período (por la fecha del pago)
+        almuerzosEspeciales: especiales.personas,
+        ingresosEspeciales: especiales.ingresos,
       },
       breakdown: breakdownRes.rows.map((row) => ({
         fecha: row.fecha,
         label: etiquetaBucket(row.fecha, unidad),
         count: row.count,
         ingresos: row.ingresos,
-        // Personas de Almuerzos Invitados incluidas en `count`
+        // Personas de Almuerzos Invitados y de almuerzos especiales incluidas en `count`
         invitados: row.invitados,
+        especiales: row.especiales,
         percent: Math.round((row.count / maxCount) * 100),
       })),
       transacciones: transaccionesRes.rows.map((v) => ({
@@ -189,7 +223,8 @@ export const getVentasReport = async (req: AuthenticatedRequest, res: Response, 
         precio: v.precio,
         estado_pago: v.estado_pago,
         beneficiario: v.estado_pago === 'gratis',
-        // 'invitado': registro de Almuerzos Invitados; `rol` trae su tipo y `personas` cuántas fueron
+        // 'invitado': registro de Almuerzos Invitados; `rol` trae su tipo y `personas` cuántas fueron.
+        // 'especial': almuerzo especial pagado; `cliente` es la dependencia y `ficha` el número de contrato
         origen: v.origen,
         personas: v.personas,
       })),

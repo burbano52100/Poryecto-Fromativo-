@@ -66,8 +66,11 @@ El nombre y el ícono ya están en la app: login, barra lateral, pestaña del na
 - [x] **`seed.integration.test.ts` fallaba los domingos.** El historial de la semilla va de lunes a sábado, y la prueba "deja historia suficiente para la sugerencia" pedía la sugerencia de hoy, que un domingo no tiene historia. Ahora un domingo pide la del lunes. Se comprobó simulando los 7 días de la semana.
 - [ ] Recorrido en navegador, en escritorio y celular, de los paneles con HeroUI v3, incluido el del Coordinador: solicitudes, usuarios, fichas y carga masiva.
 - [ ] La base local `gastrosena` tenía datos de una semilla anterior: deudas que no cuadraban con las ventas y porciones infladas. No se volvió a revisar. Dejarla limpia exige vaciarla y volver a sembrarla (`npm run db:init` y `npm run db:seed`), lo cual **borra los datos actuales**.
+- [ ] **Migración 018 en la base local.** Almuerzos especiales (ADR 024) necesita la tabla `almuerzos_especiales`. En Render se crea sola al arrancar (`npm run migrate`); en local hay que correr `npm run migrate:dev` en `backend/` una vez. Solo agrega la tabla, no borra datos.
 
 ## 5. Mejoras funcionales
+- [ ] **Porción según quién come.** El encargado confirmó que la porción del aprendiz, la del instructor y la del visitante son distintas. El descuento por receta (ADR 020) usa la misma cantidad para todos. Falta que cocina diga cuánto más lleva cada porción para agregar un factor por tipo (aprendiz, instructor, visitante) en Configuración.
+- [ ] **Almuerzos especiales (ADR 024)**: no se pueden editar después de registrados, ni deshacer un pago marcado por error (queda en Auditoría).
 - [ ] **Visitas institucionales**: ya se marcan como realizadas, pero no hay forma de cancelarlas ni de marcarlas como pagadas.
 - [ ] **Reconocimiento facial real** (Teachable Machine) con verificación de vida (mirar arriba, girar, parpadear). La tabla `reconocimiento_facial` ya existe en la base de datos.
 - [ ] **Marca de entrega del almuerzo**: hoy "Consumido" se deduce de la fecha del menú (ADR 010).

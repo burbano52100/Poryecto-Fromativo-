@@ -6,6 +6,7 @@ import {
   Building2,
   ChefHat,
   CreditCard,
+  ConciergeBell,
   HandPlatter,
   History,
   Home,
@@ -26,7 +27,7 @@ import { Button, Drawer, Separator } from '@heroui/react';
 import type { User as UserType } from '../../schemas/auth.schema';
 import { SidebarNavItem } from '../molecules/SidebarNavItem';
 import { SidebarUserProfile } from '../molecules/SidebarUserProfile';
-import { useResumenConsumos } from '../../hooks/useConsumos';
+import { useConsumos } from '../../hooks/useConsumos';
 import { useResumenEncargado } from '../../hooks/useVentas';
 import { useResumenCoordinador } from '../../hooks/useCoordinador';
 import { asset } from '../../lib/assets';
@@ -41,6 +42,7 @@ export type SectionType =
   | 'ventas'
   | 'menu'
   | 'almuerzosInvitados'
+  | 'almuerzosEspeciales'
   | 'beneficiarios'
   | 'deudas'
   | 'inventario'
@@ -94,9 +96,11 @@ export const Sidebar = ({
   const isInstructor = user.role === 'instructor';
   const isCoordinador = user.role === 'coordinador';
 
-  // Conteo de almuerzos para "Mis Fichas" (aprendiz) y "Consumos" (instructor)
-  const { data: resumen } = useResumenConsumos(user.role === 'aprendiz' || isInstructor);
-  const totalAlmuerzos = resumen?.totalAlmuerzos;
+  // "Mis fichas" del aprendiz cuenta solo los almuerzos por pagar: es lo que pide hacer algo. El
+  // total de almuerzos no va en el menú porque solo crece y no avisa nada.
+  const esAprendiz = user.role === 'aprendiz';
+  const { data: consumos } = useConsumos(esAprendiz);
+  const porPagar = Array.isArray(consumos) ? consumos.filter((c) => c.estado_pago === 'pendiente').length || undefined : undefined;
 
   // Pendientes del Encargado: los mismos datos del encabezado; sin contador cuando no hay ninguno
   const { data: resumenEncargado } = useResumenEncargado(isEncargado);
@@ -119,6 +123,7 @@ export const Sidebar = ({
         { id: 'ventas', label: 'Ventas', icon: <TrendingUp /> },
         { id: 'menu', label: 'Menú del día', icon: <Utensils /> },
         { id: 'almuerzosInvitados', label: 'Almuerzos invitados', icon: <HandPlatter /> },
+        { id: 'almuerzosEspeciales', label: 'Almuerzos especiales', icon: <ConciergeBell /> },
         { id: 'beneficiarios', label: 'Beneficiarios', icon: <Award /> },
         { id: 'deudas', label: 'Cartera de deudas', icon: <CreditCard />, badge: deudasPendientes },
         { id: 'inventario', label: 'Inventario', icon: <Package /> },
@@ -138,13 +143,13 @@ export const Sidebar = ({
         ? [
             { id: 'inicio', label: 'Inicio', icon: <Home /> },
             { id: 'cuenta', label: 'Mi cuenta', icon: <CreditCard /> },
-            { id: 'consumos', label: 'Consumos', icon: <Receipt />, badge: totalAlmuerzos },
+            { id: 'consumos', label: 'Consumos', icon: <Receipt /> },
             { id: 'sugerencias', label: 'Buzón de sugerencias', icon: <Mail /> },
             { id: 'perfil', label: 'Perfil', icon: <User /> },
           ]
         : [
             { id: 'inicio', label: 'Inicio', icon: <Home /> },
-            { id: 'fichas', label: 'Mis fichas', icon: <Receipt />, badge: totalAlmuerzos },
+            { id: 'fichas', label: 'Mis fichas', icon: <Receipt />, badge: porPagar },
             { id: 'sugerencias', label: 'Buzón de sugerencias', icon: <Mail /> },
             { id: 'perfil', label: 'Perfil', icon: <User /> },
           ];

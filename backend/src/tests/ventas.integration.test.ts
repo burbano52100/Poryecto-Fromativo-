@@ -84,6 +84,8 @@ describe('GET /api/ventas', () => {
         aprendiz: { personas: 0, ingresos: 0 },
         corriente: { personas: 0, ingresos: 0 },
       },
+      almuerzosEspeciales: 0,
+      ingresosEspeciales: 0,
     });
     assert.strictEqual(res.body.transacciones.length, 3);
     const gratis = res.body.transacciones.find((t: any) => t.estado_pago === 'gratis');

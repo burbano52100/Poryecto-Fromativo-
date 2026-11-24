@@ -3,9 +3,10 @@ import type { User } from '../schemas/auth.schema';
 import { DashboardLayout } from '../components/templates/DashboardLayout';
 import type { SectionType, InventarioSubSection } from '../components/organisms/Sidebar';
 import { VentasSection } from '../components/organisms/VentasSection';
-import { StatsHeader } from '../components/organisms/StatsHeader';
+import { CifrasVentasHoy } from '../components/organisms/CifrasDelPerfil';
 import { MenuDelDiaEncargadoSection } from '../components/organisms/MenuDelDiaEncargadoSection';
 import { AlmuerzosInvitadosSection } from '../components/organisms/AlmuerzosInvitadosSection';
+import { AlmuerzosEspecialesSection } from '../components/organisms/AlmuerzosEspecialesSection';
 import { BeneficiariosSection } from '../components/organisms/BeneficiariosSection';
 import { CarteraDeudasSection } from '../components/organisms/CarteraDeudasSection';
 import { InventarioSection } from '../components/organisms/InventarioSection';
@@ -49,7 +50,7 @@ export const EncargadoDashboardPage = ({
       {/* 1. VENTAS: primero las ventas de hoy, en el color del perfil */}
       {activeSection === 'ventas' && (
         <div className="flex flex-col gap-6">
-          <StatsHeader user={user} activeSection={activeSection} onSelectSection={setActiveSection} />
+          <CifrasVentasHoy />
           <VentasSection />
         </div>
       )}
@@ -59,6 +60,9 @@ export const EncargadoDashboardPage = ({
 
       {/* 2b. ALMUERZOS INVITADOS (INSTRUCTORES, APRENDICES, CORRIENTES) */}
       {activeSection === 'almuerzosInvitados' && <AlmuerzosInvitadosSection />}
+
+      {/* 2c. ALMUERZOS ESPECIALES POR CONTRATO (ADR 024) */}
+      {activeSection === 'almuerzosEspeciales' && <AlmuerzosEspecialesSection />}
 
       {/* 3. BENEFICIARIOS SECTION */}
       {activeSection === 'beneficiarios' && <BeneficiariosSection />}

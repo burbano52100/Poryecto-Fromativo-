@@ -29,12 +29,22 @@ const DESCRIPCION_PERIODO: Record<PeriodoVentas, string> = {
 type Transaccion = ReporteVentas['transacciones'][number];
 
 const esInvitado = (t: Transaccion) => t.origen === 'invitado';
+/** Almuerzo especial por contrato ya pagado (ADR 024): `cliente` es la dependencia y `ficha` el contrato. */
+const esEspecial = (t: Transaccion) => t.origen === 'especial';
 
 /** "Aprendiz" para una reserva; "Invitado · Corrientes" para un Almuerzo Invitado. */
 const rolDeTransaccion = (t: Transaccion): string =>
-  esInvitado(t)
-    ? `Invitado · ${ETIQUETA_TIPO_INVITADO[t.rol as TipoAlmuerzoInvitado]?.corto ?? t.rol}`
-    : t.rol.charAt(0).toUpperCase() + t.rol.slice(1);
+  esEspecial(t)
+    ? 'Almuerzo especial'
+    : esInvitado(t)
+      ? `Invitado · ${ETIQUETA_TIPO_INVITADO[t.rol as TipoAlmuerzoInvitado]?.corto ?? t.rol}`
+      : t.rol.charAt(0).toUpperCase() + t.rol.slice(1);
+
+const ORIGEN: Record<Transaccion['origen'], string> = {
+  reserva: 'Reserva',
+  invitado: 'Almuerzo invitado',
+  especial: 'Almuerzo especial',
+};
 
 export const VentasSection = () => {
   const [period, setPeriod] = useState<PeriodoVentas>('Semana');
@@ -47,7 +57,7 @@ export const VentasSection = () => {
       ['Fecha', 'Origen', 'Cliente', 'Cédula', 'Rol', 'Ficha', 'Menú', 'Personas', 'Estado de pago', 'Valor'],
       data.transacciones.map((t) => [
         fechaHora(t.fecha),
-        esInvitado(t) ? 'Almuerzo invitado' : 'Reserva',
+        ORIGEN[t.origen] ?? 'Reserva',
         t.cliente,
         t.cedula,
         rolDeTransaccion(t),
@@ -99,12 +109,16 @@ export const VentasSection = () => {
               {
                 etiqueta: 'Almuerzos servidos',
                 valor: data.totales.almuerzosServidos,
-                detalle: `Incluye ${data.totales.almuerzosGratis} gratis de beneficiarios y ${data.totales.almuerzosInvitados} de invitados`,
+                detalle:
+                  `Incluye ${data.totales.almuerzosGratis} gratis de beneficiarios y ${data.totales.almuerzosInvitados} de invitados` +
+                  (data.totales.almuerzosEspeciales > 0 ? `, más ${data.totales.almuerzosEspeciales} especiales` : ''),
               },
               {
                 etiqueta: 'Cobrado',
                 valor: pesos(data.totales.ingresosCobrados),
-                detalle: `Reservas pagadas y ${pesos(data.totales.ingresosInvitados)} de invitados`,
+                detalle:
+                  `Reservas pagadas y ${pesos(data.totales.ingresosInvitados)} de invitados` +
+                  (data.totales.ingresosEspeciales > 0 ? `, más ${pesos(data.totales.ingresosEspeciales)} de especiales` : ''),
               },
               { etiqueta: 'Por cobrar', valor: pesos(data.totales.porCobrar), detalle: 'Reservas sin pagar' },
             ]}
@@ -145,6 +159,9 @@ export const VentasSection = () => {
                 <span className="inline-flex items-center gap-1.5">
                   <span className="size-2.5 rounded-full bg-warning" /> Almuerzos invitados
                 </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-full bg-success" /> Especiales
+                </span>
               </div>
             }
           >
@@ -157,14 +174,15 @@ export const VentasSection = () => {
                     <div className="flex justify-between gap-3 text-xs">
                       <span className="capitalize text-foreground">{item.label}</span>
                       <span className="text-right text-muted">
-                        {item.count} almuerzos{item.invitados > 0 ? ` (${item.invitados} invitados)` : ''} ·{' '}
-                        {pesos(item.ingresos)} cobrados
+                        {item.count} almuerzos{item.invitados > 0 ? ` (${item.invitados} invitados)` : ''}
+                        {item.especiales > 0 ? ` (${item.especiales} especiales)` : ''} · {pesos(item.ingresos)} cobrados
                       </span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-default">
                       <div className="flex h-2 overflow-hidden rounded-full" style={{ width: `${item.percent}%` }}>
-                        <div className="h-2 bg-accent" style={{ flexGrow: item.count - item.invitados }} />
+                        <div className="h-2 bg-accent" style={{ flexGrow: item.count - item.invitados - item.especiales }} />
                         <div className="h-2 bg-warning" style={{ flexGrow: item.invitados }} />
+                        <div className="h-2 bg-success" style={{ flexGrow: item.especiales }} />
                       </div>
                     </div>
                   </div>
@@ -194,12 +212,16 @@ export const VentasSection = () => {
                             {esInvitado(t) ? t.cliente || 'Almuerzo invitado' : t.cliente}
                           </span>
                           <span className="block text-xs text-muted">
-                            {esInvitado(t) ? textoPersonas(t.personas) : `C.C. ${t.cedula}`}
+                            {esInvitado(t) || esEspecial(t) ? textoPersonas(t.personas) : `C.C. ${t.cedula}`}
                           </span>
                         </Table.Cell>
                         <Table.Cell>
                           {rolDeTransaccion(t)}
-                          {t.ficha && <span className="block text-xs text-muted">Ficha {t.ficha}</span>}
+                          {t.ficha && (
+                            <span className="block text-xs text-muted">
+                              {esEspecial(t) ? 'Contrato' : 'Ficha'} {t.ficha}
+                            </span>
+                          )}
                         </Table.Cell>
                         <Table.Cell>{t.menu}</Table.Cell>
                         <Table.Cell>

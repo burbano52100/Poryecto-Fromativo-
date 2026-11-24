@@ -16,6 +16,7 @@ export async function cleanDatabase(): Promise<void> {
       beneficios,
       cargas_masivas,
       almuerzos_invitados,
+      almuerzos_especiales,
       solicitudes_cuenta,
       pagos_deuda,
       movimientos_saldo,

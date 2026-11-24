@@ -30,12 +30,14 @@ export type AccionAuditoria =
   | 'revertir'
   | 'configurar'
   | 'marcar_realizada'
+  | 'marcar_entregado'
   | 'cancelar'
   | 'calificar';
 
 export type EntidadAuditoria =
   | 'menu_dia'
   | 'almuerzo_invitado'
+  | 'almuerzo_especial'
   | 'venta'
   | 'pago_deuda'
   | 'beneficio'

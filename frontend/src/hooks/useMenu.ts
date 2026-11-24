@@ -1,7 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../lib/api';
 import { queryKeys } from './queryKeys';
-import type { EstadoMenu, MenuActivo, MenuDia, NuevoMenu, ReservaCreada } from '../types/api';
+import type {
+  EstadoMenu,
+  MenuActivo,
+  MenuDia,
+  NuevoMenu,
+  RecetaParaMenu,
+  ReservaCreada,
+  SugerenciaPreparacion,
+} from '../types/api';
 
 /** GET /api/menus/activo: menú de hoy con el precio y el estado de reserva del usuario. */
 export const useMenuActivo = () =>
@@ -38,6 +46,21 @@ export const useMenus = () =>
   useQuery({
     queryKey: queryKeys.menus,
     queryFn: async () => (await apiClient.get<MenuDia[]>('/menus')).data,
+  });
+
+/** GET /api/menus/recetas: recetas activas para asignar al menú (sus ingredientes se descuentan al vender). */
+export const useRecetasParaMenu = () =>
+  useQuery({
+    queryKey: queryKeys.recetasParaMenu,
+    queryFn: async () => (await apiClient.get<RecetaParaMenu[]>('/menus/recetas')).data,
+  });
+
+/** GET /api/menus/sugerencia?fecha=: cuántos almuerzos preparar según semanas anteriores. */
+export const useSugerenciaPreparacion = (fecha: string) =>
+  useQuery({
+    queryKey: queryKeys.sugerenciaPreparacion(fecha),
+    queryFn: async () => (await apiClient.get<SugerenciaPreparacion>('/menus/sugerencia', { params: { fecha } })).data,
+    enabled: /^\d{4}-\d{2}-\d{2}$/.test(fecha),
   });
 
 export const usePublicarMenu = () => {

@@ -16,7 +16,7 @@ const RESUMEN: ResumenEncargado = {
   beneficiariosActivos: 0,
 };
 
-const abrirSidebar = (role: 'encargado' | 'aprendiz' | 'coordinador') =>
+const abrirSidebar = (role: 'encargado' | 'aprendiz' | 'coordinador' | 'instructor') =>
   renderConProveedores(
     <Sidebar user={usuarioDePrueba({ role })} activeSection="inicio" onSelectSection={() => {}} onLogout={() => {}} />
   );
@@ -65,8 +65,25 @@ describe('Sidebar', () => {
     const get = vi.spyOn(apiClient, 'get').mockResolvedValue(respuesta({ totalAlmuerzos: 3 }));
     abrirSidebar('aprendiz');
 
-    await waitFor(() => expect(get).toHaveBeenCalledWith('/consumos/resumen'));
+    await waitFor(() => expect(get).toHaveBeenCalledWith('/consumos'));
     expect(get).not.toHaveBeenCalledWith('/dashboard/encargado');
+  });
+
+  it('Mis fichas cuenta solo los almuerzos por pagar, no el total', async () => {
+    const consumo = (id: string, estado_pago: string) => ({ id, estado_pago });
+    vi.spyOn(apiClient, 'get').mockResolvedValue(
+      respuesta([consumo('1', 'pendiente'), consumo('2', 'pagado'), consumo('3', 'pendiente'), consumo('4', 'gratis')])
+    );
+    abrirSidebar('aprendiz');
+
+    expect(await screen.findByRole('button', { name: /Mis fichas\s*2/ }, { timeout: 5000 })).toBeInTheDocument();
+  });
+
+  it('el instructor no lleva contador en Consumos', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValue(respuesta({ totalAlmuerzos: 9 }));
+    abrirSidebar('instructor');
+
+    expect(await screen.findByRole('button', { name: 'Consumos' })).toBeInTheDocument();
   });
 
   it('el Coordinador ve su menú y el contador de solicitudes pendientes', async () => {

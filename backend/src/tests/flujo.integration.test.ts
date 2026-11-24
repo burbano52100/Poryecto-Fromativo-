@@ -123,6 +123,8 @@ describe('Flujo completo Aprendiz → Encargado → Aprendiz', () => {
         aprendiz: { personas: 0, ingresos: 0 },
         corriente: { personas: 0, ingresos: 0 },
       },
+      almuerzosEspeciales: 0,
+      ingresosEspeciales: 0,
     });
     const resumen = await request(app).get('/api/dashboard/encargado').set(auth(encargado));
     assert.strictEqual(resumen.body.ventasHoy, 2);

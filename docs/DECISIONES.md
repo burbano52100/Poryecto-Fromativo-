@@ -150,3 +150,18 @@ Este documento recopila las decisiones técnicas clave tomadas durante el desarr
 - **Alternativas descartadas**:
   - *Tarifas en una tabla de configuración editable*: requiere pantalla y permisos para editarla. Con una constante en el backend basta un cambio de código, y la tabla se puede agregar después sin cambiar los registros.
   - *Conservar el rol invitado sin usarlo*: deja código y datos muertos y la posibilidad de crear cuentas que ya no tienen panel.
+
+## ADR 024: Almuerzos especiales por contrato
+- **Fecha**: 2026-11-24
+- **Estado**: Aceptada
+- **Contexto**: El encargado del comedor contó que el menú es el mismo para todos, salvo cuando una dependencia del SENA pide almuerzos especiales: Bienestar al Aprendiz, la Regional o Dirección General, casi siempre para directivos y bajo un contrato. Ese menú cambia y el precio es más alto. No encaja en Almuerzos Invitados (ventanilla, tarifa fija, pago inmediato) ni en Visitas institucionales (menú normal a precio fijo).
+- **Decisión**:
+  - Sección nueva del encargado, **Almuerzos especiales**, con la tabla `almuerzos_especiales` (migración 018). Cada pedido guarda quién lo pide, el responsable, el número de contrato (opcional), la fecha, las personas, qué se sirve, una receta opcional y el precio por persona. El total (personas × precio) es una columna generada.
+  - Flujo: `programado` → `entregado` → pagado. Mientras está programado se puede cancelar; entregado ya no.
+  - Al marcarlo entregado (el día del pedido o después) se descuentan de la bodega los ingredientes de su receta por cada persona (ADR 020), con `referencia_tipo = 'almuerzo_especial'` en el kardex. Sin receta no se descuenta nada y la respuesta lo avisa.
+  - El pago se registra cuando el contrato paga, y solo después de la entrega. Desde ese momento cuenta en Ventas por la fecha del pago: totales, gráfico (tercer color) y transacciones (`origen = 'especial'`, con la dependencia y el contrato). También suma en las ventas de hoy del encabezado del encargado.
+  - No entra al cierre de caja: el contrato no paga en efectivo en la ventanilla.
+- **Pendiente relacionado**: la porción del aprendiz, la del instructor y la del visitante son distintas. El descuento por receta todavía usa la misma cantidad para todos; se ajustará cuando cocina dé las medidas.
+- **Alternativas descartadas**:
+  - *Un tipo "especial" dentro de Visitas institucionales*: mezcla dos procesos distintos (quién pide, cómo se cobra y qué se sirve).
+  - *Contarlo en Ventas el día de la entrega*: mostraría como cobrado un dinero que el contrato todavía no ha pagado.

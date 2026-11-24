@@ -6,7 +6,7 @@ import { InicioSection } from '../components/organisms/InicioSection';
 import { MisFichasSection } from '../components/organisms/MisFichasSection';
 import { BuzonSugerenciasSection } from '../components/organisms/BuzonSugerenciasSection';
 import { PerfilSection } from '../components/organisms/PerfilSection';
-import { StatsHeader } from '../components/organisms/StatsHeader';
+import { CifrasFichasAprendiz } from '../components/organisms/CifrasDelPerfil';
 
 interface AprendizDashboardPageProps {
   user: User;
@@ -22,13 +22,14 @@ export const AprendizDashboardPage = ({ user, onLogout }: AprendizDashboardPageP
 
   return (
     <DashboardLayout user={user} activeSection={activeSection} onSelectSection={setActiveSection} onLogout={onLogout}>
-      {activeSection === 'inicio' && (
-        <InicioSection
-          user={user}
-          resumen={<StatsHeader user={user} activeSection={activeSection} onSelectSection={setActiveSection} />}
-        />
+      {activeSection === 'inicio' && <InicioSection user={user} />}
+      {/* Mis fichas: lo que debe y lleva del mes va arriba; debajo, el historial por meses */}
+      {activeSection === 'fichas' && (
+        <div className="flex flex-col gap-6">
+          <CifrasFichasAprendiz esBeneficiario={user.es_beneficiario} />
+          <MisFichasSection />
+        </div>
       )}
-      {activeSection === 'fichas' && <MisFichasSection />}
       {activeSection === 'sugerencias' && <BuzonSugerenciasSection />}
       {activeSection === 'perfil' && <PerfilSection user={user} />}
     </DashboardLayout>

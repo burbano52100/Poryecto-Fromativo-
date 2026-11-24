@@ -26,6 +26,7 @@ const TITULOS: Record<SectionType, string> = {
   ventas: 'Ventas',
   menu: 'Menú del día',
   almuerzosInvitados: 'Almuerzos invitados',
+  almuerzosEspeciales: 'Almuerzos especiales',
   beneficiarios: 'Beneficiarios',
   deudas: 'Cartera de deudas',
   inventario: 'Inventario',
@@ -152,8 +153,8 @@ export const DashboardLayout = ({
           </div>
         </header>
 
-        {/* Las cifras del rol (StatsHeader) las pone cada página solo en su sección de inicio: arriba
-            de las demás secciones tapaban lo principal, como el formulario para publicar el menú */}
+        {/* Las cifras de cada perfil (CifrasDelPerfil) van dentro de la sección a la que pertenecen:
+            arriba de todas las secciones tapaban lo principal, como el formulario para publicar el menú */}
         <main className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>

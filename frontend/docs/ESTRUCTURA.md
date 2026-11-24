@@ -64,14 +64,14 @@ frontend/
 
 ### `components/organisms/`
 - **Login:** `LoginForm`, `RegisterModal`, `Header`, `HelpModal`.
-- **Compartidos:** `Sidebar`, `StatsHeader` (indicadores reales por rol), `ReservaAlmuerzoCard` (flujo de reserva de Aprendiz e Instructor), `BuzonSugerenciasSection`, `PerfilSection`.
+- **Compartidos:** `Sidebar`, `CifrasDelPerfil` (cifras de cada perfil, cada una dentro de su sección), `ReservaAlmuerzoCard` (flujo de reserva de Aprendiz e Instructor), `BuzonSugerenciasSection`, `PerfilSection`.
 - **Aprendiz:** `InicioSection`, `MisFichasSection`.
 - **Instructor:** `MiCuentaSection`, `ConsumosSection`.
 - **Encargado:** `VentasSection`, `MenuDelDiaEncargadoSection`, `AlmuerzosInvitadosSection` → `almuerzosInvitados/RegistroAlmuerzoInvitadoCard`, `ResumenAlmuerzosInvitados`, `HistorialAlmuerzosInvitados`, `EditarAlmuerzoInvitadoModal`, `BeneficiariosSection`, `CarteraDeudasSection`, `GruposSection`, `BuzonSugerenciasEncargadoSection`, `InventarioSection` → `inventario/StockView`, `RecetasView`, `KardexView`, `MermasView`, `ConfiguracionView`.
 
 ### `components/templates/`
 - `AuthLayout`: fondo del comedor con capa oscura para el login.
-- `DashboardLayout`: sidebar (fija en escritorio, `Drawer` en móvil), barra superior con `Breadcrumbs` en Inventario y menú de la cuenta (`Dropdown` sobre el `Avatar` con `Badge` de estado), y `StatsHeader`.
+- `DashboardLayout`: sidebar (fija en escritorio, `Drawer` en móvil), barra superior con `Breadcrumbs` en Inventario y menú de la cuenta (`Dropdown` sobre el `Avatar` con `Badge` de estado). Las cifras de cada perfil van dentro de su sección, no encima de todas.
 - `DashboardSkeleton`: forma del panel mientras se verifica la sesión o se descarga el panel del rol.
 
 ### `hooks/`

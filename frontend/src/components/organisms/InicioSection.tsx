@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { Chip } from '@heroui/react';
 import { Award } from 'lucide-react';
 import type { User } from '../../schemas/auth.schema';
@@ -7,11 +6,10 @@ import { useMenuActivo } from '../../hooks/useMenu';
 
 export interface InicioSectionProps {
   user: User;
-  /** Cifras del aprendiz (StatsHeader): van debajo del menú, que es lo que viene a reservar. */
-  resumen?: ReactNode;
 }
 
-export const InicioSection = ({ user, resumen }: InicioSectionProps) => {
+/** Inicio del aprendiz: solo el menú del día para reservar. Lo que debe y su historial van en Mis fichas. */
+export const InicioSection = ({ user }: InicioSectionProps) => {
   const { data: menu } = useMenuActivo();
   // El estado de beneficiario vigente lo reporta el menú (se lee de la BD en cada consulta)
   const esBeneficiario = menu?.es_beneficiario ?? user.es_beneficiario ?? false;
@@ -65,8 +63,6 @@ export const InicioSection = ({ user, resumen }: InicioSectionProps) => {
             : `Tarifa: ${reserva.price} COP. Queda pendiente de pago hasta que la canceles en la ventanilla.`
         }
       />
-
-      {resumen}
     </div>
   );
 };

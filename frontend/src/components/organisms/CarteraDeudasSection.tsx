@@ -62,17 +62,37 @@ export const CarteraDeudasSection = () => {
       deudores.map((d) => [d.name, d.type, d.document, d.lunchesCount, d.debt, d.daysOverdue, d.status])
     );
 
-  const filteredDeudores = deudores.filter(
-    (d) => d.name.toLowerCase().includes(searchTerm.toLowerCase()) || d.document.includes(searchTerm)
-  );
+  // Primero las vencidas y, entre ellas, la deuda más alta: es a quien hay que cobrar antes
+  const filteredDeudores = deudores
+    .filter((d) => d.name.toLowerCase().includes(searchTerm.toLowerCase()) || d.document.includes(searchTerm))
+    .sort((a, b) => Number(b.status === 'VENCIDA') - Number(a.status === 'VENCIDA') || b.debt - a.debt);
 
-  const totalDeudoresCount = deudores.length;
   const totalDebtSum = deudores.reduce((acc, d) => acc + d.debt, 0);
-  const avgDebt = totalDeudoresCount > 0 ? totalDebtSum / totalDeudoresCount : 0;
-  const maxDebt = deudores.reduce((max, d) => (d.debt > max ? d.debt : max), 0);
+  const vencidas = deudores.filter((d) => d.status === 'VENCIDA').length;
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Lo que se viene a mirar aquí: cuánto se debe en total, en el color del perfil */}
+      <FranjaCifras
+        etiqueta="Resumen de cartera"
+        destacada
+        cifras={[
+          {
+            etiqueta: 'Por cobrar a instructores',
+            valor: isPending ? undefined : pesos(totalDebtSum),
+          },
+          {
+            etiqueta: 'Instructores con deuda',
+            valor: isPending ? undefined : deudores.length,
+          },
+          {
+            etiqueta: 'Deudas vencidas',
+            valor: isPending ? undefined : vencidas,
+            detalle: !isPending && vencidas > 0 ? 'Aparecen primero en la tabla' : undefined,
+          },
+        ]}
+      />
+
       <SectionCard
         titulo="Cartera de deudas de instructores"
         descripcion="Saldos pendientes y cobranza del comedor"
@@ -136,18 +156,6 @@ export const CarteraDeudasSection = () => {
             </Table.ScrollContainer>
           </Table>
         )}
-      </SectionCard>
-
-      <SectionCard titulo="Resumen de cartera">
-        <FranjaCifras
-          sinTarjeta
-          etiqueta="Resumen de cartera"
-          cifras={[
-            { etiqueta: 'Instructores con deuda', valor: totalDeudoresCount },
-            { etiqueta: 'Deuda promedio', valor: pesos(avgDebt) },
-            { etiqueta: 'Deuda más alta', valor: pesos(maxDebt) },
-          ]}
-        />
       </SectionCard>
 
       <ConfirmDialog

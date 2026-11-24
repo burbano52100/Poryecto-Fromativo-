@@ -247,7 +247,8 @@ describe('Cerrar sesión', () => {
 
   it('el evento gastrosena:logout (un 401 del backend) muestra el login', async () => {
     const queryClient = await abrirPanel('aprendiz');
-    expect(consultasConDatos(queryClient)).toContainEqual(queryKeys.resumenConsumos);
+    // Hay datos del aprendiz en caché (su historial, que pide el menú lateral) antes del 401
+    expect(consultasConDatos(queryClient)).toContainEqual(queryKeys.consumos);
 
     act(() => {
       window.dispatchEvent(new Event(LOGOUT_EVENT));

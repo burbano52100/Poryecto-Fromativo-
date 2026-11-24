@@ -11,6 +11,9 @@ class ResizeObserverDePrueba {
 }
 globalThis.ResizeObserver ??= ResizeObserverDePrueba as unknown as typeof ResizeObserver;
 
+// jsdom tampoco trae getAnimations: el indicador de las pestañas (Tabs) lo usa al cambiar de pestaña
+Element.prototype.getAnimations ??= () => [];
+
 afterEach(() => {
   cleanup();
   // La cola de toasts es global: que un aviso de un test no aparezca en el siguiente

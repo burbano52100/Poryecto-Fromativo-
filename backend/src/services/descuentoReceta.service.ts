@@ -19,7 +19,8 @@ import { crearAlerta } from './alertas.service.js';
  */
 type Usuario = Pick<AuthenticatedUser, 'id' | 'name' | 'role'> | null | undefined;
 
-export type ReferenciaInventario = 'venta' | 'almuerzo_invitado';
+/** A qué apunta la salida del kardex: una reserva, un registro de invitados o un almuerzo especial (ADR 024). */
+export type ReferenciaInventario = 'venta' | 'almuerzo_invitado' | 'almuerzo_especial';
 
 export interface Faltante {
   material: string;

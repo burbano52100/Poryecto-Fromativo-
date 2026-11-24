@@ -1,15 +1,23 @@
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Power, Save } from 'lucide-react';
-import { Chip, Label, ProgressBar, Skeleton, toast } from '@heroui/react';
+import { Alert, Chip, Label, ProgressBar, Skeleton, toast } from '@heroui/react';
 import { FormField } from '../molecules/FormField';
+import { SelectField } from '../molecules/SelectField';
 import { TextAreaField } from '../molecules/TextAreaField';
 import { ErrorAlert } from '../molecules/ErrorAlert';
 import { SectionCard } from '../molecules/SectionCard';
 import { Button } from '../atoms/Button';
-import { useCambiarEstadoMenu, useMenus, usePublicarMenu } from '../../hooks/useMenu';
+import { IngredientesADescontar } from './IngredientesADescontar';
+import {
+  useCambiarEstadoMenu,
+  useMenus,
+  usePublicarMenu,
+  useRecetasParaMenu,
+  useSugerenciaPreparacion,
+} from '../../hooks/useMenu';
 import { hoyBogota, pesos } from '../../lib/formato';
 import { soloNumeros } from '../../lib/numeros';
 
@@ -20,12 +28,16 @@ const entero = (campo: string) =>
     .min(1, `Ingresa ${campo}`)
     .refine((v) => /^\d+$/.test(v), `${campo.charAt(0).toUpperCase()}${campo.slice(1)} debe ser un número entero`);
 
+/** Opción del select para publicar sin receta (React Aria no admite una clave vacía). */
+const SIN_RECETA = 'sin-receta';
+
 const menuSchema = z.object({
   dishName: z.string().trim().min(3, 'El nombre debe tener al menos 3 caracteres'),
   date: z.string().min(1, 'Selecciona una fecha válida'),
   description: z.string().trim().min(10, 'La descripción debe tener al menos 10 caracteres'),
   priceStudents: entero('el precio para aprendices'),
   availableQuantity: entero('la cantidad disponible'),
+  recetaId: z.string(),
 });
 
 type MenuFormData = z.infer<typeof menuSchema>;
@@ -37,14 +49,17 @@ export const MenuDelDiaEncargadoSection = () => {
   const { data: menus, isLoading, isError, error } = useMenus();
   const activeMenu = menus?.[0];
   const isMenuAvailable = activeMenu?.estado === 'activo';
+  const { data: recetas = [] } = useRecetasParaMenu();
 
   const publishMutation = usePublicarMenu();
   const toggleStatusMutation = useCambiarEstadoMenu();
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<MenuFormData>({
     resolver: zodResolver(menuSchema),
@@ -54,8 +69,13 @@ export const MenuDelDiaEncargadoSection = () => {
       description: 'Almuerzo completo: sopa, bandeja con proteína, arroz, ensalada, jugo natural y postre',
       priceStudents: '5000',
       availableQuantity: '200',
+      recetaId: SIN_RECETA,
     },
   });
+
+  const [recetaId, porcionesTexto, fecha] = useWatch({ control, name: ['recetaId', 'availableQuantity', 'date'] });
+  const porciones = Number(porcionesTexto) || 0;
+  const { data: sugerencia } = useSugerenciaPreparacion(fecha);
 
   // Precarga el formulario con el menú de hoy si ya existe
   useEffect(() => {
@@ -66,6 +86,7 @@ export const MenuDelDiaEncargadoSection = () => {
         description: activeMenu.descripcion || '',
         priceStudents: String(activeMenu.precio_aprendiz),
         availableQuantity: String(activeMenu.cantidad_disponible),
+        recetaId: activeMenu.receta_id ?? SIN_RECETA,
       });
     }
   }, [activeMenu, reset]);
@@ -79,6 +100,7 @@ export const MenuDelDiaEncargadoSection = () => {
         precio_aprendiz: Number(data.priceStudents),
         cantidad_disponible: Number(data.availableQuantity),
         estado: 'activo',
+        receta_id: data.recetaId === SIN_RECETA ? null : data.recetaId,
       },
       {
         onSuccess: () => {
@@ -150,6 +172,55 @@ export const MenuDelDiaEncargadoSection = () => {
             />
           </div>
 
+          {/* Sugerencia de preparación: promedio del mismo día de las semanas anteriores */}
+          {sugerencia?.suficiente && sugerencia.sugerencia !== null && sugerencia.sugerencia !== porciones && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-surface p-3">
+              <p className="text-sm text-foreground">{sugerencia.mensaje}</p>
+              <Button
+                size="sm"
+                variant="secondary"
+                onPress={() => setValue('availableQuantity', String(sugerencia.sugerencia), { shouldValidate: true })}
+              >
+                Usar {sugerencia.sugerencia} porciones
+              </Button>
+            </div>
+          )}
+
+          {/* La receta es la que hace que los ingredientes se descuenten solos al vender cada almuerzo */}
+          <Controller
+            control={control}
+            name="recetaId"
+            render={({ field }) => (
+              <SelectField
+                label="Receta"
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                opciones={[
+                  { id: SIN_RECETA, label: 'Sin receta: no descuenta inventario' },
+                  ...recetas.map((r) => ({
+                    id: r.id,
+                    label: `${r.nombre} (${r.ingredientes} ${r.ingredientes === 1 ? 'ingrediente' : 'ingredientes'})`,
+                  })),
+                ]}
+              />
+            )}
+          />
+
+          {recetaId === SIN_RECETA ? (
+            <Alert status="warning">
+              <Alert.Indicator />
+              <Alert.Content>
+                <Alert.Description>
+                  Sin receta, los almuerzos de este menú no descuentan ingredientes del inventario.
+                  {recetas.length === 0 && ' Primero crea la receta en Inventario, Recetas y productos.'}
+                </Alert.Description>
+              </Alert.Content>
+            </Alert>
+          ) : (
+            <IngredientesADescontar recetaId={recetaId} porciones={porciones} />
+          )}
+
           <Button type="submit" size="lg" isPending={publishMutation.isPending} className="self-end">
             <Save />
             Guardar y publicar
@@ -187,6 +258,19 @@ export const MenuDelDiaEncargadoSection = () => {
         {isError && <ErrorAlert error={error} titulo="No se pudo conectar con el servicio de menú" />}
         {toggleStatusMutation.isError && (
           <ErrorAlert error={toggleStatusMutation.error} titulo="No se pudo cambiar el estado del menú" />
+        )}
+
+        {activeMenu && (
+          <p className="flex flex-wrap items-center gap-2 text-sm text-muted">
+            Receta:
+            {activeMenu.receta_nombre ? (
+              <span className="font-medium text-foreground">{activeMenu.receta_nombre}</span>
+            ) : (
+              <Chip size="sm" variant="soft" color="warning">
+                Sin receta, no descuenta inventario
+              </Chip>
+            )}
+          </p>
         )}
 
         <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">

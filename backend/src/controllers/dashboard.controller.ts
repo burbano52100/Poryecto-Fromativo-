@@ -5,7 +5,8 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 /**
  * GET /api/dashboard/encargado
  * Indicadores del encabezado del panel del Encargado ("hoy" en hora de Colombia).
- * Ventas e ingresos de hoy suman las reservas y los Almuerzos Invitados (ADR 016).
+ * Ventas e ingresos de hoy suman las reservas, los Almuerzos Invitados (ADR 016) y los almuerzos
+ * especiales cuyo pago se registró hoy (ADR 024).
  * Acceso: encargado
  */
 export const getResumenEncargado = async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -26,6 +27,14 @@ export const getResumenEncargado = async (_req: AuthenticatedRequest, res: Respo
          (SELECT COALESCE(SUM(a.total), 0) FROM almuerzos_invitados a
            WHERE DATE(a.fecha_hora AT TIME ZONE 'America/Bogota') = (NOW() AT TIME ZONE 'America/Bogota')::date
          )::float8 as ingresos_invitados_hoy,
+         (SELECT COALESCE(SUM(e.cantidad_personas), 0) FROM almuerzos_especiales e
+           WHERE e.pagado
+             AND DATE(e.fecha_hora_pago AT TIME ZONE 'America/Bogota') = (NOW() AT TIME ZONE 'America/Bogota')::date
+         )::int as especiales_hoy,
+         (SELECT COALESCE(SUM(e.total), 0) FROM almuerzos_especiales e
+           WHERE e.pagado
+             AND DATE(e.fecha_hora_pago AT TIME ZONE 'America/Bogota') = (NOW() AT TIME ZONE 'America/Bogota')::date
+         )::float8 as ingresos_especiales_hoy,
          (SELECT COALESCE(SUM(v.precio_cobrado), 0) FROM ventas v
            WHERE v.estado = 'completada' AND v.estado_pago = 'pendiente'
              AND DATE(v.fecha_hora AT TIME ZONE 'America/Bogota') = (NOW() AT TIME ZONE 'America/Bogota')::date
@@ -47,10 +56,13 @@ export const getResumenEncargado = async (_req: AuthenticatedRequest, res: Respo
 
     const row = result.rows[0];
     return res.json({
-      ventasHoy: row.ventas_hoy + row.invitados_hoy,
-      ingresosHoy: row.ingresos_hoy + row.ingresos_invitados_hoy,
+      ventasHoy: row.ventas_hoy + row.invitados_hoy + row.especiales_hoy,
+      ingresosHoy: row.ingresos_hoy + row.ingresos_invitados_hoy + row.ingresos_especiales_hoy,
       invitadosHoy: row.invitados_hoy,
       ingresosInvitadosHoy: row.ingresos_invitados_hoy,
+      // Almuerzos especiales cuyo pago se registró hoy (ADR 024)
+      especialesHoy: row.especiales_hoy,
+      ingresosEspecialesHoy: row.ingresos_especiales_hoy,
       porCobrarHoy: row.por_cobrar_hoy,
       deudasPendientes: { monto: row.deudas_monto, cantidad: row.deudas_cantidad },
       sugerenciasPendientes: row.sugerencias_pendientes,

@@ -21,8 +21,10 @@ const REPORTE: ReporteVentas = {
       aprendiz: { personas: 0, ingresos: 0 },
       corriente: { personas: 2, ingresos: 22000 },
     },
+    almuerzosEspeciales: 0,
+    ingresosEspeciales: 0,
   },
-  breakdown: [{ fecha: '2026-11-16', label: 'lun, 16', count: 5, ingresos: 37000, invitados: 3, percent: 100 }],
+  breakdown: [{ fecha: '2026-11-16', label: 'lun, 16', count: 5, ingresos: 37000, invitados: 3, especiales: 0, percent: 100 }],
   transacciones: [
     {
       id: 'inv-1',
@@ -89,5 +91,46 @@ describe('Ventas del Encargado con Almuerzos invitados', () => {
     const filaReserva = screen.getByText('Ana Aprendiz').closest('tr')!;
     expect(filaReserva).toHaveTextContent('C.C. 1005678901');
     expect(filaReserva).toHaveTextContent('Aprendiz');
+  });
+
+  it('un almuerzo especial pagado se suma a lo cobrado y muestra la dependencia y el contrato', async () => {
+    const conEspecial: ReporteVentas = {
+      ...REPORTE,
+      totales: {
+        ...REPORTE.totales,
+        almuerzosServidos: 13,
+        ingresosCobrados: 181000,
+        almuerzosEspeciales: 8,
+        ingresosEspeciales: 144000,
+      },
+      breakdown: [{ ...REPORTE.breakdown[0], count: 13, ingresos: 181000, especiales: 8 }],
+      transacciones: [
+        {
+          id: 'esp-1',
+          fecha: '2026-11-16T20:00:00.000Z',
+          cliente: 'Bienestar al Aprendiz',
+          cedula: '',
+          rol: 'especial',
+          ficha: 'CT-2026-118',
+          menu: 'Lomo en salsa de champiñones',
+          precio: 144000,
+          estado_pago: 'pagado',
+          beneficiario: false,
+          origen: 'especial',
+          personas: 8,
+        },
+        ...REPORTE.transacciones,
+      ],
+    };
+    vi.spyOn(apiClient, 'get').mockResolvedValue(respuesta(conEspecial));
+    renderConProveedores(<VentasSection />);
+
+    expect(await screen.findByText(/más \$144\.000 de especiales/)).toBeInTheDocument();
+    expect(screen.getByText(/más 8 especiales/)).toBeInTheDocument();
+    const fila = screen.getByText('Bienestar al Aprendiz').closest('tr')!;
+    expect(fila).toHaveTextContent('Almuerzo especial');
+    expect(fila).toHaveTextContent('Contrato CT-2026-118');
+    expect(fila).toHaveTextContent('8 personas');
+    expect(fila).not.toHaveTextContent('C.C.');
   });
 });
