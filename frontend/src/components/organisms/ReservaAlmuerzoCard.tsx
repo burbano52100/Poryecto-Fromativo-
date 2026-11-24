@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from 'react';
-import { Alert, Card, CloseButton } from '@heroui/react';
+import { Alert, Card, CloseButton, Label, ToggleButton, ToggleButtonGroup } from '@heroui/react';
 import { Hueso } from '../atoms/Hueso';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, HandCoins, NotebookPen } from 'lucide-react';
 import type { User } from '../../schemas/auth.schema';
-import type { ReservaCreada } from '../../types/api';
+import type { FormaPago, ReservaCreada } from '../../types/api';
 import { esMenuPublicado, useMenuActivo, useReservarAlmuerzo } from '../../hooks/useMenu';
 import { MenuCard } from '../molecules/MenuCard';
 import { ConfirmDialog } from '../molecules/ConfirmDialog';
@@ -14,9 +14,11 @@ interface ReservaAlmuerzoCardProps {
   user: User;
   note?: string;
   tituloConfirmacion: string;
-  /** Contenido del modal de confirmación; recibe el precio que fijó el backend. */
-  detalleConfirmacion: (precio: string) => ReactNode;
+  /** Contenido del modal de confirmación; recibe el precio que fijó el backend y la forma de pago elegida. */
+  detalleConfirmacion: (precio: string, formaPago: FormaPago) => ReactNode;
   mensajeExito: (reserva: ReservaCreada) => string;
+  /** El instructor elige al confirmar si lo paga fiado (cuenta del mes) o en la ventanilla (ADR 026). */
+  elegirFormaPago?: boolean;
 }
 
 /**
@@ -29,10 +31,12 @@ export const ReservaAlmuerzoCard = ({
   tituloConfirmacion,
   detalleConfirmacion,
   mensajeExito,
+  elegirFormaPago = false,
 }: ReservaAlmuerzoCardProps) => {
   const { data: menu, isPending, isError, error, refetch } = useMenuActivo();
   const reservar = useReservarAlmuerzo();
   const [confirmando, setConfirmando] = useState(false);
+  const [formaPago, setFormaPago] = useState<FormaPago>('fiado');
   const [reservaHecha, setReservaHecha] = useState<ReservaCreada | null>(null);
 
   if (isPending) {
@@ -67,13 +71,16 @@ export const ReservaAlmuerzoCard = ({
   const hayCupo = menu.cantidad_disponible - menu.cantidad_vendida > 0;
 
   const ejecutarReserva = () =>
-    reservar.mutate(esMenuPublicado(menu) ? menu.id : undefined, {
-      onSuccess: (reserva) => {
-        setReservaHecha(reserva);
-        setConfirmando(false);
-      },
-      onError: () => setConfirmando(false),
-    });
+    reservar.mutate(
+      { menuId: esMenuPublicado(menu) ? menu.id : undefined, formaPago: elegirFormaPago ? formaPago : undefined },
+      {
+        onSuccess: (reserva) => {
+          setReservaHecha(reserva);
+          setConfirmando(false);
+        },
+        onError: () => setConfirmando(false),
+      }
+    );
 
   const solicitar = () => {
     reservar.reset();
@@ -125,7 +132,35 @@ export const ReservaAlmuerzoCard = ({
         onCancelar={() => setConfirmando(false)}
         cargando={reservar.isPending}
       >
-        {detalleConfirmacion(precio)}
+        <div className="flex flex-col gap-4">
+          {elegirFormaPago && (
+            <div className="flex flex-col gap-1.5">
+              <Label id="forma-pago">¿Cómo lo vas a pagar?</Label>
+              <ToggleButtonGroup
+                aria-labelledby="forma-pago"
+                selectionMode="single"
+                disallowEmptySelection
+                fullWidth
+                selectedKeys={[formaPago]}
+                onSelectionChange={(keys) => {
+                  const [elegida] = keys;
+                  if (elegida) setFormaPago(elegida as FormaPago);
+                }}
+              >
+                <ToggleButton id="fiado">
+                  <NotebookPen />
+                  Fiado
+                </ToggleButton>
+                <ToggleButton id="contado">
+                  <ToggleButtonGroup.Separator />
+                  <HandCoins />
+                  Pago en la ventanilla
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </div>
+          )}
+          {detalleConfirmacion(precio, formaPago)}
+        </div>
       </ConfirmDialog>
     </div>
   );

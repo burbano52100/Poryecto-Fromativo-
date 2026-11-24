@@ -8,21 +8,13 @@ import { ErrorAlert } from '../molecules/ErrorAlert';
 import { ListSkeleton } from '../molecules/ListSkeleton';
 import { SearchInput } from '../molecules/SearchInput';
 import { SectionCard } from '../molecules/SectionCard';
-import { useAprendicesDeGrupo, useGrupos, useMarcarPagoAprendiz } from '../../hooks/useGrupos';
+import { useAprendicesDeGrupo, useGrupos, useInstructoresContadoHoy, useMarcarPagoAprendiz } from '../../hooks/useGrupos';
 import { pesos } from '../../lib/formato';
-import type { Grupo } from '../../types/api';
+import type { AprendizConReserva, Grupo } from '../../types/api';
 
-/** Aprendices de la ficha que reservaron hoy, con su control de pago. */
-const AprendicesDelGrupo = ({ grupo }: { grupo: Grupo }) => {
-  const { data, isPending, isError, error, refetch } = useAprendicesDeGrupo(grupo.id, true);
+/** Almuerzos de hoy que se pagan en la ventanilla, con su control Pagado / No pagado. */
+const PagosDeHoy = ({ personas }: { personas: AprendizConReserva[] }) => {
   const marcarPago = useMarcarPagoAprendiz();
-
-  if (isPending) return <ListSkeleton label="Cargando reservas de hoy..." filas={2} />;
-  if (isError) return <ErrorAlert error={error} titulo="No se pudieron cargar los aprendices" onReintentar={() => refetch()} />;
-
-  if (data.aprendices.length === 0) {
-    return <EmptyMessage>Ningún aprendiz de esta ficha ha reservado almuerzo hoy.</EmptyMessage>;
-  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -30,7 +22,7 @@ const AprendicesDelGrupo = ({ grupo }: { grupo: Grupo }) => {
         <ErrorAlert error={marcarPago.error} titulo="No se pudo cambiar el estado de pago" onCerrar={() => marcarPago.reset()} />
       )}
       <ul className="divide-y divide-separator rounded-xl bg-surface">
-        {data.aprendices.map((aprendiz) => {
+        {personas.map((aprendiz) => {
           const actualizando = marcarPago.isPending && marcarPago.variables?.ventaId === aprendiz.venta_id;
           return (
             <li key={aprendiz.venta_id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
@@ -79,6 +71,43 @@ const AprendicesDelGrupo = ({ grupo }: { grupo: Grupo }) => {
   );
 };
 
+/** Aprendices de la ficha que reservaron hoy, con su control de pago. */
+const AprendicesDelGrupo = ({ grupo }: { grupo: Grupo }) => {
+  const { data, isPending, isError, error, refetch } = useAprendicesDeGrupo(grupo.id, true);
+
+  if (isPending) return <ListSkeleton label="Cargando reservas de hoy..." filas={2} />;
+  if (isError) return <ErrorAlert error={error} titulo="No se pudieron cargar los aprendices" onReintentar={() => refetch()} />;
+
+  if (data.aprendices.length === 0) {
+    return <EmptyMessage>Ningún aprendiz de esta ficha ha reservado almuerzo hoy.</EmptyMessage>;
+  }
+  return <PagosDeHoy personas={data.aprendices} />;
+};
+
+/**
+ * Instructores que reservaron hoy para pagar en la ventanilla (ADR 026). Solo aparece si hay
+ * alguno; los almuerzos fiados se cobran en Cartera de deudas.
+ */
+const InstructoresDeContado = () => {
+  const { data } = useInstructoresContadoHoy();
+  if (!data?.instructores?.length) return null;
+  const sinPagar = data.instructores.filter((i) => i.estado_pago === 'pendiente').length;
+
+  return (
+    <SectionCard
+      titulo="Instructores que pagan en la ventanilla"
+      descripcion="Reservaron hoy de contado. Los fiados se cobran en Cartera de deudas"
+      acciones={
+        <Chip size="sm" variant="soft" color={sinPagar > 0 ? 'danger' : 'success'}>
+          {sinPagar > 0 ? `${sinPagar} sin pagar` : 'Todos pagaron'}
+        </Chip>
+      }
+    >
+      <PagosDeHoy personas={data.instructores} />
+    </SectionCard>
+  );
+};
+
 /** De la ficha que más reservó hoy a la que menos; a igual número, primero la que más debe. */
 const ordenarPorReservas = (grupos: Grupo[]): Grupo[] =>
   [...grupos].sort(
@@ -124,6 +153,8 @@ export const GruposSection = () => {
           },
         ]}
       />
+
+      <InstructoresDeContado />
 
       <SectionCard
         titulo="Grupos y fichas"

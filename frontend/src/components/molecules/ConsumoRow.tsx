@@ -28,6 +28,11 @@ export const ConsumoRow = ({ consumo }: { consumo: Consumo }) => {
             <Chip size="sm" variant="soft" color={reservado ? 'accent' : 'default'}>
               {reservado ? 'Reservado' : 'Consumido'}
             </Chip>
+            {consumo.fiado && (
+              <Chip size="sm" variant="soft" color="warning">
+                Fiado
+              </Chip>
+            )}
           </div>
         </div>
       </div>

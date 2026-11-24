@@ -29,30 +29,44 @@ export const InstructorDashboardPage = ({ user, onLogout }: InstructorDashboardP
           {/* Saludo corto, sin tarjeta: lo primero que se ve es el menú del día. Lo que debe va en Mi cuenta */}
           <div className="flex flex-col gap-1">
             <h3 className="text-xl font-semibold text-foreground">Hola, {user.name.split(' ')[0]}</h3>
-            <p className="text-sm text-muted">Consume tus almuerzos del día y paga el total del mes en la oficina del comedor</p>
+            <p className="text-sm text-muted">Reserva el almuerzo del día y págalo fiado a fin de mes o en la ventanilla</p>
           </div>
 
           <ReservaAlmuerzoCard
             user={user}
-            note="Se agregará a tu cuenta mensual"
+            note="Fiado a tu cuenta del mes o pago en la ventanilla"
             tituloConfirmacion="Solicitar almuerzo de instructor"
-            detalleConfirmacion={(precio) => (
+            elegirFormaPago
+            detalleConfirmacion={(precio, formaPago) => (
               <div className="flex flex-col gap-3">
                 <p>
-                  ¿Registras el menú del día por <span className="font-medium text-foreground">{precio}</span>? El valor se
-                  suma a tu cuenta mensual.
+                  {formaPago === 'fiado' ? (
+                    <>
+                      El menú del día por <span className="font-medium text-foreground">{precio}</span> se suma a tu cuenta
+                      del mes y lo pagas en la oficina del comedor.
+                    </>
+                  ) : (
+                    <>
+                      Pagas <span className="font-medium text-foreground">{precio}</span> en la ventanilla del comedor al
+                      recoger el almuerzo. No se suma a tu cuenta del mes.
+                    </>
+                  )}
                 </p>
                 <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-lg bg-surface-secondary p-3 text-xs">
                   <dt>Instructor</dt>
                   <dd className="text-foreground">{user.name}</dd>
                   <dt>Cédula</dt>
                   <dd className="text-foreground">{user.document}</dd>
-                  <dt>Tipo de cuenta</dt>
-                  <dd className="text-foreground">Mensual</dd>
+                  <dt>Forma de pago</dt>
+                  <dd className="text-foreground">{formaPago === 'fiado' ? 'Fiado (cuenta del mes)' : 'En la ventanilla'}</dd>
                 </dl>
               </div>
             )}
-            mensajeExito={(reserva) => `Se registró el consumo de ${reserva.price} y se cargó a tu cuenta mensual.`}
+            mensajeExito={(reserva) =>
+              reserva.fiado === false
+                ? `Reservado por ${reserva.price}. Págalo en la ventanilla del comedor al recoger el almuerzo.`
+                : `Se registró el consumo de ${reserva.price} y se cargó a tu cuenta del mes.`
+            }
           />
         </div>
       )}

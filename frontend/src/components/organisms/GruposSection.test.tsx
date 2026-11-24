@@ -33,6 +33,43 @@ const APRENDICES: AprendicesDeGrupo = {
   ],
 };
 
+describe('Grupos del Encargado: instructores de contado', () => {
+  it('muestra a los instructores que pagan hoy en la ventanilla y permite marcar Pagado', async () => {
+    vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) =>
+      respuesta(
+        url === '/grupos/instructores-contado'
+          ? {
+              instructores: [
+                {
+                  id: 'i1', name: 'Instructora Contado', document: '2001', email: null, es_beneficiario: false,
+                  venta_id: 'venta-instructora', precio: 10000, estado_pago: 'pendiente', fecha_hora: '2026-11-24T17:00:00Z',
+                },
+              ],
+              caja_cerrada: false,
+            }
+          : [GRUPO]
+      )
+    );
+    const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue(respuesta({ estado_pago: 'pagado' }));
+    renderConProveedores(<GruposSection />);
+
+    expect(await screen.findByText('Instructores que pagan en la ventanilla')).toBeInTheDocument();
+    const pago = screen.getByRole('group', { name: 'Pago de Instructora Contado' });
+    await userEvent.click(within(pago).getByRole('button', { name: 'Pagado' }));
+    expect(patch).toHaveBeenCalledWith('/grupos/ventas/venta-instructora/pago', { pagado: true });
+  });
+
+  it('sin instructores de contado hoy, la tarjeta no aparece', async () => {
+    vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) =>
+      respuesta(url === '/grupos/instructores-contado' ? { instructores: [], caja_cerrada: false } : [GRUPO])
+    );
+    renderConProveedores(<GruposSection />);
+
+    expect(await screen.findByRole('button', { name: /Ficha 2847251/ })).toBeInTheDocument();
+    expect(screen.queryByText('Instructores que pagan en la ventanilla')).not.toBeInTheDocument();
+  });
+});
+
 describe('Grupos del Encargado', () => {
   it('al tocar la tarjeta despliega los aprendices de hoy y permite marcar Pagado', async () => {
     const get = vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) =>

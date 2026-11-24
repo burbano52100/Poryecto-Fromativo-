@@ -132,6 +132,7 @@ export const registrarPagoDeuda = async (req: AuthenticatedRequest, res: Respons
       `SELECT id, precio_cobrado::float8 as precio
        FROM ventas
        WHERE usuario_id = $1 AND estado = 'completada' AND estado_pago = 'pendiente'
+         AND metodo_pago = 'credito' -- solo los fiados son deuda; los de contado se pagan en la ventanilla (ADR 026)
        ORDER BY fecha_hora DESC
        FOR UPDATE;`,
       [deuda.usuario_id]

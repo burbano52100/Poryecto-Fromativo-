@@ -51,6 +51,58 @@ const renderTarjeta = (es_beneficiario: boolean) =>
     />
   );
 
+describe('Reserva de almuerzo del instructor: fiado o en la ventanilla', () => {
+  const renderInstructor = () =>
+    renderConProveedores(
+      <ReservaAlmuerzoCard
+        user={usuarioDePrueba({ role: 'instructor' })}
+        tituloConfirmacion="Solicitar almuerzo de instructor"
+        elegirFormaPago
+        detalleConfirmacion={(precio, formaPago) => <p>{formaPago === 'fiado' ? `Fiado ${precio}` : `Ventanilla ${precio}`}</p>}
+        mensajeExito={(r) => (r.fiado === false ? 'Pagar en ventanilla' : 'Cargado a la cuenta')}
+      />
+    );
+
+  it('al confirmar elige cómo pagar; sin cambiar nada queda fiado', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValue(respuesta(menu({ precio_aplicable: 10000 })));
+    const post = vi.spyOn(apiClient, 'post').mockResolvedValue(respuesta({ ...reservaCreada(10000, 'pendiente'), fiado: true }));
+    renderInstructor();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Solicitar almuerzo' }));
+    const dialogo = screen.getByRole('alertdialog', { name: 'Solicitar almuerzo de instructor' });
+    expect(within(dialogo).getByRole('radio', { name: /Fiado/ })).toBeChecked();
+    expect(within(dialogo).getByRole('radio', { name: /Pago en la ventanilla/ })).not.toBeChecked();
+    expect(within(dialogo).getByText('Fiado $10.000')).toBeInTheDocument();
+
+    await userEvent.click(within(dialogo).getByRole('button', { name: /Confirmar/ }));
+    expect(post).toHaveBeenCalledWith('/consumos/reservar', { menu_id: MENU_ID, forma_pago: 'fiado' });
+    expect(await screen.findByText('Cargado a la cuenta')).toBeInTheDocument();
+  });
+
+  it('con "Pago en la ventanilla" reserva de contado y lo avisa', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValue(respuesta(menu({ precio_aplicable: 10000 })));
+    const post = vi.spyOn(apiClient, 'post').mockResolvedValue(respuesta({ ...reservaCreada(10000, 'pendiente'), fiado: false }));
+    renderInstructor();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Solicitar almuerzo' }));
+    const dialogo = screen.getByRole('alertdialog', { name: 'Solicitar almuerzo de instructor' });
+    await userEvent.click(within(dialogo).getByRole('radio', { name: /Pago en la ventanilla/ }));
+    expect(within(dialogo).getByText('Ventanilla $10.000')).toBeInTheDocument();
+
+    await userEvent.click(within(dialogo).getByRole('button', { name: /Confirmar/ }));
+    expect(post).toHaveBeenCalledWith('/consumos/reservar', { menu_id: MENU_ID, forma_pago: 'contado' });
+    expect(await screen.findByText('Pagar en ventanilla')).toBeInTheDocument();
+  });
+
+  it('el aprendiz no ve la elección: siempre paga en la ventanilla', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValue(respuesta(menu()));
+    renderTarjeta(false);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Solicitar almuerzo' }));
+    expect(within(screen.getByRole('alertdialog')).queryByRole('radio')).not.toBeInTheDocument();
+  });
+});
+
 describe('Reserva de almuerzo del aprendiz', () => {
   it('el beneficiario ve $0 y reserva con un solo clic, sin modal', async () => {
     vi.spyOn(apiClient, 'get').mockResolvedValue(respuesta(menu({ precio_aplicable: 0, es_beneficiario: true })));

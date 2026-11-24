@@ -3,6 +3,7 @@ import { apiClient } from '../lib/api';
 import { queryKeys } from './queryKeys';
 import type {
   EstadoMenu,
+  FormaPago,
   MenuActivo,
   MenuDia,
   NuevoMenu,
@@ -30,8 +31,14 @@ export const esMenuPublicado = (menu: MenuActivo | undefined): menu is MenuActiv
 export const useReservarAlmuerzo = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (menuId?: string) =>
-      (await apiClient.post<ReservaCreada>('/consumos/reservar', menuId ? { menu_id: menuId } : {})).data,
+    // formaPago solo la envía el instructor (ADR 026): fiado a su cuenta o de contado en la ventanilla
+    mutationFn: async ({ menuId, formaPago }: { menuId?: string; formaPago?: FormaPago } = {}) =>
+      (
+        await apiClient.post<ReservaCreada>('/consumos/reservar', {
+          ...(menuId ? { menu_id: menuId } : {}),
+          ...(formaPago ? { forma_pago: formaPago } : {}),
+        })
+      ).data,
     // También tras un error (cupo agotado, duplicada, fuera de horario) para mostrar el estado real
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.menuActivo });

@@ -13,6 +13,11 @@ import { registrarAuditoria } from '../services/auditoria.service.js';
 
 const reservaSchema = z.object({
   menu_id: z.string().uuid().nullish(),
+  /**
+   * Solo para instructores (ADR 026): 'fiado' se suma a su cuenta del mes (Cartera de Deudas);
+   * 'contado' se paga en la ventanilla al recoger, como el aprendiz. Sin valor, fiado.
+   */
+  forma_pago: z.enum(['fiado', 'contado']).nullish(),
 });
 
 const formatearPrecio = (precio: number) => (precio === 0 ? '$0' : `$${precio.toLocaleString('es-CO')}`);
@@ -39,7 +44,7 @@ export const getUserConsumos = async (req: AuthenticatedRequest, res: Response, 
 
     const result = await query(
       `SELECT v.id, v.fecha_hora, v.precio_cobrado::float8 as precio_cobrado,
-              v.estado_pago,
+              v.estado_pago, (v.metodo_pago = 'credito') as fiado,
               m.id as menu_id, m.nombre as menu_nombre,
               TO_CHAR(m.fecha, 'YYYY-MM-DD') as menu_fecha,
               (m.fecha >= (NOW() AT TIME ZONE 'America/Bogota')::date) as vigente,
@@ -76,6 +81,8 @@ export const getUserConsumos = async (req: AuthenticatedRequest, res: Response, 
         price: formatearPrecio(Number(row.precio_cobrado)),
         paymentStatus: paymentStatusMap[estadoPago],
         estado_pago: estadoPago,
+        // Almuerzo del instructor cargado a su cuenta del mes (ADR 026)
+        fiado: Boolean(row.fiado),
         status: row.vigente ? ('RESERVED' as const) : ('CONSUMED' as const),
       };
     });
@@ -141,6 +148,7 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
     return res.status(400).json({ message: 'El identificador del menú no es válido.' });
   }
   const menuId = parsed.data.menu_id ?? null;
+  const formaPago = parsed.data.forma_pago ?? 'fiado';
 
   if (!reservasAbiertas()) {
     return res.status(409).json({ message: MENSAJE_FUERA_DE_HORARIO, fuera_de_horario: true });
@@ -236,10 +244,12 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
       metodoPago = 'cortesia';
       estadoPago = 'gratis';
     } else if (user.rol === 'instructor') {
-      // El instructor paga su propio precio (ADR 025); en menús sin él, el del aprendiz
+      // El instructor paga su propio precio (ADR 025); en menús sin él, el del aprendiz.
+      // Fiado se carga a su cuenta del mes; de contado lo paga en la ventanilla (ADR 026).
       price = Number(targetMenu.precio_instructor ?? targetMenu.precio_aprendiz);
-      metodoPago = 'credito';
+      metodoPago = formaPago === 'contado' ? 'efectivo' : 'credito';
     }
+    const esFiado = metodoPago === 'credito';
 
     // 5. Insertar venta garantizando unicidad usuario/menú
     let insertVenta: any;
@@ -262,8 +272,8 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
       throw insertErr;
     }
 
-    // 6. Si es instructor, registrar/acumular deuda en la misma transacción
-    if (user.rol === 'instructor') {
+    // 6. Si es un almuerzo fiado (instructor), registrar/acumular la deuda en la misma transacción
+    if (esFiado) {
       const existingDeuda = await client.query(
         "SELECT id, monto, almuerzos_pendientes FROM deudas WHERE usuario_id = $1 AND estado != 'pagada' LIMIT 1 FOR UPDATE;",
         [userId]
@@ -321,6 +331,8 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
       price: formatearPrecio(price),
       paymentStatus: paymentStatusMap[estadoPago],
       estado_pago: estadoPago,
+      // Fiado: se cargó a la cuenta del mes del instructor (ADR 026)
+      fiado: esFiado,
       status: 'RESERVED',
       message:
         price === 0
@@ -350,7 +362,7 @@ export const cancelarReserva = async (req: AuthenticatedRequest, res: Response, 
 
     const venta = await withTransaction(async (client) => {
       const ventaRes = await client.query(
-        `SELECT v.id, v.usuario_id, v.menu_id, v.precio_cobrado::float8 AS precio, v.estado, v.estado_pago,
+        `SELECT v.id, v.usuario_id, v.menu_id, v.precio_cobrado::float8 AS precio, v.estado, v.estado_pago, v.metodo_pago,
                 TO_CHAR(v.fecha_hora AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') AS fecha,
                 (m.fecha >= (NOW() AT TIME ZONE 'America/Bogota')::date) AS vigente, m.nombre AS menu, u.rol
          FROM ventas v
@@ -374,7 +386,8 @@ export const cancelarReserva = async (req: AuthenticatedRequest, res: Response, 
         'UPDATE menus_dia SET cantidad_vendida = GREATEST(cantidad_vendida - 1, 0) WHERE id = $1;',
         [actual.menu_id]
       );
-      if (actual.rol === 'instructor' && actual.precio > 0) {
+      // Solo un almuerzo fiado está en la deuda; uno de contado no la tocó (ADR 026)
+      if (actual.rol === 'instructor' && actual.metodo_pago === 'credito' && actual.precio > 0) {
         await client.query(
           `UPDATE deudas
            SET monto = GREATEST(monto - $1, 0),

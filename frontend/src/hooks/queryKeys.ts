@@ -19,6 +19,7 @@ export const queryKeys = {
   resumenEncargado: ['dashboard', 'encargado'] as const,
   grupos: ['grupos'] as const,
   aprendicesDeGrupo: (grupoId: string) => ['grupos', grupoId, 'aprendices'] as const,
+  instructoresContado: ['grupos', 'instructores-contado'] as const,
   sugerencias: ['sugerencias'] as const,
   estudiantes: ['beneficiarios', 'estudiantes'] as const,
   inventario: ['inventario'] as const,

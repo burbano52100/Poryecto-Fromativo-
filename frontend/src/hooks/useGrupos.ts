@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../lib/api';
 import { EN_VIVO, queryKeys } from './queryKeys';
-import type { AprendicesDeGrupo, Grupo } from '../types/api';
+import type { AprendicesDeGrupo, Grupo, InstructoresContadoHoy } from '../types/api';
 
 /** GET /api/grupos: fichas con aprendices registrados y reservas de hoy. */
 export const useGrupos = () =>
@@ -20,7 +20,15 @@ export const useAprendicesDeGrupo = (grupoId: string, enabled: boolean) =>
     ...EN_VIVO,
   });
 
-/** PATCH /api/grupos/ventas/:ventaId/pago: Pagado / No pagado de la reserva de un aprendiz. */
+/** GET /api/grupos/instructores-contado: instructores que hoy pagan en la ventanilla (ADR 026). */
+export const useInstructoresContadoHoy = () =>
+  useQuery({
+    queryKey: queryKeys.instructoresContado,
+    queryFn: async () => (await apiClient.get<InstructoresContadoHoy>('/grupos/instructores-contado')).data,
+    ...EN_VIVO,
+  });
+
+/** PATCH /api/grupos/ventas/:ventaId/pago: Pagado / No pagado de un almuerzo que se paga en la ventanilla. */
 export const useMarcarPagoAprendiz = () => {
   const queryClient = useQueryClient();
   return useMutation({

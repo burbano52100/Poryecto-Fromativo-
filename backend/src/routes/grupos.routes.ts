@@ -3,6 +3,7 @@ import {
   getGrupos,
   getMisFichasInstructor,
   getAprendicesDeGrupo,
+  getInstructoresContadoHoy,
   marcarPagoVenta,
 } from '../controllers/grupos.controller.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
@@ -14,6 +15,7 @@ router.use(authenticateToken);
 
 router.get('/', requireRole('encargado'), getGrupos);
 router.get('/mis-fichas', requireRole('instructor'), getMisFichasInstructor);
+router.get('/instructores-contado', requireRole('encargado'), getInstructoresContadoHoy);
 router.get('/:id/aprendices', requireRole('encargado'), getAprendicesDeGrupo);
 router.patch('/ventas/:ventaId/pago', requireRole('encargado'), marcarPagoVenta);
 

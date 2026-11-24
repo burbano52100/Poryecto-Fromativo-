@@ -135,6 +135,41 @@ const pagoVentaSchema = z.object({
  * se gestionan en Cartera de Deudas.
  * Acceso: encargado
  */
+/**
+ * GET /api/grupos/instructores-contado
+ * Instructores que reservaron hoy para pagar en la ventanilla (ADR 026), con su estado de pago.
+ * Los fiados no salen aquí: se cobran en Cartera de Deudas. Acceso: encargado
+ */
+export const getInstructoresContadoHoy = async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await query(
+      `SELECT u.id,
+              u.nombre as name,
+              u.cedula as document,
+              u.email,
+              false as es_beneficiario,
+              v.id as venta_id,
+              v.precio_cobrado::float8 as precio,
+              v.estado_pago,
+              UPPER(v.estado_pago::text) as payment_status,
+              v.fecha_hora
+       FROM ventas v
+       JOIN usuarios u ON u.id = v.usuario_id
+       WHERE u.rol = 'instructor'
+         AND v.metodo_pago = 'efectivo'
+         AND v.estado = 'completada'
+         AND ${VENTA_DE_HOY}
+       ORDER BY u.nombre ASC;`
+    );
+    const cerrada = await query(
+      "SELECT 1 FROM cierres_caja WHERE estado = 'cerrado' AND fecha = (NOW() AT TIME ZONE 'America/Bogota')::date;"
+    );
+    return res.json({ instructores: result.rows, caja_cerrada: Boolean(cerrada.rowCount) });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const marcarPagoVenta = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const ventaId = parseId(req.params.ventaId, 'El identificador de la venta no es válido.');
@@ -145,7 +180,7 @@ export const marcarPagoVenta = async (req: AuthenticatedRequest, res: Response, 
     const { pagado } = parsed.data;
 
     const ventaRes = await query(
-      `SELECT v.id, v.precio_cobrado::float8 as precio_cobrado, v.estado_pago, v.estado, u.rol,
+      `SELECT v.id, v.precio_cobrado::float8 as precio_cobrado, v.estado_pago, v.estado, v.metodo_pago, u.rol,
               TO_CHAR(v.fecha_hora AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') as fecha
        FROM ventas v
        JOIN usuarios u ON u.id = v.usuario_id
@@ -163,9 +198,12 @@ export const marcarPagoVenta = async (req: AuthenticatedRequest, res: Response, 
       return res.status(400).json({ message: 'La reserva fue anulada; no se puede cambiar su estado de pago.' });
     }
 
-    if (venta.rol !== 'aprendiz') {
+    // Aprendices y almuerzos de instructores de contado se cobran en la ventanilla; los fiados, en
+    // Cartera de Deudas (ADR 026)
+    const deContado = venta.rol === 'aprendiz' || (venta.rol === 'instructor' && venta.metodo_pago === 'efectivo');
+    if (!deContado) {
       return res.status(400).json({
-        message: 'Solo se controla aquí el pago de aprendices. Los instructores se gestionan en Cartera de Deudas.',
+        message: 'Este almuerzo es fiado: se cobra en Cartera de Deudas.',
       });
     }
 

@@ -175,3 +175,15 @@ Este documento recopila las decisiones técnicas clave tomadas durante el desarr
   - La reserva del instructor se cobra con ese precio y suma ese valor a su deuda mensual. `GET /api/menus/activo` le muestra su precio en `precio_aplicable`.
   - `NULL` significa "el mismo precio del aprendiz": así quedan los menús publicados antes, que se cobraron así. Las ventas guardan su `precio_cobrado`, así que el histórico y las deudas ya registradas no cambian.
 - **Alternativa descartada**: *una tarifa fija en el código, como en Almuerzos invitados*. El precio del aprendiz ya se define en cada menú; poner el del instructor al lado evita tener dos lugares distintos para lo mismo.
+
+## ADR 026: El instructor elige fiado o pago en la ventanilla
+- **Fecha**: 2026-11-24
+- **Estado**: Aceptada (amplía el ADR 025)
+- **Contexto**: Todo almuerzo de instructor quedaba fiado: se sumaba a su deuda del mes y se cobraba en Cartera de Deudas. Algunos instructores prefieren pagarlo en el momento.
+- **Decisión**:
+  - Al confirmar la reserva, el instructor elige **Fiado** (por defecto) o **Pago en la ventanilla**. La API recibe `forma_pago: 'fiado' | 'contado'`; sin valor es fiado, como antes.
+  - Fiado: `metodo_pago = 'credito'` y suma a la deuda. De contado: `metodo_pago = 'efectivo'`, queda pendiente y no toca la deuda.
+  - El encargado cobra los de contado en Grupos, en la tarjeta "Instructores que pagan en la ventanilla" (`GET /api/grupos/instructores-contado`), con el mismo Pagado / No pagado de los aprendices. Los fiados siguen yendo a Cartera.
+  - Pagar una deuda marca como pagados solo los almuerzos fiados. Cancelar una reserva solo baja la deuda si era fiada.
+  - El cierre de caja espera el dinero de los de contado (`instructores_contado`) y deja los fiados como crédito informativo.
+  - El historial del instructor marca con "Fiado" los almuerzos cargados a su cuenta.

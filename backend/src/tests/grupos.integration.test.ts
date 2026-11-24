@@ -15,11 +15,18 @@ let sinReserva: UsuarioTest;
 let instructor: UsuarioTest;
 let fichaId: string;
 
-const insertarVenta = async (usuario: UsuarioTest, menuId: string, precio: number, estadoPago: string, diasAtras = 0) => {
+const insertarVenta = async (
+  usuario: UsuarioTest,
+  menuId: string,
+  precio: number,
+  estadoPago: string,
+  diasAtras = 0,
+  metodoPago: 'efectivo' | 'credito' = 'efectivo'
+) => {
   const res = await pool.query(
     `INSERT INTO ventas (usuario_id, menu_id, fecha_hora, precio_cobrado, metodo_pago, estado_pago)
-     VALUES ($1, $2, NOW() - ($5 || ' days')::interval, $3, 'efectivo', $4) RETURNING id;`,
-    [usuario.id, menuId, precio, estadoPago, String(diasAtras)]
+     VALUES ($1, $2, NOW() - ($5 || ' days')::interval, $3, $6, $4) RETURNING id;`,
+    [usuario.id, menuId, precio, estadoPago, String(diasAtras), metodoPago]
   );
   return res.rows[0].id as string;
 };
@@ -44,14 +51,17 @@ beforeAll(async () => {
 let ventaNormal: string;
 let ventaGratis: string;
 let ventaInstructor: string;
+let menuDeHoy: string;
 
 beforeEach(async () => {
   await pool.query('TRUNCATE TABLE ventas, menus_dia RESTART IDENTITY CASCADE;');
   const menuHoy = await crearMenu('Menú de hoy');
+  menuDeHoy = menuHoy;
   const menuAyer = await crearMenu('Menú de ayer', { diasAtras: 1, estado: 'completado' });
   ventaNormal = await insertarVenta(normal, menuHoy, 5000, 'pendiente');
   ventaGratis = await insertarVenta(beneficiario, menuHoy, 0, 'gratis');
-  ventaInstructor = await insertarVenta(instructor, menuHoy, 5000, 'pendiente');
+  // Almuerzo fiado del instructor: se cobra en Cartera de Deudas (ADR 026)
+  ventaInstructor = await insertarVenta(instructor, menuHoy, 5000, 'pendiente', 0, 'credito');
   await insertarVenta(sinReserva, menuAyer, 5000, 'pagado', 1);
 });
 
@@ -114,10 +124,28 @@ describe('PATCH /api/grupos/ventas/:ventaId/pago', () => {
     assert.strictEqual(venta.rows[0].estado_pago, 'gratis');
   });
 
-  it('no permite marcar ventas de instructores (van en Cartera de Deudas)', async () => {
+  it('no permite marcar almuerzos fiados de instructores (van en Cartera de Deudas)', async () => {
     const res = await marcarPago(ventaInstructor, true);
     assert.strictEqual(res.status, 400);
     assert.match(res.body.message, /Cartera de Deudas/);
+  });
+
+  it('el almuerzo de contado de un instructor sale en su lista y se marca pagado en la ventanilla', async () => {
+    const otro = await crearUsuario('Instructora Contado', '8400000006', 'instructor');
+    const ventaContado = await insertarVenta(otro, menuDeHoy, 10000, 'pendiente', 0, 'efectivo');
+
+    const lista = await request(app).get('/api/grupos/instructores-contado').set('Authorization', `Bearer ${encargado.token}`);
+    assert.strictEqual(lista.status, 200);
+    assert.deepStrictEqual(
+      lista.body.instructores.map((i: { venta_id: string }) => i.venta_id),
+      [ventaContado],
+      'solo el de contado; el fiado no sale aquí'
+    );
+
+    const res = await marcarPago(ventaContado, true);
+    assert.strictEqual(res.status, 200, JSON.stringify(res.body));
+    const venta = await pool.query('SELECT estado_pago FROM ventas WHERE id = $1;', [ventaContado]);
+    assert.strictEqual(venta.rows[0].estado_pago, 'pagado');
   });
 
   it('valida el cuerpo, el id y el rol', async () => {

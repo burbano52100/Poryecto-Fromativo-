@@ -53,7 +53,9 @@ export interface ResumenDia {
     invitados: number;
     /** Abonos de instructores a la Cartera de Deudas recibidos ese día. */
     pagos_deuda: number;
-    /** Consumo de instructores a crédito: no entra a la caja ese día (informativo). */
+    /** Almuerzos de instructores pagados de contado en la ventanilla (ADR 026): entran a la caja. */
+    instructores_contado: number;
+    /** Consumo de instructores fiado: no entra a la caja ese día (informativo). */
     credito_instructores: number;
   };
   ingresos_esperados: number;
@@ -61,7 +63,8 @@ export interface ResumenDia {
 
 /**
  * Resumen de la caja de un día (hora de Colombia). Esperado en caja = reservas de aprendices
- * (pagadas o no: el aprendiz paga al recoger) + almuerzos invitados + abonos de deuda del día.
+ * (pagadas o no: el aprendiz paga al recoger) + almuerzos de instructores de contado (ADR 026)
+ * + almuerzos invitados + abonos de deuda del día. Lo fiado no entra.
  */
 export async function resumenDia(fecha: string, db: Queryable = pool): Promise<ResumenDia> {
   const res = await db.query(
@@ -82,8 +85,11 @@ export async function resumenDia(fecha: string, db: Queryable = pool): Promise<R
          WHERE v.estado = 'completada' AND u.rol = 'aprendiz' AND v.estado_pago = 'pagado'
            AND ${entreDiasBogota('v.fecha_hora', '$1', '$1')})::float8 AS aprendices_pagados,
        (SELECT COALESCE(SUM(v.precio_cobrado), 0) FROM ventas v JOIN usuarios u ON u.id = v.usuario_id
-         WHERE v.estado = 'completada' AND u.rol = 'instructor'
+         WHERE v.estado = 'completada' AND u.rol = 'instructor' AND v.metodo_pago = 'credito'
            AND ${entreDiasBogota('v.fecha_hora', '$1', '$1')})::float8 AS credito_instructores,
+       (SELECT COALESCE(SUM(v.precio_cobrado), 0) FROM ventas v JOIN usuarios u ON u.id = v.usuario_id
+         WHERE v.estado = 'completada' AND u.rol = 'instructor' AND v.metodo_pago <> 'credito'
+           AND ${entreDiasBogota('v.fecha_hora', '$1', '$1')})::float8 AS instructores_contado,
        (SELECT COALESCE(SUM(p.monto_pagado), 0) FROM pagos_deuda p
          WHERE ${entreDiasBogota('p.fecha_pago', '$1', '$1')})::float8 AS pagos_deuda;`,
     [fecha]
@@ -116,12 +122,13 @@ export async function resumenDia(fecha: string, db: Queryable = pool): Promise<R
     aprendices_pendientes: f.ingresos_aprendices - f.aprendices_pagados,
     invitados: totalInvitados,
     pagos_deuda: f.pagos_deuda,
+    instructores_contado: f.instructores_contado,
     credito_instructores: f.credito_instructores,
   };
   return {
     fecha,
     almuerzos,
     ingresos,
-    ingresos_esperados: ingresos.aprendices + ingresos.invitados + ingresos.pagos_deuda,
+    ingresos_esperados: ingresos.aprendices + ingresos.invitados + ingresos.pagos_deuda + ingresos.instructores_contado,
   };
 }

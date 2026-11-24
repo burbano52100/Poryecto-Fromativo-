@@ -87,6 +87,8 @@ export interface Consumo {
   price: string;
   paymentStatus: 'PAGADO' | 'PENDIENTE' | 'GRATIS';
   estado_pago: EstadoPago;
+  /** Almuerzo del instructor cargado a su cuenta del mes (ADR 026). */
+  fiado?: boolean;
   status: 'RESERVED' | 'CONSUMED';
 }
 
@@ -442,6 +444,15 @@ export interface AprendicesDeGrupo {
   ficha: { id: string; codigo_ficha: string; programa: string };
   aprendices: AprendizConReserva[];
 }
+
+/** GET /api/grupos/instructores-contado: instructores que hoy pagan en la ventanilla (ADR 026). */
+export interface InstructoresContadoHoy {
+  instructores: AprendizConReserva[];
+  caja_cerrada: boolean;
+}
+
+/** Cómo paga el instructor su almuerzo (ADR 026): fiado a su cuenta del mes o de contado en la ventanilla. */
+export type FormaPago = 'fiado' | 'contado';
 
 // ---------------------------------------------------------------- Beneficiarios
 export interface Estudiante {
