@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import { createApp } from './app.js';
 import { withTransaction } from './services/inventario.service.js';
 import { finalizarBeneficiosVencidos } from './services/beneficios.service.js';
+import { liberarReservasVencidas } from './services/pagoQr.service.js';
 
 dotenv.config();
 
@@ -25,9 +26,18 @@ const revisarBeneficios = () =>
     })
     .catch((error) => console.error('[Beneficios] No se pudieron revisar los beneficios vencidos:', error));
 
+/** Cada minuto se anulan las reservas con QR que no recibieron comprobante a tiempo (ADR 027). */
+const revisarReservasQr = () =>
+  liberarReservasVencidas({ forzar: true })
+    .then((n) => {
+      if (n > 0) console.log(`[Pago QR] ${n} reserva(s) vencida(s) sin comprobante; porciones liberadas.`);
+    })
+    .catch((error) => console.error('[Pago QR] No se pudieron revisar las reservas vencidas:', error));
+
 app.listen(PORT, () => {
   console.log(`🚀 Servidor Express de SARA escuchando en http://localhost:${PORT}`);
   console.log(`🔒 Modo seguro activo (JWT verificado, Helmet, CORS configurado)`);
   void revisarBeneficios();
   setInterval(revisarBeneficios, UNA_HORA_MS).unref();
+  setInterval(revisarReservasQr, 60 * 1000).unref();
 });

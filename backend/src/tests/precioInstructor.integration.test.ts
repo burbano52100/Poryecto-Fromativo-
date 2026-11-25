@@ -53,7 +53,7 @@ describe('Precio del almuerzo para instructores (ADR 025)', () => {
     assert.strictEqual(menus.body[0].precio_instructor, 10000);
   });
 
-  it('cada rol ve y paga su precio; la deuda del instructor suma el suyo', async () => {
+  it('cada rol ve y paga su precio con el código QR', async () => {
     const menuId = await crearMenu('Menú de hoy');
     await pool.query('UPDATE menus_dia SET precio_instructor = 10000 WHERE id = $1;', [menuId]);
 
@@ -65,7 +65,8 @@ describe('Precio del almuerzo para instructores (ADR 025)', () => {
     const resInstructor = await reservar(instructor, menuId);
     assert.strictEqual(resInstructor.status, 201, JSON.stringify(resInstructor.body));
     assert.strictEqual(resInstructor.body.precio, 10000);
-    assert.strictEqual(await deudaDe(instructor.id), 10000);
+    assert.strictEqual(resInstructor.body.metodo_pago, 'qr');
+    assert.strictEqual(await deudaDe(instructor.id), 0, 'desde el ADR 027 no se reserva fiado');
 
     const resAprendiz = await reservar(aprendiz, menuId);
     assert.strictEqual(resAprendiz.status, 201);

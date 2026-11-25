@@ -33,13 +33,13 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('button', { name: /Solicitudes de cuenta/ })).not.toBeInTheDocument();
   });
 
-  it('el Encargado tiene la sección Almuerzos invitados junto a Ventas y Menú del día', async () => {
+  it('el Encargado tiene Pagos con QR, Menú del día y Almuerzos invitados junto a Ventas', async () => {
     vi.spyOn(apiClient, 'get').mockResolvedValue(respuesta(RESUMEN));
     abrirSidebar('encargado');
 
     const nombres = (await screen.findAllByRole('button')).map((b) => b.textContent?.trim());
     const ventas = nombres.indexOf('Ventas');
-    expect(nombres.slice(ventas, ventas + 3)).toEqual(['Ventas', 'Menú del día', 'Almuerzos invitados']);
+    expect(nombres.slice(ventas, ventas + 4)).toEqual(['Ventas', 'Pagos con QR', 'Menú del día', 'Almuerzos invitados']);
   });
 
   it('el aprendiz no ve Almuerzos invitados', async () => {

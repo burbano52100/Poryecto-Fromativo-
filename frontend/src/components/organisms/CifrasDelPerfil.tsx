@@ -103,7 +103,7 @@ export const CifrasCuentaInstructor = () => {
   );
 };
 
-/** Aprendiz · Mis fichas: cuánto lleva el mes y si debe algo en la ventanilla. */
+/** Aprendiz · Mis fichas: cuánto lleva el mes y si le falta pagar algo con el QR. */
 export const CifrasFichasAprendiz = ({ esBeneficiario = false }: { esBeneficiario?: boolean }) => {
   const { data: resumen } = useResumenConsumos();
   const pendiente = resumen?.pendientePago ?? 0;
@@ -119,7 +119,7 @@ export const CifrasFichasAprendiz = ({ esBeneficiario = false }: { esBeneficiari
               etiqueta: 'Por pagar',
               valor: valor(resumen?.pendientePago, pesos),
               estado: resumen ? (pendiente > 0 ? { texto: 'Pendiente', color: 'warning' } : { texto: 'Al día', color: 'success' }) : undefined,
-              detalle: resumen ? (pendiente > 0 ? 'Págalo en la ventanilla del comedor' : 'No debes nada') : undefined,
+              detalle: resumen ? (pendiente > 0 ? 'Paga con el código QR y sube el comprobante' : 'No debes nada') : undefined,
             },
         {
           etiqueta: 'Almuerzos este mes',

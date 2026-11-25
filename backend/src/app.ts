@@ -19,6 +19,7 @@ import dashboardRoutes from './routes/dashboard.routes.js';
 import coordinadorRoutes from './routes/coordinador.routes.js';
 import almuerzosInvitadosRoutes from './routes/almuerzosInvitados.routes.js';
 import almuerzosEspecialesRoutes from './routes/almuerzosEspeciales.routes.js';
+import comprobantesRoutes from './routes/comprobantes.routes.js';
 import auditoriaRoutes from './routes/auditoria.routes.js';
 import configuracionRoutes from './routes/configuracion.routes.js';
 import alertasRoutes from './routes/alertas.routes.js';
@@ -95,6 +96,7 @@ export const createApp = (): Express => {
   app.use('/api/coordinador', coordinadorRoutes);
   app.use('/api/almuerzos-invitados', almuerzosInvitadosRoutes);
   app.use('/api/almuerzos-especiales', almuerzosEspecialesRoutes);
+  app.use('/api/comprobantes', comprobantesRoutes);
   app.use('/api/auditoria', auditoriaRoutes);
   app.use('/api/configuracion', configuracionRoutes);
   app.use('/api/alertas', alertasRoutes);

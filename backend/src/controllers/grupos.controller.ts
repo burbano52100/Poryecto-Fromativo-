@@ -198,9 +198,11 @@ export const marcarPagoVenta = async (req: AuthenticatedRequest, res: Response, 
       return res.status(400).json({ message: 'La reserva fue anulada; no se puede cambiar su estado de pago.' });
     }
 
-    // Aprendices y almuerzos de instructores de contado se cobran en la ventanilla; los fiados, en
-    // Cartera de Deudas (ADR 026)
-    const deContado = venta.rol === 'aprendiz' || (venta.rol === 'instructor' && venta.metodo_pago === 'efectivo');
+    // Aprendices y almuerzos de instructores de contado o con QR se marcan aquí (el QR, si el encargado
+    // confirma el pago a mano, ADR 027); los fiados se cobran en Cartera de Deudas (ADR 026)
+    const deContado =
+      venta.rol === 'aprendiz' ||
+      (venta.rol === 'instructor' && (venta.metodo_pago === 'efectivo' || venta.metodo_pago === 'qr'));
     if (!deContado) {
       return res.status(400).json({
         message: 'Este almuerzo es fiado: se cobra en Cartera de Deudas.',
@@ -218,7 +220,8 @@ export const marcarPagoVenta = async (req: AuthenticatedRequest, res: Response, 
     await withTransaction(async (client) => {
       // El pago pertenece al día de la reserva: si ese día está cerrado, no se cambia (ADR 021)
       await verificarDiaAbierto(venta.fecha, client);
-      await client.query('UPDATE ventas SET estado_pago = $1 WHERE id = $2;', [nuevoEstado, ventaId]);
+      // Pagada a mano deja de vencer; si vuelve a pendiente tampoco vence: ya la está gestionando el encargado
+      await client.query('UPDATE ventas SET estado_pago = $1, vence_en = NULL WHERE id = $2;', [nuevoEstado, ventaId]);
       await registrarAuditoria(
         {
           usuario: req.user,

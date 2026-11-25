@@ -32,7 +32,9 @@ export type AccionAuditoria =
   | 'marcar_realizada'
   | 'marcar_entregado'
   | 'cancelar'
-  | 'calificar';
+  | 'calificar'
+  | 'vencer'
+  | 'subir_comprobante';
 
 export type EntidadAuditoria =
   | 'menu_dia'
@@ -52,7 +54,8 @@ export type EntidadAuditoria =
   | 'carga_masiva'
   | 'configuracion'
   | 'visita'
-  | 'calificacion';
+  | 'calificacion'
+  | 'comprobante_pago';
 
 export interface RegistroAuditoria {
   /** null para las acciones automáticas del sistema (p. ej. un beneficio que vence). */

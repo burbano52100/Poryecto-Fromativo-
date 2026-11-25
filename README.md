@@ -13,11 +13,13 @@
 
 | Rol | Qué hace |
 |---|---|
-| Aprendiz | Reserva su almuerzo ($5.000; $0 si es beneficiario, con un clic), ve sus fichas y si están pagadas, usa el buzón. |
-| Instructor | Reserva a crédito; su consumo se acumula en la Cartera de Deudas y lo ve en Mi Cuenta. |
-| Encargado | Ventas, menú del día, almuerzos invitados, beneficiarios, cartera, inventario, grupos (control de pago por aprendiz) y buzón. |
+| Aprendiz | Reserva su almuerzo ($5.000; $0 si es beneficiario, con un clic) y lo paga con el código QR subiendo la captura del comprobante; ve sus fichas y si están pagadas, usa el buzón. |
+| Instructor | Reserva a su precio y lo paga con el código QR, igual que el aprendiz. Lo que fió antes del QR sigue en la Cartera de Deudas y lo ve en Mi Cuenta. |
+| Encargado | Ventas, pagos con QR (revisa los comprobantes que el lector no pudo confirmar), menú del día, almuerzos invitados y especiales, beneficiarios, cartera, inventario, grupos y buzón. |
 
 No hay perfil de invitado: los almuerzos de personas externas los registra el encargado en **Almuerzos Invitados**, por número de personas y con tarifa fija por tipo (instructores $10.000, aprendices $5.000, corrientes $11.000). Esos ingresos se suman en Ventas (ADR 016).
+
+**Pago con QR (ADR 027)**: al solicitar el almuerzo se aparta la porción 15 minutos y se abre un chat con el código QR de Bancolombia. La persona paga desde la app de su banco y sube la captura: el backend la lee con OCR (Tesseract, gratis) y revisa que sea de hoy, por el valor del almuerzo, a la hora de la reserva y que ese comprobante no se haya usado antes. Lo que no puede confirmar lo revisa el encargado.
 
 El login pide **solo documento y contraseña**: el rol sale de la base de datos y la app abre el panel correspondiente. Las reservas se reciben de **7:00 a. m. a 9:00 p. m.** (hora de Colombia).
 

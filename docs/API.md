@@ -126,10 +126,11 @@ En cada petición se verifica el JWT y se consulta al usuario en la base de dato
   | Usuario | Precio | `estado_pago` | `metodo_pago` |
   |---|---|---|---|
   | Aprendiz beneficiario | $0 | `gratis` | `cortesia` |
-  | Aprendiz | `precio_aprendiz` ($5.000) | `pendiente` | `efectivo` |
-  | Instructor | `precio_aprendiz`, suma a su deuda | `pendiente` | `credito` |
+  | Aprendiz | `precio_aprendiz` ($5.000) | `pendiente` | `qr` |
+  | Instructor | `precio_instructor` (o el del aprendiz si el menú no lo tiene) | `pendiente` | `qr` |
 
-- **Respuesta 201**: `{ id, fecha, date, title, precio, price, paymentStatus, estado_pago, status: "RESERVED", message }`
+- **Pago con el código QR (ADR 027)**: la porción queda apartada 15 minutos (`vence_en`) mientras la persona paga y sube el comprobante. Sin comprobante válido a tiempo, la reserva se anula. `forma_pago` (ADR 026) ya no se usa y se ignora.
+- **Respuesta 201**: `{ id, fecha, date, title, precio, price, paymentStatus, estado_pago, metodo_pago, vence_en, minutos_para_pagar, status: "RESERVED", message }`
 - **Errores**: `400` (menú inválido o no activo, o no hay menú activo), `404` (menú inexistente), `409` (cupo agotado, reserva duplicada con `duplicate: true`, o fuera de horario).
 
 ### `GET /api/consumos`
@@ -152,6 +153,22 @@ En cada petición se verifica el JWT y se consulta al usuario en la base de dato
   ]
   ```
   `status` es `RESERVED` mientras el menú sea de hoy o de un día futuro, y `CONSUMED` cuando ya pasó.
+
+### `POST /api/consumos/:id/comprobante`
+- **Rol requerido**: `aprendiz` o `instructor`, dueño de la reserva.
+- **Body**: la imagen del comprobante, con `Content-Type: image/png | image/jpeg | image/webp` (hasta 5 MB). No es JSON.
+- La lee con OCR y responde `200` con el resultado:
+  ```json
+  {
+    "id": "uuid",
+    "estado": "aceptado | rechazado | en_revision",
+    "motivo": "Pago de Nequi por $5.000 hoy a las 12:40 p. m., comprobante M8392017.",
+    "lectura": { "banco": "Nequi", "valor": 5000, "fecha": "2026-11-25", "hora": "12:40", "numero": "M8392017" },
+    "reserva": { "id": "uuid", "estado_pago": "pagado | pendiente", "vence_en": "ISO | null" }
+  }
+  ```
+  `aceptado` deja la reserva pagada. `rechazado` (otro día, otro valor, pago de más de una hora antes de la reserva, comprobante ya usado o imagen que no es un comprobante) permite subir otro mientras no venza. `en_revision` lo decide el encargado; mientras tanto la porción no vence.
+- **Errores**: `400` (no es una imagen PNG, JPG o WEBP), `404` (reserva ajena o inexistente), `409` (reserva vencida o cancelada, ya pagada, sin QR o con un comprobante en revisión), `413` (más de 5 MB), `429` (más de 20 comprobantes en 10 minutos).
 
 ### `GET /api/consumos/resumen`
 - **Rol requerido**: Autenticado.
@@ -463,3 +480,24 @@ Las tarifas y el máximo de personas se definen en un solo lugar, `backend/src/c
 
 ### `DELETE /api/almuerzos-invitados/:id`
 - **Respuesta 200**: `{ "message": "Registro de almuerzo invitado eliminado." }`. **Errores**: `400` (id no válido), `404`.
+
+---
+
+## 14. Pagos con QR (`/api/comprobantes`, ADR 027)
+Solo `encargado`.
+
+### `GET /api/comprobantes?estado=&fecha=`
+- `estado` = `en_revision | aceptado | rechazado | todos` (por defecto `todos`); `fecha` = `YYYY-MM-DD` (hoy por defecto). Con `estado=en_revision` trae todos los que esperan revisión, de cualquier día, los más antiguos primero.
+- **Respuesta 200**: `[{ id, estado, motivo, banco, numero, valor, fecha_pago, hora_pago, destinatario_ok, confianza, subido_en, revisado_en, revisado_por, tiene_imagen, persona: { nombre, cedula, rol, ficha }, reserva: { id, precio, estado, estado_pago, menu } }]`
+
+### `GET /api/comprobantes/resumen`
+- **Respuesta 200**: `{ aceptados_hoy, valor_aceptado_hoy, rechazados_hoy, en_revision }`
+
+### `GET /api/comprobantes/:id/imagen`
+- La captura de un comprobante en revisión (bytes de la imagen). `404` si ya no se guarda (se borra al revisarlo).
+
+### `POST /api/comprobantes/:id/aprobar`
+- El comprobante pasa a `aceptado` y la reserva queda pagada. `409` si ya fue revisado o la reserva ya no está activa.
+
+### `POST /api/comprobantes/:id/rechazar`
+- **Body**: `{ "motivo": "3 a 300 caracteres" }`. La persona ve el motivo y tiene otros 15 minutos para subir otro comprobante.

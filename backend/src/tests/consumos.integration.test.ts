@@ -178,12 +178,13 @@ describe('POST /api/consumos/reservar: horario y roles', () => {
     assert.strictEqual(await contarVentas(), 0);
   });
 
-  it('guarda la reserva pendiente de un aprendiz con metodo_pago efectivo', async () => {
+  it('guarda la reserva de un aprendiz pendiente de pago con QR y con plazo para el comprobante', async () => {
     await crearMenu('Activo', 'activo');
     assert.strictEqual((await reservar(aprendizToken)).status, 201);
-    const venta = await pool.query('SELECT metodo_pago, estado_pago FROM ventas WHERE usuario_id = $1;', [aprendizId]);
-    assert.strictEqual(venta.rows[0].metodo_pago, 'efectivo');
+    const venta = await pool.query('SELECT metodo_pago, estado_pago, vence_en FROM ventas WHERE usuario_id = $1;', [aprendizId]);
+    assert.strictEqual(venta.rows[0].metodo_pago, 'qr');
     assert.strictEqual(venta.rows[0].estado_pago, 'pendiente');
+    assert.ok(venta.rows[0].vence_en, 'la porción queda apartada mientras llega el comprobante (ADR 027)');
   });
 
   it('rechaza con 409 una segunda reserva del mismo menú', async () => {

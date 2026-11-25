@@ -33,6 +33,11 @@ export const ConsumoRow = ({ consumo }: { consumo: Consumo }) => {
                 Fiado
               </Chip>
             )}
+            {consumo.estado_pago === 'pendiente' && consumo.comprobante_estado === 'en_revision' && (
+              <Chip size="sm" variant="soft" color="warning">
+                Comprobante en revisión
+              </Chip>
+            )}
           </div>
         </div>
       </div>

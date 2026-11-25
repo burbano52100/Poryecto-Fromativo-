@@ -38,7 +38,7 @@ describe('Cierre de caja diario', () => {
   let invitadoId: string;
   let ventaAprendiz: string;
 
-  it('el resumen del día cuenta almuerzos por tipo y calcula lo esperado en caja', async () => {
+  it('el resumen del día cuenta almuerzos por tipo y deja el pago con QR fuera de la caja', async () => {
     ventaAprendiz = (await request(app).post('/api/consumos/reservar').set(auth(aprendiz)).send({})).body.id;
     assert.ok(ventaAprendiz);
     assert.strictEqual((await request(app).post('/api/consumos/reservar').set(auth(instructor)).send({})).status, 201);
@@ -50,7 +50,10 @@ describe('Cierre de caja diario', () => {
     assert.strictEqual(res.body.almuerzos.aprendices, 1);
     assert.strictEqual(res.body.almuerzos.instructores, 1);
     assert.strictEqual(res.body.almuerzos.invitados_corrientes, 2);
-    assert.strictEqual(res.body.ingresos_esperados, 5000 + 22000);
+    // Las dos reservas se pagan con el código QR (ADR 027): ese dinero va a la cuenta, no a la caja
+    assert.strictEqual(res.body.ingresos.qr_pendientes, 10000);
+    assert.strictEqual(res.body.ingresos.qr_pagados, 0);
+    assert.strictEqual(res.body.ingresos_esperados, 22000);
     assert.strictEqual(res.body.cierre, null);
   });
 
@@ -58,7 +61,7 @@ describe('Cierre de caja diario', () => {
     const res = await request(app)
       .post('/api/cierres-caja')
       .set(auth(encargado))
-      .send({ ingresos_recibidos: 25000, observaciones: 'Faltó cobrar un aprendiz' });
+      .send({ ingresos_recibidos: 20000, observaciones: 'Faltó cobrar un invitado' });
     assert.strictEqual(res.status, 201, JSON.stringify(res.body));
     assert.strictEqual(res.body.cierre.diferencia, -2000);
     assert.match(res.body.message, /faltante de \$2\.000/);
@@ -90,7 +93,14 @@ describe('Cierre de caja diario', () => {
 
     const pago = await request(app).patch(`/api/grupos/ventas/${ventaAprendiz}/pago`).set(auth(encargado)).send({ pagado: true });
     assert.strictEqual(pago.status, 409);
-    const deuda = (await pool.query('SELECT id FROM deudas WHERE usuario_id = $1;', [instructor.id])).rows[0].id;
+    // Deuda fiada de antes del pago con QR (ADR 026)
+    const deuda = (
+      await pool.query(
+        `INSERT INTO deudas (usuario_id, monto, almuerzos_pendientes, fecha_origen, estado)
+         VALUES ($1, 5000, 1, (NOW() AT TIME ZONE 'America/Bogota')::date - 3, 'pendiente') RETURNING id;`,
+        [instructor.id]
+      )
+    ).rows[0].id;
     assert.strictEqual((await request(app).post(`/api/deudas/${deuda}/pagar`).set(auth(encargado)).send({})).status, 409);
   });
 
@@ -108,7 +118,9 @@ describe('Cierre de caja diario', () => {
       (await request(app).patch(`/api/grupos/ventas/${ventaAprendiz}/pago`).set(auth(encargado)).send({ pagado: true })).status,
       200
     );
-    const cerrar = await request(app).post('/api/cierres-caja').set(auth(encargado)).send({ ingresos_recibidos: 27000 });
+    const resumen = await request(app).get('/api/cierres-caja/resumen').set(auth(encargado));
+    assert.strictEqual(resumen.body.ingresos.qr_pagados, 5000, 'el pago confirmado a mano sigue siendo por QR');
+    const cerrar = await request(app).post('/api/cierres-caja').set(auth(encargado)).send({ ingresos_recibidos: 22000 });
     assert.strictEqual(cerrar.status, 201);
     assert.strictEqual(cerrar.body.cierre.diferencia, 0);
     const auditoria = await pool.query("SELECT accion FROM auditoria WHERE entidad = 'cierre_caja' ORDER BY fecha_hora;");

@@ -45,7 +45,7 @@ export interface ResumenDia {
     total: number;
   };
   ingresos: {
-    /** Reservas de aprendices (no beneficiarios) del día: pagan en la caja. */
+    /** Reservas de aprendices (no beneficiarios) del día pagadas en efectivo en la caja (antes del QR). */
     aprendices: number;
     aprendices_pagados: number;
     aprendices_pendientes: number;
@@ -57,14 +57,19 @@ export interface ResumenDia {
     instructores_contado: number;
     /** Consumo de instructores fiado: no entra a la caja ese día (informativo). */
     credito_instructores: number;
+    /** Reservas pagadas con el código QR (ADR 027): el dinero llega a la cuenta, no a la caja. */
+    qr_pagados: number;
+    /** Reservas con QR sin pagar todavía: apartadas sin comprobante o en revisión (informativo). */
+    qr_pendientes: number;
   };
   ingresos_esperados: number;
 }
 
 /**
- * Resumen de la caja de un día (hora de Colombia). Esperado en caja = reservas de aprendices
- * (pagadas o no: el aprendiz paga al recoger) + almuerzos de instructores de contado (ADR 026)
- * + almuerzos invitados + abonos de deuda del día. Lo fiado no entra.
+ * Resumen de la caja de un día (hora de Colombia). Esperado en caja = reservas de aprendices en
+ * efectivo (pagadas o no: el aprendiz paga al recoger) + almuerzos de instructores de contado
+ * (ADR 026) + almuerzos invitados + abonos de deuda del día. Lo fiado no entra, ni lo pagado con
+ * el código QR (ADR 027), que llega a la cuenta de Bancolombia y se informa aparte.
  */
 export async function resumenDia(fecha: string, db: Queryable = pool): Promise<ResumenDia> {
   const res = await db.query(
@@ -79,16 +84,22 @@ export async function resumenDia(fecha: string, db: Queryable = pool): Promise<R
          WHERE v.estado = 'completada' AND u.rol = 'instructor' AND v.estado_pago <> 'gratis'
            AND ${entreDiasBogota('v.fecha_hora', '$1', '$1')})::int AS instructores,
        (SELECT COALESCE(SUM(v.precio_cobrado), 0) FROM ventas v JOIN usuarios u ON u.id = v.usuario_id
-         WHERE v.estado = 'completada' AND u.rol = 'aprendiz' AND v.estado_pago <> 'gratis'
+         WHERE v.estado = 'completada' AND u.rol = 'aprendiz' AND v.estado_pago <> 'gratis' AND v.metodo_pago <> 'qr'
            AND ${entreDiasBogota('v.fecha_hora', '$1', '$1')})::float8 AS ingresos_aprendices,
        (SELECT COALESCE(SUM(v.precio_cobrado), 0) FROM ventas v JOIN usuarios u ON u.id = v.usuario_id
-         WHERE v.estado = 'completada' AND u.rol = 'aprendiz' AND v.estado_pago = 'pagado'
+         WHERE v.estado = 'completada' AND u.rol = 'aprendiz' AND v.estado_pago = 'pagado' AND v.metodo_pago <> 'qr'
            AND ${entreDiasBogota('v.fecha_hora', '$1', '$1')})::float8 AS aprendices_pagados,
+       (SELECT COALESCE(SUM(v.precio_cobrado), 0) FROM ventas v
+         WHERE v.estado = 'completada' AND v.metodo_pago = 'qr' AND v.estado_pago = 'pagado'
+           AND ${entreDiasBogota('v.fecha_hora', '$1', '$1')})::float8 AS qr_pagados,
+       (SELECT COALESCE(SUM(v.precio_cobrado), 0) FROM ventas v
+         WHERE v.estado = 'completada' AND v.metodo_pago = 'qr' AND v.estado_pago = 'pendiente'
+           AND ${entreDiasBogota('v.fecha_hora', '$1', '$1')})::float8 AS qr_pendientes,
        (SELECT COALESCE(SUM(v.precio_cobrado), 0) FROM ventas v JOIN usuarios u ON u.id = v.usuario_id
          WHERE v.estado = 'completada' AND u.rol = 'instructor' AND v.metodo_pago = 'credito'
            AND ${entreDiasBogota('v.fecha_hora', '$1', '$1')})::float8 AS credito_instructores,
        (SELECT COALESCE(SUM(v.precio_cobrado), 0) FROM ventas v JOIN usuarios u ON u.id = v.usuario_id
-         WHERE v.estado = 'completada' AND u.rol = 'instructor' AND v.metodo_pago <> 'credito'
+         WHERE v.estado = 'completada' AND u.rol = 'instructor' AND v.metodo_pago = 'efectivo'
            AND ${entreDiasBogota('v.fecha_hora', '$1', '$1')})::float8 AS instructores_contado,
        (SELECT COALESCE(SUM(p.monto_pagado), 0) FROM pagos_deuda p
          WHERE ${entreDiasBogota('p.fecha_pago', '$1', '$1')})::float8 AS pagos_deuda;`,
@@ -124,6 +135,8 @@ export async function resumenDia(fecha: string, db: Queryable = pool): Promise<R
     pagos_deuda: f.pagos_deuda,
     instructores_contado: f.instructores_contado,
     credito_instructores: f.credito_instructores,
+    qr_pagados: f.qr_pagados,
+    qr_pendientes: f.qr_pendientes,
   };
   return {
     fecha,

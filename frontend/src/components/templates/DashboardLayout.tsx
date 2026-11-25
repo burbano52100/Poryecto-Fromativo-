@@ -24,6 +24,7 @@ const TITULOS: Record<SectionType, string> = {
   sugerencias: 'Buzón de sugerencias',
   perfil: 'Mi perfil',
   ventas: 'Ventas',
+  comprobantes: 'Pagos con QR',
   menu: 'Menú del día',
   almuerzosInvitados: 'Almuerzos invitados',
   almuerzosEspeciales: 'Almuerzos especiales',

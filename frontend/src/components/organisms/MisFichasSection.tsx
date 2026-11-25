@@ -26,7 +26,7 @@ const textoAlmuerzos = (n: number) => `${n} ${n === 1 ? 'almuerzo' : 'almuerzos'
 /**
  * Historial de almuerzos del usuario (aprendiz e instructor). Con el tiempo son cientos, así que
  * va por meses: se ven los dos más recientes y los anteriores se piden con un botón. El filtro
- * "Por pagar" deja solo los que falta pagar en la ventanilla.
+ * "Por pagar" deja solo los que falta pagar con el código QR.
  */
 export const HistorialConsumos = ({ titulo, descripcion, vacio }: HistorialConsumosProps) => {
   const { data: consumos = [], isPending, isError, error, refetch } = useConsumos();

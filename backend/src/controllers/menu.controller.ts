@@ -9,6 +9,7 @@ import { sugerenciaParaFecha } from '../services/sugerencia.service.js';
 import { parseId } from '../utils/validacion.js';
 import { withTransaction } from '../services/inventario.service.js';
 import { registrarAuditoria } from '../services/auditoria.service.js';
+import { liberarReservasVencidas } from '../services/pagoQr.service.js';
 
 const menuSchema = z.object({
   nombre: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
@@ -93,17 +94,43 @@ export const getActiveMenu = async (req: AuthenticatedRequest, res: Response, ne
 
     // 3. Reserva del usuario para este menú y si todavía puede reservar
     const esMenuReal = menu.id !== 'default_menu';
-    let miReserva: { id: string; estado_pago: string; precio: number } | null = null;
+    let miReserva: {
+      id: string;
+      estado_pago: string;
+      precio: number;
+      metodo_pago: string;
+      vence_en: string | null;
+      comprobante: { estado: string; motivo: string | null } | null;
+    } | null = null;
 
     if (req.user?.id && esMenuReal) {
+      // Las reservas con QR sin comprobante a tiempo se anulan antes de mostrar el cupo (ADR 027)
+      await liberarReservasVencidas();
       const reservaRes = await query(
-        `SELECT id, estado_pago, precio_cobrado::float8 as precio
-         FROM ventas
-         WHERE usuario_id = $1 AND menu_id = $2 AND estado = 'completada'
+        `SELECT v.id, v.estado_pago, v.precio_cobrado::float8 as precio, v.metodo_pago, v.vence_en,
+                c.estado AS comprobante_estado, c.motivo AS comprobante_motivo
+         FROM ventas v
+         LEFT JOIN LATERAL (
+           SELECT estado, motivo FROM comprobantes_pago
+           WHERE venta_id = v.id ORDER BY created_at DESC LIMIT 1
+         ) c ON true
+         WHERE v.usuario_id = $1 AND v.menu_id = $2 AND v.estado = 'completada'
          LIMIT 1;`,
         [req.user.id, menu.id]
       );
-      miReserva = reservaRes.rows[0] ?? null;
+      const fila = reservaRes.rows[0];
+      miReserva = fila
+        ? {
+            id: fila.id,
+            estado_pago: fila.estado_pago,
+            precio: fila.precio,
+            metodo_pago: fila.metodo_pago,
+            vence_en: fila.vence_en && fila.estado_pago === 'pendiente' ? new Date(fila.vence_en).toISOString() : null,
+            comprobante: fila.comprobante_estado
+              ? { estado: fila.comprobante_estado, motivo: fila.comprobante_motivo }
+              : null,
+          }
+        : null;
     }
 
     const horario = estadoHorario();

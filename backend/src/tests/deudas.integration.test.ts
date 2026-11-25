@@ -15,21 +15,24 @@ let instructor: UsuarioTest;
 const pagar = (deudaId: string, body: object = {}, token = encargado.token) =>
   request(app).post(`/api/deudas/${deudaId}/pagar`).set('Authorization', `Bearer ${token}`).send(body);
 
-/** El instructor reserva un almuerzo en cada menú; las ventas quedan con fechas crecientes. */
+/**
+ * Almuerzos fiados de antes del pago con QR (ADR 026; desde el ADR 027 ya no se reserva fiado):
+ * una venta a crédito por menú, con fechas crecientes, y la deuda que las suma.
+ */
 const reservarAlmuerzos = async (cantidad: number) => {
   for (let i = 1; i <= cantidad; i += 1) {
     const menuId = await crearMenu(`Menú ${i}`);
-    const res = await request(app)
-      .post('/api/consumos/reservar')
-      .set('Authorization', `Bearer ${instructor.token}`)
-      .send({ menu_id: menuId });
-    assert.strictEqual(res.status, 201, JSON.stringify(res.body));
-    await pool.query("UPDATE ventas SET fecha_hora = NOW() - ($1 || ' minutes')::interval WHERE id = $2;", [
-      String(cantidad - i),
-      res.body.id,
-    ]);
+    await pool.query(
+      `INSERT INTO ventas (usuario_id, menu_id, fecha_hora, precio_cobrado, metodo_pago, estado_pago, metodo_verificacion, estado)
+       VALUES ($1, $2, NOW() - ($3 || ' minutes')::interval, 5000, 'credito', 'pendiente', 'manual', 'completada');`,
+      [instructor.id, menuId, String(cantidad - i)]
+    );
   }
-  const deuda = await pool.query('SELECT id FROM deudas WHERE usuario_id = $1;', [instructor.id]);
+  const deuda = await pool.query(
+    `INSERT INTO deudas (usuario_id, monto, almuerzos_pendientes, fecha_origen, estado)
+     VALUES ($1, $2, $3, (NOW() AT TIME ZONE 'America/Bogota')::date, 'pendiente') RETURNING id;`,
+    [instructor.id, 5000 * cantidad, cantidad]
+  );
   return deuda.rows[0].id as string;
 };
 
@@ -59,7 +62,7 @@ afterAll(() => {
 });
 
 describe('Cartera de deudas', () => {
-  it('acumula la deuda del instructor y la lista en la cartera', async () => {
+  it('lista en la cartera la deuda fiada del instructor', async () => {
     await reservarAlmuerzos(3);
     const res = await request(app).get('/api/deudas').set('Authorization', `Bearer ${encargado.token}`);
     assert.strictEqual(res.status, 200);

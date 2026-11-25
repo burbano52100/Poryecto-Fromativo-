@@ -45,11 +45,14 @@ La forma recomendada es **New + → Blueprint** apuntando a este repositorio. El
 | `SMTP_USER` | Usuario de la cuenta de correo | `tu-cuenta@gmail.com` |
 | `SMTP_PASS` | Contraseña de la cuenta (en Gmail, una contraseña de aplicación) | *(la contraseña de aplicación)* |
 | `SMTP_FROM` | Remitente; si se deja vacío se usa `SMTP_USER` (Opcional) | `SARA <tu-cuenta@gmail.com>` |
+| `DESTINATARIO_PAGO_QR` | Palabras del dueño del QR que deben aparecer en el comprobante (Opcional, ADR 027) | `SURCOLOM` |
 
 > **Nota sobre el Bootstrap del Encargado y del Coordinador**:
 > En cada arranque, después de las migraciones, el backend revisa cada rol por separado. Si la base no tiene ningún encargado y `ADMIN_DOCUMENT` y `ADMIN_PASSWORD` están definidos, crea el encargado. Si no tiene ningún coordinador y `COORDINADOR_DOCUMENT` y `COORDINADOR_PASSWORD` están definidos, crea el coordinador. Las dos cuentas quedan activas y con la contraseña hasheada. No necesitas activar el seed demo en producción.
 >
 > **Correo (opcional)**: las variables `SMTP_*` solo las usan los recordatorios de deuda que el encargado envía a los instructores desde la Cartera (ADR 023). Sin `SMTP_HOST`, la app funciona igual, pero los recordatorios no salen: se imprimen en el log de Render ("modo prueba") y la respuesta de la API lo indica.
+>
+> **Lector de comprobantes (ADR 027)**: el pago con QR lee las capturas con Tesseract dentro del backend. La primera lectura descarga los datos del español (unos MB, desde el CDN de tesseract.js) a la carpeta temporal, así que el servicio necesita salida a internet; en Render funciona sin configurar nada. Cada lectura usa ~1 s de CPU. `DESTINATARIO_PAGO_QR` (opcional, por defecto `SURCOLOM`) son las palabras que identifican al dueño del QR en el comprobante, separadas por coma.
 >
 > **El coordinador es obligatorio en producción**: el registro solo crea cuentas pendientes de aprendiz e instructor, y solo el coordinador las aprueba (ADR 018). Usa un documento y un correo distintos de los del encargado. Si alguno ya pertenece a otra cuenta, el backend no crea el coordinador y lo avisa en el log.
 

@@ -22,10 +22,23 @@ export interface MenuActivo {
   /** Lo que paga quien consulta: aprendiz, instructor o $0 si es beneficiario. */
   precio_aplicable: number;
   es_beneficiario: boolean;
-  mi_reserva: { id: string; estado_pago: EstadoPago; precio: number } | null;
+  mi_reserva: MiReserva | null;
   horario: { abre: string; cierra: string; abierto: boolean };
   reservable: boolean;
   motivo_no_reservable: string | null;
+}
+
+/** La reserva del usuario para el menú activo. */
+export interface MiReserva {
+  id: string;
+  estado_pago: EstadoPago;
+  precio: number;
+  /** 'qr' desde el ADR 027; 'cortesia' para beneficiarios; 'credito'/'efectivo' en reservas anteriores. */
+  metodo_pago?: string;
+  /** Hasta cuándo está apartada la porción mientras llega el comprobante del QR. */
+  vence_en?: string | null;
+  /** Último comprobante subido para esta reserva. */
+  comprobante?: { estado: EstadoComprobante; motivo: string | null } | null;
 }
 
 /** Menú tal como lo lista GET /api/menus (historial del Encargado). */
@@ -87,13 +100,19 @@ export interface Consumo {
   price: string;
   paymentStatus: 'PAGADO' | 'PENDIENTE' | 'GRATIS';
   estado_pago: EstadoPago;
-  /** Almuerzo del instructor cargado a su cuenta del mes (ADR 026). */
+  /** Almuerzo del instructor cargado a su cuenta del mes (ADR 026, reservas anteriores al QR). */
   fiado?: boolean;
+  /** Pago con el código QR (ADR 027). */
+  metodo_pago?: string;
+  vence_en?: string | null;
+  comprobante_estado?: EstadoComprobante | null;
   status: 'RESERVED' | 'CONSUMED';
 }
 
 export interface ReservaCreada extends Omit<Consumo, 'menu_fecha'> {
   message: string;
+  /** Minutos para pagar con el QR y subir el comprobante; null si no paga (beneficiario). */
+  minutos_para_pagar?: number | null;
 }
 
 export interface ResumenConsumos {
@@ -451,8 +470,6 @@ export interface InstructoresContadoHoy {
   caja_cerrada: boolean;
 }
 
-/** Cómo paga el instructor su almuerzo (ADR 026): fiado a su cuenta del mes o de contado en la ventanilla. */
-export type FormaPago = 'fiado' | 'contado';
 
 // ---------------------------------------------------------------- Beneficiarios
 export interface Estudiante {
@@ -583,4 +600,43 @@ export interface NuevaMerma {
   material_id: string;
   quantity: number;
   reason: string;
+}
+
+// ---------------------------------------------------------------- Pago con el código QR (ADR 027)
+export type EstadoComprobante = 'aceptado' | 'rechazado' | 'en_revision';
+
+/** Respuesta de POST /api/consumos/:id/comprobante. */
+export interface ResultadoComprobante {
+  id: string;
+  estado: EstadoComprobante;
+  motivo: string;
+  lectura: { banco: string | null; valor: number | null; fecha: string | null; hora: string | null; numero: string | null };
+  reserva: { id: string; estado_pago: EstadoPago; vence_en: string | null };
+}
+
+/** Comprobante tal como lo lista GET /api/comprobantes (encargado). */
+export interface ComprobantePago {
+  id: string;
+  estado: EstadoComprobante;
+  motivo: string | null;
+  banco: string | null;
+  numero: string | null;
+  valor: number | null;
+  fecha_pago: string | null;
+  hora_pago: string | null;
+  destinatario_ok: boolean;
+  confianza: number | null;
+  subido_en: string;
+  revisado_en: string | null;
+  revisado_por: string | null;
+  tiene_imagen: boolean;
+  persona: { nombre: string; cedula: string; rol: string; ficha: string | null };
+  reserva: { id: string; precio: number; estado: string; estado_pago: EstadoPago; menu: string };
+}
+
+export interface ResumenComprobantes {
+  aceptados_hoy: number;
+  valor_aceptado_hoy: number;
+  rechazados_hoy: number;
+  en_revision: number;
 }

@@ -7,6 +7,7 @@ import { cleanDatabase } from './helpers/db.js';
 import { crearUsuario, crearFicha, crearMenu, type UsuarioTest } from './helpers/auth.js';
 import { fijarHoraBogota, restaurarReloj } from './helpers/tiempo.js';
 import { fechaRelativa } from './helpers/fechas.js';
+import { liberarReservasVencidas } from '../services/pagoQr.service.js';
 
 const app = createApp();
 
@@ -107,7 +108,7 @@ describe('Descuento por cada almuerzo vendido', () => {
     assert.strictEqual(auditoria.rowCount, 1);
   });
 
-  it('cancelar la reserva genera el movimiento inverso y devuelve el cupo y la deuda', async () => {
+  it('cancelar la reserva genera el movimiento inverso y devuelve el cupo', async () => {
     const menu = await menuConReceta();
     const reserva = await request(app).post('/api/consumos/reservar').set(auth(instructor)).send({});
     assert.strictEqual(reserva.status, 201);
@@ -128,12 +129,27 @@ describe('Descuento por cada almuerzo vendido', () => {
     assert.strictEqual(venta.rows[0].estado, 'anulada');
     const cupo = await pool.query('SELECT cantidad_vendida FROM menus_dia WHERE id = $1;', [menu]);
     assert.strictEqual(cupo.rows[0].cantidad_vendida, 0);
-    const deuda = await pool.query('SELECT monto::float8 AS monto, estado FROM deudas WHERE usuario_id = $1;', [instructor.id]);
-    assert.deepStrictEqual(deuda.rows[0], { monto: 0, estado: 'pagada' });
+    // Con el pago por QR (ADR 027) la reserva del instructor ya no crea deuda
+    const deuda = await pool.query('SELECT 1 FROM deudas WHERE usuario_id = $1;', [instructor.id]);
+    assert.strictEqual(deuda.rowCount, 0);
 
     // Una segunda cancelación no vuelve a sumar stock
     assert.strictEqual((await request(app).post(`/api/consumos/${reserva.body.id}/cancelar`).set(auth(instructor))).status, 409);
     assert.strictEqual(await stock(arroz), 10);
+  });
+
+  it('una reserva con QR que vence sin comprobante devuelve los ingredientes (ADR 027)', async () => {
+    await menuConReceta();
+    const reserva = await request(app).post('/api/consumos/reservar').set(auth(instructor)).send({});
+    assert.strictEqual(reserva.status, 201, JSON.stringify(reserva.body));
+    assert.ok((await stock(arroz)) < 10);
+
+    await pool.query("UPDATE ventas SET vence_en = NOW() - INTERVAL '1 minute' WHERE id = $1;", [reserva.body.id]);
+    assert.strictEqual(await liberarReservasVencidas({ forzar: true }), 1);
+    assert.strictEqual(await stock(arroz), 10);
+    assert.strictEqual(await stock(pollo), 5);
+    const kardex = await kardexDe(reserva.body.id);
+    assert.ok(kardex.some((k) => k.referencia_tipo === 'venta_reversa' && k.tipo === 'entrada'));
   });
 
   it('cada persona de un registro de invitados descuenta una porción; editar y eliminar revierten', async () => {

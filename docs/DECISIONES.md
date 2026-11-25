@@ -178,7 +178,7 @@ Este documento recopila las decisiones técnicas clave tomadas durante el desarr
 
 ## ADR 026: El instructor elige fiado o pago en la ventanilla
 - **Fecha**: 2026-11-24
-- **Estado**: Aceptada (amplía el ADR 025)
+- **Estado**: Reemplazada por el ADR 027 (las reservas nuevas se pagan con el código QR; lo fiado antes sigue en Cartera)
 - **Contexto**: Todo almuerzo de instructor quedaba fiado: se sumaba a su deuda del mes y se cobraba en Cartera de Deudas. Algunos instructores prefieren pagarlo en el momento.
 - **Decisión**:
   - Al confirmar la reserva, el instructor elige **Fiado** (por defecto) o **Pago en la ventanilla**. La API recibe `forma_pago: 'fiado' | 'contado'`; sin valor es fiado, como antes.
@@ -187,3 +187,17 @@ Este documento recopila las decisiones técnicas clave tomadas durante el desarr
   - Pagar una deuda marca como pagados solo los almuerzos fiados. Cancelar una reserva solo baja la deuda si era fiada.
   - El cierre de caja espera el dinero de los de contado (`instructores_contado`) y deja los fiados como crédito informativo.
   - El historial del instructor marca con "Fiado" los almuerzos cargados a su cuenta.
+
+## ADR 027: Pago con el código QR y lectura del comprobante
+- **Fecha**: 2026-11-25
+- **Estado**: Aceptada (reemplaza el ADR 026)
+- **Contexto**: El comedor recibe los pagos con el código QR de Bancolombia del Centro de Gestión ("CENTR GEST SURCOLOM"). Se quiere que todo almuerzo se pague así, que la persona suba la captura del comprobante y que el sistema la revise sola: que sea de hoy, por el valor del almuerzo, a la hora de la reserva y que no se use dos veces, aunque la suban desde otra cuenta. No hace falta confirmar con el banco que el dinero llegó. Debe ser gratis.
+- **Decisión**:
+  - Aprendices e instructores pagan con el QR; ya no hay fiado ni ventanilla para reservas nuevas (la API ignora `forma_pago`). Los beneficiarios siguen en $0 sin pagar. Lo fiado antes del cambio se sigue cobrando en Cartera.
+  - Al reservar, la venta queda `metodo_pago = 'qr'`, `pendiente` y con `vence_en` = ahora + 15 minutos: la porción queda apartada. Si no llega un comprobante válido a tiempo, la reserva se anula y se devuelven la porción y los ingredientes (`liberarReservasVencidas`, cada minuto y antes de reservar, mostrar el menú o subir un comprobante).
+  - El comprobante se sube a `POST /api/consumos/:id/comprobante` (la imagen es el cuerpo: PNG, JPG o WEBP de hasta 5 MB). Lo lee **Tesseract** (tesseract.js, OCR gratuito ya entrenado para español; no se entrena ningún modelo) y unas reglas sacan banco, valor, fecha, hora, número y destinatario. Las capturas de pantalla de las apps se leen con confianza de 90 a 95.
+  - Resultado: **aceptado** si todo cuadra (la reserva queda pagada); **rechazado** si es de otro día, de otro valor, de más de una hora antes de la reserva, ya usado o no parece un comprobante (puede subir otro mientras no venza); **en revisión** si falta algún dato, la imagen no es nítida o el OCR falla. En revisión la porción no vence y el encargado decide en "Pagos con QR" (`/api/comprobantes`), viendo la captura.
+  - Un comprobante no se usa dos veces: la huella SHA-256 de la imagen y el par banco + número son únicos entre los aceptados y en revisión (índices parciales en `comprobantes_pago`), sin importar la cuenta.
+  - Se guarda cada intento con lo que leyó el OCR. La imagen solo se guarda mientras está en revisión, para no llenar la base gratuita.
+  - El cierre de caja informa aparte lo pagado con QR (`qr_pagados`, `qr_pendientes`): ese dinero llega a la cuenta, no a la caja.
+- **Consecuencias**: el sistema no prueba que el dinero llegó; una captura editada podría pasar. El encargado debe cruzar de vez en cuando "Pagos con QR" con los movimientos de la cuenta. El backend descarga una vez los datos del español de Tesseract (necesita internet la primera vez) y usa ~1 s de CPU por comprobante; por eso hay un límite de 20 comprobantes cada 10 minutos por usuario. El dueño del QR se reconoce por `DESTINATARIO_PAGO_QR` (por defecto `SURCOLOM`).

@@ -8,6 +8,7 @@ import { CONFIGURACION_POR_DEFECTO } from '../../services/configuracion.service.
 export async function cleanDatabase(): Promise<void> {
   await pool.query(`
     TRUNCATE TABLE
+      comprobantes_pago,
       auditoria,
       alertas,
       recordatorios_deuda,

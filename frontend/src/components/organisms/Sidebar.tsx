@@ -14,6 +14,7 @@ import {
   LogOut,
   Mail,
   Package,
+  QrCode,
   Receipt,
   Settings,
   TrendingUp,
@@ -30,6 +31,7 @@ import { SidebarUserProfile } from '../molecules/SidebarUserProfile';
 import { useConsumos } from '../../hooks/useConsumos';
 import { useResumenEncargado } from '../../hooks/useVentas';
 import { useResumenCoordinador } from '../../hooks/useCoordinador';
+import { useResumenComprobantes } from '../../hooks/usePagoQr';
 import { asset } from '../../lib/assets';
 
 export type SectionType =
@@ -40,6 +42,7 @@ export type SectionType =
   | 'sugerencias'
   | 'perfil'
   | 'ventas'
+  | 'comprobantes'
   | 'menu'
   | 'almuerzosInvitados'
   | 'almuerzosEspeciales'
@@ -106,6 +109,9 @@ export const Sidebar = ({
   const { data: resumenEncargado } = useResumenEncargado(isEncargado);
   const deudasPendientes = resumenEncargado?.deudasPendientes?.cantidad || undefined;
   const sugerenciasPendientes = resumenEncargado?.sugerenciasPendientes || undefined;
+  // Comprobantes del pago con QR que esperan la revisión del encargado (ADR 027)
+  const { data: resumenComprobantes } = useResumenComprobantes(isEncargado);
+  const comprobantesPorRevisar = resumenComprobantes?.en_revision || undefined;
 
   // Solicitudes de cuenta pendientes del Coordinador (ADR 018)
   const { data: resumenCoordinador } = useResumenCoordinador(isCoordinador);
@@ -121,6 +127,7 @@ export const Sidebar = ({
   const items: ItemMenu[] = isEncargado
     ? [
         { id: 'ventas', label: 'Ventas', icon: <TrendingUp /> },
+        { id: 'comprobantes', label: 'Pagos con QR', icon: <QrCode />, badge: comprobantesPorRevisar },
         { id: 'menu', label: 'Menú del día', icon: <Utensils /> },
         { id: 'almuerzosInvitados', label: 'Almuerzos invitados', icon: <HandPlatter /> },
         { id: 'almuerzosEspeciales', label: 'Almuerzos especiales', icon: <ConciergeBell /> },

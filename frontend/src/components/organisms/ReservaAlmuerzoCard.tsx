@@ -1,43 +1,29 @@
-import { useState, type ReactNode } from 'react';
-import { Alert, Card, CloseButton, Label, ToggleButton, ToggleButtonGroup } from '@heroui/react';
+import { useState } from 'react';
+import { Alert, Card, CloseButton } from '@heroui/react';
 import { Hueso } from '../atoms/Hueso';
-import { CheckCircle2, HandCoins, NotebookPen } from 'lucide-react';
 import type { User } from '../../schemas/auth.schema';
-import type { FormaPago, ReservaCreada } from '../../types/api';
+import type { ReservaCreada } from '../../types/api';
 import { esMenuPublicado, useMenuActivo, useReservarAlmuerzo } from '../../hooks/useMenu';
 import { MenuCard } from '../molecules/MenuCard';
-import { ConfirmDialog } from '../molecules/ConfirmDialog';
 import { ErrorAlert } from '../molecules/ErrorAlert';
+import { PagoQrDialog, type ReservaPorPagar } from './PagoQrDialog';
 import { fechaLarga, pesos } from '../../lib/formato';
 
 interface ReservaAlmuerzoCardProps {
   user: User;
   note?: string;
-  tituloConfirmacion: string;
-  /** Contenido del modal de confirmación; recibe el precio que fijó el backend y la forma de pago elegida. */
-  detalleConfirmacion: (precio: string, formaPago: FormaPago) => ReactNode;
-  mensajeExito: (reserva: ReservaCreada) => string;
-  /** El instructor elige al confirmar si lo paga fiado (cuenta del mes) o en la ventanilla (ADR 026). */
-  elegirFormaPago?: boolean;
 }
 
 /**
  * Menú del día con el flujo de reserva real (POST /api/consumos/reservar).
- * El aprendiz beneficiario reserva con un solo clic; los demás confirman en un modal.
+ * El aprendiz beneficiario reserva gratis con un clic. Los demás pagan con el código QR (ADR 027):
+ * al solicitar se aparta la porción y se abre el chat del pago para subir el comprobante.
  */
-export const ReservaAlmuerzoCard = ({
-  user,
-  note,
-  tituloConfirmacion,
-  detalleConfirmacion,
-  mensajeExito,
-  elegirFormaPago = false,
-}: ReservaAlmuerzoCardProps) => {
+export const ReservaAlmuerzoCard = ({ user, note }: ReservaAlmuerzoCardProps) => {
   const { data: menu, isPending, isError, error, refetch } = useMenuActivo();
   const reservar = useReservarAlmuerzo();
-  const [confirmando, setConfirmando] = useState(false);
-  const [formaPago, setFormaPago] = useState<FormaPago>('fiado');
-  const [reservaHecha, setReservaHecha] = useState<ReservaCreada | null>(null);
+  const [porPagar, setPorPagar] = useState<ReservaPorPagar | null>(null);
+  const [gratis, setGratis] = useState<ReservaCreada | null>(null);
 
   if (isPending) {
     return (
@@ -67,38 +53,44 @@ export const ReservaAlmuerzoCard = ({
   }
 
   const esBeneficiario = user.role === 'aprendiz' && menu.es_beneficiario;
-  const precio = pesos(menu.precio_aplicable);
   const hayCupo = menu.cantidad_disponible - menu.cantidad_vendida > 0;
-
-  const ejecutarReserva = () =>
-    reservar.mutate(
-      { menuId: esMenuPublicado(menu) ? menu.id : undefined, formaPago: elegirFormaPago ? formaPago : undefined },
-      {
-        onSuccess: (reserva) => {
-          setReservaHecha(reserva);
-          setConfirmando(false);
-        },
-        onError: () => setConfirmando(false),
-      }
-    );
+  const miReserva = menu.mi_reserva;
 
   const solicitar = () => {
     reservar.reset();
-    setReservaHecha(null);
-    if (esBeneficiario) ejecutarReserva();
-    else setConfirmando(true);
+    setGratis(null);
+    reservar.mutate(
+      { menuId: esMenuPublicado(menu) ? menu.id : undefined },
+      {
+        onSuccess: (reserva) => {
+          if (reserva.estado_pago === 'gratis') setGratis(reserva);
+          else setPorPagar({ id: reserva.id, precio: reserva.precio, vence_en: reserva.vence_en ?? null, comprobante: null });
+        },
+      }
+    );
   };
+
+  const abrirPago = () =>
+    miReserva &&
+    setPorPagar({
+      id: miReserva.id,
+      precio: miReserva.precio,
+      vence_en: miReserva.vence_en ?? null,
+      comprobante: miReserva.comprobante ?? null,
+    });
 
   return (
     <div className="flex flex-col gap-4">
-      {reservaHecha && (
+      {gratis && (
         <Alert status="success" role="status">
           <Alert.Indicator />
           <Alert.Content>
             <Alert.Title>Almuerzo reservado</Alert.Title>
-            <Alert.Description>{mensajeExito(reservaHecha)}</Alert.Description>
+            <Alert.Description>
+              Tarifa: $0 COP (beneficio 100 % subsidiado). Presenta tu documento o ficha en el comedor.
+            </Alert.Description>
           </Alert.Content>
-          <CloseButton aria-label="Cerrar aviso" onPress={() => setReservaHecha(null)} />
+          <CloseButton aria-label="Cerrar aviso" onPress={() => setGratis(null)} />
         </Alert>
       )}
 
@@ -110,58 +102,21 @@ export const ReservaAlmuerzoCard = ({
         dateText={fechaLarga(new Date(`${menu.fecha}T12:00:00-05:00`))}
         title={menu.nombre}
         description={menu.descripcion}
-        price={precio}
+        price={pesos(menu.precio_aplicable)}
         note={note}
         horario={`Reservas de ${menu.horario.abre} a ${menu.horario.cierra}, hora de Colombia`}
         imageUrl={menu.imagen_url}
         isAvailable={hayCupo}
         canReserve={menu.reservable}
         unavailableReason={menu.motivo_no_reservable}
-        reservation={menu.mi_reserva}
+        reservation={miReserva}
         onRequestLunch={solicitar}
-        isLoading={reservar.isPending && !confirmando}
+        onPay={abrirPago}
+        isLoading={reservar.isPending}
         isBeneficiario={esBeneficiario}
       />
 
-      <ConfirmDialog
-        abierto={confirmando}
-        titulo={tituloConfirmacion}
-        icono={<CheckCircle2 className="size-5" />}
-        textoConfirmar={`Confirmar (${precio})`}
-        onConfirmar={ejecutarReserva}
-        onCancelar={() => setConfirmando(false)}
-        cargando={reservar.isPending}
-      >
-        <div className="flex flex-col gap-4">
-          {elegirFormaPago && (
-            <div className="flex flex-col gap-1.5">
-              <Label id="forma-pago">¿Cómo lo vas a pagar?</Label>
-              <ToggleButtonGroup
-                aria-labelledby="forma-pago"
-                selectionMode="single"
-                disallowEmptySelection
-                fullWidth
-                selectedKeys={[formaPago]}
-                onSelectionChange={(keys) => {
-                  const [elegida] = keys;
-                  if (elegida) setFormaPago(elegida as FormaPago);
-                }}
-              >
-                <ToggleButton id="fiado">
-                  <NotebookPen />
-                  Fiado
-                </ToggleButton>
-                <ToggleButton id="contado">
-                  <ToggleButtonGroup.Separator />
-                  <HandCoins />
-                  Pago en la ventanilla
-                </ToggleButton>
-              </ToggleButtonGroup>
-            </div>
-          )}
-          {detalleConfirmacion(precio, formaPago)}
-        </div>
-      </ConfirmDialog>
+      <PagoQrDialog reserva={porPagar} onCerrar={() => setPorPagar(null)} />
     </div>
   );
 };

@@ -13,6 +13,7 @@ import { InventarioSection } from '../components/organisms/InventarioSection';
 import { GruposSection } from '../components/organisms/GruposSection';
 import { BuzonSugerenciasEncargadoSection } from '../components/organisms/BuzonSugerenciasEncargadoSection';
 import { VisitasInstitucionalesSection } from '../components/organisms/VisitasInstitucionalesSection';
+import { ComprobantesSection } from '../components/organisms/ComprobantesSection';
 
 interface EncargadoDashboardPageProps {
   user?: User;
@@ -54,6 +55,9 @@ export const EncargadoDashboardPage = ({
           <VentasSection />
         </div>
       )}
+
+      {/* 1b. PAGOS CON QR: comprobantes por revisar y los de hoy (ADR 027) */}
+      {activeSection === 'comprobantes' && <ComprobantesSection />}
 
       {/* 2. MENÚ DEL DÍA SECTION */}
       {activeSection === 'menu' && <MenuDelDiaEncargadoSection />}

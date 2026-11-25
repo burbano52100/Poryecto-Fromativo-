@@ -14,6 +14,10 @@ globalThis.ResizeObserver ??= ResizeObserverDePrueba as unknown as typeof Resize
 // jsdom tampoco trae getAnimations: el indicador de las pestañas (Tabs) lo usa al cambiar de pestaña
 Element.prototype.getAnimations ??= () => [];
 
+// jsdom no trae URL.createObjectURL: la vista previa del comprobante y su captura en revisión lo usan
+URL.createObjectURL ??= () => 'blob:prueba';
+URL.revokeObjectURL ??= () => {};
+
 afterEach(() => {
   cleanup();
   // La cola de toasts es global: que un aviso de un test no aparezca en el siguiente
