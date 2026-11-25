@@ -12,10 +12,11 @@ import { descontarPorReceta, revertirDescuento } from '../services/descuentoRece
 import { registrarAuditoria } from '../services/auditoria.service.js';
 import { liberarReservasVencidas, MINUTOS_PARA_PAGAR } from '../services/pagoQr.service.js';
 
-// Desde el ADR 027 el aprendiz y el instructor pagan con el código QR: ya no hay forma de pago que
-// elegir (el campo forma_pago del ADR 026 se ignora si llega)
+// Se paga con el código QR (ADR 027). El instructor también puede fiar: el almuerzo se suma a su
+// cuenta del mes y no pasa por el QR (ADR 028). Sin forma_pago, QR.
 const reservaSchema = z.object({
   menu_id: z.string().uuid().nullish(),
+  forma_pago: z.enum(['qr', 'fiado']).nullish(),
 });
 
 const formatearPrecio = (precio: number) => (precio === 0 ? '$0' : `$${precio.toLocaleString('es-CO')}`);
@@ -151,9 +152,16 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
 
   const parsed = reservaSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
-    return res.status(400).json({ message: 'El identificador del menú no es válido.' });
+    const enFormaPago = parsed.error.issues.some((i) => i.path[0] === 'forma_pago');
+    return res.status(400).json({
+      message: enFormaPago ? 'La forma de pago no es válida: usa "qr" o "fiado".' : 'El identificador del menú no es válido.',
+    });
   }
   const menuId = parsed.data.menu_id ?? null;
+  const fiar = parsed.data.forma_pago === 'fiado';
+  if (fiar && req.user?.role !== 'instructor') {
+    return res.status(403).json({ message: 'Solo los instructores pueden fiar el almuerzo.' });
+  }
 
   if (!reservasAbiertas()) {
     return res.status(409).json({ message: MENSAJE_FUERA_DE_HORARIO, fuera_de_horario: true });
@@ -243,7 +251,8 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
     // 4. Determinar tarifas y estados según rol y condición de beneficiario.
     //    El precio lo fija siempre el servidor; se ignora cualquier precio enviado por el cliente.
     //    Se paga con el código QR (ADR 027): la porción queda apartada MINUTOS_PARA_PAGAR minutos
-    //    mientras llega el comprobante. El beneficiario no paga.
+    //    mientras llega el comprobante. El beneficiario no paga. El instructor que fía no usa el QR:
+    //    el almuerzo queda reservado de una vez y se suma a su deuda del mes (ADR 028).
     let price = Number(targetMenu.precio_aprendiz);
     let metodoPago = 'qr';
     let estadoPago: EstadoPago = 'pendiente';
@@ -255,8 +264,10 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
     } else if (user.rol === 'instructor') {
       // El instructor paga su propio precio (ADR 025); en menús sin él, el del aprendiz
       price = Number(targetMenu.precio_instructor ?? targetMenu.precio_aprendiz);
+      if (fiar) metodoPago = 'credito';
     }
     const pagaConQr = metodoPago === 'qr';
+    const esFiado = metodoPago === 'credito';
 
     // 5. Insertar venta garantizando unicidad usuario/menú
     let insertVenta: any;
@@ -282,7 +293,29 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
 
     const venta = insertVenta.rows[0];
 
-    // 6. Descuento de inventario por la receta del menú, en la misma transacción (ADR 020). Si la
+    // 6. Fiado: el valor se suma a la deuda abierta del instructor, o abre una (ADR 028)
+    if (esFiado) {
+      const deudaAbierta = await client.query(
+        "SELECT id FROM deudas WHERE usuario_id = $1 AND estado <> 'pagada' ORDER BY created_at DESC LIMIT 1 FOR UPDATE;",
+        [userId]
+      );
+      if (deudaAbierta.rows[0]) {
+        await client.query(
+          `UPDATE deudas
+           SET monto = monto + $1, almuerzos_pendientes = almuerzos_pendientes + 1, updated_at = NOW()
+           WHERE id = $2;`,
+          [price, deudaAbierta.rows[0].id]
+        );
+      } else {
+        await client.query(
+          `INSERT INTO deudas (usuario_id, monto, almuerzos_pendientes, fecha_origen, estado)
+           VALUES ($1, $2, 1, (NOW() AT TIME ZONE 'America/Bogota')::date, 'pendiente');`,
+          [userId, price]
+        );
+      }
+    }
+
+    // 7. Descuento de inventario por la receta del menú, en la misma transacción (ADR 020). Si la
     //    reserva con QR vence sin comprobante, liberarReservasVencidas lo revierte.
     await descontarPorReceta(client, {
       menu: {
@@ -315,7 +348,7 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
       price: formatearPrecio(price),
       paymentStatus: paymentStatusMap[estadoPago],
       estado_pago: estadoPago,
-      fiado: false,
+      fiado: esFiado,
       metodo_pago: metodoPago,
       // Hasta cuándo está apartada la porción mientras llega el comprobante del QR (ADR 027)
       vence_en: venta.vence_en ? new Date(venta.vence_en).toISOString() : null,
@@ -324,7 +357,9 @@ export const reservarAlmuerzo = async (req: AuthenticatedRequest, res: Response,
       message:
         price === 0
           ? '¡Almuerzo gratuito de beneficiario reservado con éxito!'
-          : `Tu almuerzo quedó apartado ${MINUTOS_PARA_PAGAR} minutos. Paga con el código QR y sube el comprobante.`,
+          : esFiado
+            ? `Almuerzo reservado. Se sumaron ${formatearPrecio(price)} a tu cuenta del mes.`
+            : `Tu almuerzo quedó apartado ${MINUTOS_PARA_PAGAR} minutos. Paga con el código QR y sube el comprobante.`,
     });
   } catch (error) {
     await client.query('ROLLBACK');

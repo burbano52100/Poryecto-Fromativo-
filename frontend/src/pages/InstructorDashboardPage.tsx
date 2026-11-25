@@ -29,10 +29,10 @@ export const InstructorDashboardPage = ({ user, onLogout }: InstructorDashboardP
           {/* Saludo corto, sin tarjeta: lo primero que se ve es el menú del día. Lo que debe va en Mi cuenta */}
           <div className="flex flex-col gap-1">
             <h3 className="text-xl font-semibold text-foreground">Hola, {user.name.split(' ')[0]}</h3>
-            <p className="text-sm text-muted">Reserva el almuerzo del día y págalo con el código QR desde la app de tu banco</p>
+            <p className="text-sm text-muted">Reserva el almuerzo del día: págalo con el código QR o fíalo a tu cuenta del mes</p>
           </div>
 
-          <ReservaAlmuerzoCard user={user} />
+          <ReservaAlmuerzoCard user={user} permitirFiar />
         </div>
       )}
 

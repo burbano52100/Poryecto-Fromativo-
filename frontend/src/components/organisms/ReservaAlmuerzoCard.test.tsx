@@ -63,8 +63,10 @@ const mockPost = (reserva: object, comprobante?: ResultadoComprobante) =>
     .spyOn(apiClient, 'post')
     .mockImplementation(async (url: string) => respuesta(url === '/consumos/reservar' ? reserva : comprobante));
 
-const renderTarjeta = (overrides: Parameters<typeof usuarioDePrueba>[0] = {}) =>
-  renderConProveedores(<ReservaAlmuerzoCard user={usuarioDePrueba({ role: 'aprendiz', ...overrides })} />);
+const renderTarjeta = (overrides: Parameters<typeof usuarioDePrueba>[0] = {}, permitirFiar = false) =>
+  renderConProveedores(
+    <ReservaAlmuerzoCard user={usuarioDePrueba({ role: 'aprendiz', ...overrides })} permitirFiar={permitirFiar} />
+  );
 
 const captura = (tipo = 'image/png') => new File(['captura'], 'comprobante.png', { type: tipo });
 
@@ -229,5 +231,50 @@ describe('Reserva de almuerzo del aprendiz', () => {
 
     expect(await screen.findByRole('button', { name: 'Solicitar almuerzo' })).toBeDisabled();
     expect(screen.getByText(motivo)).toBeInTheDocument();
+  });
+});
+
+describe('El instructor puede fiar el almuerzo (ADR 028)', () => {
+  it('"Fiar" reserva de una vez, sin el QR, y avisa que se sumó a la cuenta del mes', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValue(respuesta(menu({ precio_aplicable: 10000 })));
+    const post = mockPost({
+      ...reservaCreada(10000, 'pendiente'),
+      price: '$10.000',
+      metodo_pago: 'credito',
+      fiado: true,
+      vence_en: null,
+      minutos_para_pagar: null,
+    });
+    renderTarjeta({ role: 'instructor' }, true);
+
+    await userEvent.click(await screen.findByRole('button', { name: /Fiar/ }));
+    expect(post).toHaveBeenCalledWith('/consumos/reservar', { menu_id: MENU_ID, forma_pago: 'fiado' });
+    expect(await screen.findByText(/Fiado: \$10\.000 se sumó a tu cuenta del mes/)).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('el aprendiz no ve "Fiar"', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValue(respuesta(menu()));
+    renderTarjeta({}, false);
+    expect(await screen.findByRole('button', { name: 'Solicitar almuerzo' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Fiar/ })).not.toBeInTheDocument();
+  });
+
+  it('una reserva fiada se muestra como fiado, sin botón de pago', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValue(
+      respuesta(
+        menu({
+          reservable: false,
+          precio_aplicable: 10000,
+          mi_reserva: { id: 'venta-1', estado_pago: 'pendiente', precio: 10000, metodo_pago: 'credito', vence_en: null },
+        })
+      )
+    );
+    renderTarjeta({ role: 'instructor' }, true);
+
+    expect(await screen.findByText('Almuerzo reservado')).toBeInTheDocument();
+    expect(screen.getByText('Fiado')).toBeInTheDocument();
+    expect(screen.getByText('Se paga a fin de mes en la oficina del comedor')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Pagar con QR/ })).not.toBeInTheDocument();
   });
 });

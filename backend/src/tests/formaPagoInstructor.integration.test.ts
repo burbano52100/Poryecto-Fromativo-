@@ -8,9 +8,9 @@ import { crearMenu, crearUsuario, type UsuarioTest } from './helpers/auth.js';
 import { fijarHoraBogota, restaurarReloj } from './helpers/tiempo.js';
 
 /**
- * Fiado y pago en la ventanilla del instructor (ADR 026), reemplazados por el pago con QR (ADR 027).
- * Las reservas nuevas ya no se pueden fiar, pero las fiadas o de contado que quedaron de antes se
- * siguen cobrando, cancelando y contando en la caja como siempre.
+ * El instructor paga con el código QR (ADR 027) o fía a su cuenta del mes (ADR 028). La ventanilla
+ * (ADR 026) ya no existe para reservas nuevas, pero las de contado que quedaron de antes se siguen
+ * cobrando, cancelando y contando en la caja como siempre.
  */
 const app = createApp();
 
@@ -62,18 +62,44 @@ beforeEach(async () => {
 
 afterAll(() => restaurarReloj());
 
-describe('Fiado y ventanilla de antes del pago con QR (ADR 026 → ADR 027)', () => {
-  it('la forma de pago que envíe el instructor se ignora: reserva con QR y sin deuda', async () => {
-    for (const formaPago of ['fiado', 'contado', 'tarjeta']) {
-      await pool.query('TRUNCATE TABLE ventas RESTART IDENTITY CASCADE;');
-      await pool.query('UPDATE menus_dia SET cantidad_vendida = 0;');
-      const res = await reservar(instructor, { forma_pago: formaPago });
-      assert.strictEqual(res.status, 201, JSON.stringify(res.body));
-      assert.strictEqual(res.body.metodo_pago, 'qr');
-      assert.strictEqual(res.body.fiado, false);
-      assert.strictEqual(res.body.precio, 10000);
-    }
+describe('El instructor fía o paga con QR (ADR 026 → ADR 027 → ADR 028)', () => {
+  it('el instructor que fía reserva de una vez, sin QR, y el valor se suma a su deuda (ADR 028)', async () => {
+    const res = await reservar(instructor, { forma_pago: 'fiado' });
+    assert.strictEqual(res.status, 201, JSON.stringify(res.body));
+    assert.strictEqual(res.body.metodo_pago, 'credito');
+    assert.strictEqual(res.body.fiado, true);
+    assert.strictEqual(res.body.vence_en, null, 'lo fiado no tiene plazo para subir comprobante');
+    assert.strictEqual(res.body.precio, 10000);
+    assert.match(res.body.message, /\$10\.000 a tu cuenta del mes/);
+    assert.strictEqual((await deuda())?.monto, 10000);
+
+    const historial = await request(app).get('/api/consumos').set(auth(instructor));
+    assert.strictEqual(historial.body[0].fiado, true);
+
+    // Otro día fiado se suma a la misma deuda abierta
+    const otroMenu = await crearMenu('Menú de mañana');
+    await pool.query("UPDATE menus_dia SET precio_instructor = 10000, fecha = fecha + 1 WHERE id = $1;", [otroMenu]);
+    const segundo = await request(app).post('/api/consumos/reservar').set(auth(instructor)).send({ menu_id: otroMenu, forma_pago: 'fiado' });
+    assert.strictEqual(segundo.status, 201, JSON.stringify(segundo.body));
+    assert.strictEqual((await deuda())?.monto, 20000);
+    assert.strictEqual(Number((await pool.query('SELECT COUNT(*) FROM deudas WHERE usuario_id = $1;', [instructor.id])).rows[0].count), 1);
+  });
+
+  it('sin forma de pago, o con "qr", reserva con QR; "contado" ya no existe y el aprendiz no puede fiar', async () => {
+    const conQr = await reservar(instructor);
+    assert.strictEqual(conQr.status, 201, JSON.stringify(conQr.body));
+    assert.strictEqual(conQr.body.metodo_pago, 'qr');
+    assert.ok(conQr.body.vence_en);
     assert.strictEqual(await deuda(), undefined);
+
+    const contado = await reservar(instructor, { forma_pago: 'contado' });
+    assert.strictEqual(contado.status, 400);
+    assert.match(contado.body.message, /forma de pago/);
+
+    const aprendiz = await crearUsuario('Aprendiz que quiere fiar', '8600000009', 'aprendiz');
+    const fiaAprendiz = await reservar(aprendiz, { forma_pago: 'fiado' });
+    assert.strictEqual(fiaAprendiz.status, 403);
+    assert.match(fiaAprendiz.body.message, /Solo los instructores/);
   });
 
   it('cancelar un fiado de antes baja la deuda; cancelar una reserva con QR no la toca', async () => {

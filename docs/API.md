@@ -120,7 +120,7 @@ En cada petición se verifica el JWT y se consulta al usuario en la base de dato
 ### `POST /api/consumos/reservar`
 - **Rol requerido**: `aprendiz` o `instructor` (el `encargado` recibe `403`).
 - **Horario**: de 7:00 a. m. a 9:00 p. m. Fuera de ese horario responde `409` con `{ "fuera_de_horario": true }`.
-- **Body**: `{ "menu_id": "uuid" }`. Opcional: sin `menu_id` se usa el menú activo de hoy.
+- **Body**: `{ "menu_id": "uuid", "forma_pago": "qr | fiado" }`. Opcional: sin `menu_id` se usa el menú activo de hoy; sin `forma_pago`, QR. Solo el instructor puede enviar `fiado` (ADR 028); otro rol recibe `403` y un valor distinto, `400`.
 - **Precio**: lo fija siempre el servidor; cualquier precio enviado por el cliente se ignora.
 
   | Usuario | Precio | `estado_pago` | `metodo_pago` |
@@ -128,8 +128,9 @@ En cada petición se verifica el JWT y se consulta al usuario en la base de dato
   | Aprendiz beneficiario | $0 | `gratis` | `cortesia` |
   | Aprendiz | `precio_aprendiz` ($5.000) | `pendiente` | `qr` |
   | Instructor | `precio_instructor` (o el del aprendiz si el menú no lo tiene) | `pendiente` | `qr` |
+  | Instructor que fía (`forma_pago: "fiado"`) | `precio_instructor`, suma a su deuda del mes | `pendiente` | `credito` |
 
-- **Pago con el código QR (ADR 027)**: la porción queda apartada 15 minutos (`vence_en`) mientras la persona paga y sube el comprobante. Sin comprobante válido a tiempo, la reserva se anula. `forma_pago` (ADR 026) ya no se usa y se ignora.
+- **Pago con el código QR (ADR 027)**: la porción queda apartada 15 minutos (`vence_en`) mientras la persona paga y sube el comprobante. Sin comprobante válido a tiempo, la reserva se anula. Lo fiado no tiene plazo: queda reservado de una vez.
 - **Respuesta 201**: `{ id, fecha, date, title, precio, price, paymentStatus, estado_pago, metodo_pago, vence_en, minutos_para_pagar, status: "RESERVED", message }`
 - **Errores**: `400` (menú inválido o no activo, o no hay menú activo), `404` (menú inexistente), `409` (cupo agotado, reserva duplicada con `duplicate: true`, o fuera de horario).
 

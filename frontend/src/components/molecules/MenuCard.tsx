@@ -1,16 +1,9 @@
-import { Card, Chip } from "@heroui/react";
-import {
-  Award,
-  Calendar,
-  CheckCircle2,
-  Clock,
-  Info,
-  QrCode,
-} from "lucide-react";
-import { Button } from "../atoms/Button";
-import { EstadoPagoBadge } from "../atoms/EstadoPagoBadge";
-import { resolverImagen } from "../../lib/assets";
-import type { MiReserva } from "../../types/api";
+import { Card, Chip } from '@heroui/react';
+import { Award, Calendar, CheckCircle2, Clock, Info, NotebookPen, QrCode } from 'lucide-react';
+import { Button } from '../atoms/Button';
+import { EstadoPagoBadge } from '../atoms/EstadoPagoBadge';
+import { resolverImagen } from '../../lib/assets';
+import type { MiReserva } from '../../types/api';
 
 export interface MenuCardProps {
   dateText: string;
@@ -27,11 +20,14 @@ export interface MenuCardProps {
   canReserve: boolean;
   unavailableReason?: string | null;
   /** Estado de la reserva del usuario para este menú, si ya reservó. */
-  reservation?: (Pick<MiReserva, "estado_pago"> & Partial<MiReserva>) | null;
+  reservation?: (Pick<MiReserva, 'estado_pago'> & Partial<MiReserva>) | null;
   onRequestLunch: () => void;
   /** Abre el chat del pago con QR de una reserva que espera su comprobante (ADR 027). */
   onPay?: () => void;
-  isLoading?: boolean;
+  /** Solo el instructor: reserva de una vez y lo suma a su cuenta del mes (ADR 028). */
+  onCredit?: () => void;
+  /** Qué botón está reservando ahora, para mostrar su spinner. */
+  pending?: 'solicitar' | 'fiar' | null;
   isBeneficiario?: boolean;
 }
 
@@ -49,21 +45,18 @@ export const MenuCard = ({
   reservation,
   onRequestLunch,
   onPay,
-  isLoading = false,
+  onCredit,
+  pending = null,
   isBeneficiario = false,
 }: MenuCardProps) => {
   // Reservada con QR y sin pagar: la porción está apartada hasta que llegue el comprobante
-  const esperaPago =
-    reservation?.estado_pago === "pendiente" &&
-    reservation.metodo_pago === "qr";
-  const enRevision = reservation?.comprobante?.estado === "en_revision";
+  const esperaPago = reservation?.estado_pago === 'pendiente' && reservation.metodo_pago === 'qr';
+  const fiado = reservation?.metodo_pago === 'credito';
+  const enRevision = reservation?.comprobante?.estado === 'en_revision';
   const apartadaHasta = reservation?.vence_en
-    ? new Date(reservation.vence_en).toLocaleTimeString("es-CO", {
-        timeZone: "America/Bogota",
-        hour: "numeric",
-        minute: "2-digit",
-      })
+    ? new Date(reservation.vence_en).toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: 'numeric', minute: '2-digit' })
     : null;
+  const reservando = pending !== null;
 
   return (
     // Es la tarea principal del aprendiz y del instructor: borde y precio en el color del perfil
@@ -80,12 +73,8 @@ export const MenuCard = ({
       <div className="flex flex-1 flex-col gap-4 p-5">
         <Card.Header className="gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <Chip
-              size="sm"
-              variant="soft"
-              color={isAvailable ? "success" : "danger"}
-            >
-              {isAvailable ? "Disponible" : "Agotado"}
+            <Chip size="sm" variant="soft" color={isAvailable ? 'success' : 'danger'}>
+              {isAvailable ? 'Disponible' : 'Agotado'}
             </Chip>
             {isBeneficiario && (
               <Chip size="sm" variant="soft" color="warning">
@@ -118,9 +107,7 @@ export const MenuCard = ({
             <p className="text-xs text-muted">Valor del almuerzo</p>
             <p className="text-2xl font-semibold tabular-nums text-accent">
               {price}
-              <span className="ml-1.5 text-xs font-normal text-muted">
-                {isBeneficiario ? "subsidio 100%" : "COP"}
-              </span>
+              <span className="ml-1.5 text-xs font-normal text-muted">{isBeneficiario ? 'subsidio 100%' : 'COP'}</span>
             </p>
             {note && <p className="mt-0.5 text-xs text-muted">{note}</p>}
           </div>
@@ -128,19 +115,19 @@ export const MenuCard = ({
           {reservation && esperaPago ? (
             <div className="flex flex-col items-end gap-1.5">
               <span className="text-sm font-medium text-foreground">
-                {enRevision ? "Comprobante en revisión" : "Almuerzo apartado"}
+                {enRevision ? 'Comprobante en revisión' : 'Almuerzo apartado'}
               </span>
               <p className="text-xs text-muted">
                 {enRevision
-                  ? "El encargado está revisando tu pago"
+                  ? 'El encargado está revisando tu pago'
                   : apartadaHasta
                     ? `Paga y sube el comprobante antes de las ${apartadaHasta}`
-                    : "Paga y sube el comprobante"}
+                    : 'Paga y sube el comprobante'}
               </p>
               {onPay && (
                 <Button size="lg" onPress={onPay}>
                   <QrCode />
-                  {enRevision ? "Ver el pago" : "Pagar con QR"}
+                  {enRevision ? 'Ver el pago' : 'Pagar con QR'}
                 </Button>
               )}
             </div>
@@ -149,19 +136,41 @@ export const MenuCard = ({
               <span className="inline-flex items-center gap-1.5 text-sm font-medium text-success">
                 <CheckCircle2 className="size-4" /> Almuerzo reservado
               </span>
-              <EstadoPagoBadge estado={reservation.estado_pago} />
+              {fiado ? (
+                <>
+                  <Chip size="sm" variant="soft" color="warning">
+                    <NotebookPen className="size-3.5" />
+                    <Chip.Label>Fiado</Chip.Label>
+                  </Chip>
+                  <p className="text-xs text-muted">Se paga a fin de mes en la oficina del comedor</p>
+                </>
+              ) : (
+                <EstadoPagoBadge estado={reservation.estado_pago} />
+              )}
             </div>
           ) : (
-            <Button
-              size="lg"
-              onPress={onRequestLunch}
-              isDisabled={!canReserve || isLoading}
-              isPending={isLoading}
-            >
-              {isBeneficiario
-                ? "Reservar almuerzo gratis"
-                : "Solicitar almuerzo"}
-            </Button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {onCredit && (
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  onPress={onCredit}
+                  isDisabled={!canReserve || reservando}
+                  isPending={pending === 'fiar'}
+                >
+                  {pending !== 'fiar' && <NotebookPen />}
+                  Fiar
+                </Button>
+              )}
+              <Button
+                size="lg"
+                onPress={onRequestLunch}
+                isDisabled={!canReserve || reservando}
+                isPending={pending === 'solicitar'}
+              >
+                {isBeneficiario ? 'Reservar almuerzo gratis' : 'Solicitar almuerzo'}
+              </Button>
+            </div>
           )}
         </Card.Footer>
 

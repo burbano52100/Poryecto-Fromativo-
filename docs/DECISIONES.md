@@ -190,7 +190,7 @@ Este documento recopila las decisiones técnicas clave tomadas durante el desarr
 
 ## ADR 027: Pago con el código QR y lectura del comprobante
 - **Fecha**: 2026-11-25
-- **Estado**: Aceptada (reemplaza el ADR 026)
+- **Estado**: Aceptada (reemplaza el ADR 026; el ADR 028 devuelve al instructor la opción de fiar)
 - **Contexto**: El comedor recibe los pagos con el código QR de Bancolombia del Centro de Gestión ("CENTR GEST SURCOLOM"). Se quiere que todo almuerzo se pague así, que la persona suba la captura del comprobante y que el sistema la revise sola: que sea de hoy, por el valor del almuerzo, a la hora de la reserva y que no se use dos veces, aunque la suban desde otra cuenta. No hace falta confirmar con el banco que el dinero llegó. Debe ser gratis.
 - **Decisión**:
   - Aprendices e instructores pagan con el QR; ya no hay fiado ni ventanilla para reservas nuevas (la API ignora `forma_pago`). Los beneficiarios siguen en $0 sin pagar. Lo fiado antes del cambio se sigue cobrando en Cartera.
@@ -201,3 +201,12 @@ Este documento recopila las decisiones técnicas clave tomadas durante el desarr
   - Se guarda cada intento con lo que leyó el OCR. La imagen solo se guarda mientras está en revisión, para no llenar la base gratuita.
   - El cierre de caja informa aparte lo pagado con QR (`qr_pagados`, `qr_pendientes`): ese dinero llega a la cuenta, no a la caja.
 - **Consecuencias**: el sistema no prueba que el dinero llegó; una captura editada podría pasar. El encargado debe cruzar de vez en cuando "Pagos con QR" con los movimientos de la cuenta. El backend descarga una vez los datos del español de Tesseract (necesita internet la primera vez) y usa ~1 s de CPU por comprobante; por eso hay un límite de 20 comprobantes cada 10 minutos por usuario. El dueño del QR se reconoce por `DESTINATARIO_PAGO_QR` (por defecto `SURCOLOM`).
+
+## ADR 028: El instructor puede fiar el almuerzo
+- **Fecha**: 2026-11-25
+- **Estado**: Aceptada (amplía el ADR 027)
+- **Contexto**: Con el pago por QR (ADR 027) el instructor perdió la opción de fiar. Se pide un botón "Fiar" en su perfil que reserve el almuerzo de una vez, sin pasar por el QR.
+- **Decisión**:
+  - En la tarjeta del menú, el instructor ve "Fiar" junto a "Solicitar almuerzo". Un clic reserva el almuerzo con `forma_pago: 'fiado'`: la venta queda `metodo_pago = 'credito'`, `pendiente`, sin `vence_en` (no hay comprobante que esperar), y su valor se suma a la deuda abierta del instructor o abre una.
+  - "Solicitar almuerzo" sigue siendo el pago con QR. La API acepta `forma_pago` = `qr` (o sin valor) y `fiado`; `contado` ya no existe (`400`). Un aprendiz que envía `fiado` recibe `403`.
+  - Lo fiado se cobra en Cartera de Deudas, se ve en Mi cuenta y en el historial marcado como "Fiado", y el cierre de caja lo informa como crédito. Cancelar un fiado baja la deuda.

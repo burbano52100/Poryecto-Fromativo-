@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Alert, Card, CloseButton } from '@heroui/react';
 import { Hueso } from '../atoms/Hueso';
 import type { User } from '../../schemas/auth.schema';
-import type { ReservaCreada } from '../../types/api';
 import { esMenuPublicado, useMenuActivo, useReservarAlmuerzo } from '../../hooks/useMenu';
 import { MenuCard } from '../molecules/MenuCard';
 import { ErrorAlert } from '../molecules/ErrorAlert';
@@ -12,18 +11,22 @@ import { fechaLarga, pesos } from '../../lib/formato';
 interface ReservaAlmuerzoCardProps {
   user: User;
   note?: string;
+  /** El instructor puede fiar: reserva de una vez y se suma a su cuenta del mes (ADR 028). */
+  permitirFiar?: boolean;
 }
 
 /**
  * Menú del día con el flujo de reserva real (POST /api/consumos/reservar).
  * El aprendiz beneficiario reserva gratis con un clic. Los demás pagan con el código QR (ADR 027):
- * al solicitar se aparta la porción y se abre el chat del pago para subir el comprobante.
+ * al solicitar se aparta la porción y se abre el chat del pago para subir el comprobante. El
+ * instructor también puede fiar: con un clic queda reservado y se suma a su cuenta del mes (ADR 028).
  */
-export const ReservaAlmuerzoCard = ({ user, note }: ReservaAlmuerzoCardProps) => {
+export const ReservaAlmuerzoCard = ({ user, note, permitirFiar = false }: ReservaAlmuerzoCardProps) => {
   const { data: menu, isPending, isError, error, refetch } = useMenuActivo();
   const reservar = useReservarAlmuerzo();
   const [porPagar, setPorPagar] = useState<ReservaPorPagar | null>(null);
-  const [gratis, setGratis] = useState<ReservaCreada | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [accion, setAccion] = useState<'solicitar' | 'fiar' | null>(null);
 
   if (isPending) {
     return (
@@ -56,16 +59,37 @@ export const ReservaAlmuerzoCard = ({ user, note }: ReservaAlmuerzoCardProps) =>
   const hayCupo = menu.cantidad_disponible - menu.cantidad_vendida > 0;
   const miReserva = menu.mi_reserva;
 
+  const menuId = esMenuPublicado(menu) ? menu.id : undefined;
+
   const solicitar = () => {
     reservar.reset();
-    setGratis(null);
+    setAviso(null);
+    setAccion('solicitar');
     reservar.mutate(
-      { menuId: esMenuPublicado(menu) ? menu.id : undefined },
+      { menuId },
       {
         onSuccess: (reserva) => {
-          if (reserva.estado_pago === 'gratis') setGratis(reserva);
-          else setPorPagar({ id: reserva.id, precio: reserva.precio, vence_en: reserva.vence_en ?? null, comprobante: null });
+          if (reserva.estado_pago === 'gratis') {
+            setAviso('Tarifa: $0 COP (beneficio 100 % subsidiado). Presenta tu documento o ficha en el comedor.');
+          } else {
+            setPorPagar({ id: reserva.id, precio: reserva.precio, vence_en: reserva.vence_en ?? null, comprobante: null });
+          }
         },
+        onSettled: () => setAccion(null),
+      }
+    );
+  };
+
+  const fiar = () => {
+    reservar.reset();
+    setAviso(null);
+    setAccion('fiar');
+    reservar.mutate(
+      { menuId, formaPago: 'fiado' },
+      {
+        onSuccess: (reserva) =>
+          setAviso(`Fiado: ${reserva.price} se sumó a tu cuenta del mes. Lo pagas a fin de mes en la oficina del comedor.`),
+        onSettled: () => setAccion(null),
       }
     );
   };
@@ -81,16 +105,14 @@ export const ReservaAlmuerzoCard = ({ user, note }: ReservaAlmuerzoCardProps) =>
 
   return (
     <div className="flex flex-col gap-4">
-      {gratis && (
+      {aviso && (
         <Alert status="success" role="status">
           <Alert.Indicator />
           <Alert.Content>
             <Alert.Title>Almuerzo reservado</Alert.Title>
-            <Alert.Description>
-              Tarifa: $0 COP (beneficio 100 % subsidiado). Presenta tu documento o ficha en el comedor.
-            </Alert.Description>
+            <Alert.Description>{aviso}</Alert.Description>
           </Alert.Content>
-          <CloseButton aria-label="Cerrar aviso" onPress={() => setGratis(null)} />
+          <CloseButton aria-label="Cerrar aviso" onPress={() => setAviso(null)} />
         </Alert>
       )}
 
@@ -112,7 +134,8 @@ export const ReservaAlmuerzoCard = ({ user, note }: ReservaAlmuerzoCardProps) =>
         reservation={miReserva}
         onRequestLunch={solicitar}
         onPay={abrirPago}
-        isLoading={reservar.isPending}
+        onCredit={permitirFiar && !esBeneficiario ? fiar : undefined}
+        pending={reservar.isPending ? accion : null}
         isBeneficiario={esBeneficiario}
       />
 
